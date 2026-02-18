@@ -1,33 +1,70 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarStyle: {
+          backgroundColor: '#1b3358',
+          borderTopWidth: 0,
+          height: 60,
+          paddingBottom: 5,
+          paddingTop: 5,
+        },
+        tabBarActiveTintColor: '#87ca37',
+        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.4)',
+        tabBarLabelStyle: {
+          fontWeight: 'bold',
+          fontSize: 10,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="groups"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'GROUPS',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="people" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="setup"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="players"
+        options={{
+          title: 'PLAYERS',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="game"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="leaderboard"
+        options={{
+          title: 'RANKINGS',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="trophy" size={24} color={color} />
+          ),
         }}
       />
     </Tabs>

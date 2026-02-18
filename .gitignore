@@ -41,3 +41,9 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Snapshots (manual backups)
+Snapshots/
+
+# Claude Code
+.claude/
