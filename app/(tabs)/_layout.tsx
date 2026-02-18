@@ -1,8 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { useActiveMatch } from '../../context/ActiveMatchContext';
 
 export default function TabLayout() {
+  const { activeMatch } = useActiveMatch();
+
   return (
     <Tabs
       screenOptions={{
@@ -55,6 +58,22 @@ export default function TabLayout() {
       <Tabs.Screen
         name="game"
         options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="live"
+        options={activeMatch ? {
+          title: 'LIVE',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="radio" size={24} color={color} />
+          ),
+          tabBarLabelStyle: {
+            fontWeight: 'bold',
+            fontSize: 10,
+            color: '#87ca37',
+          },
+        } : {
           href: null,
         }}
       />

@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -20,6 +22,8 @@ import {
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useActiveMatch } from '../../context/ActiveMatchContext';
+import { useSubscription } from '../../context/SubscriptionContext';
 import { useCollaborativeScoring } from '../../hooks/useCollaborativeScoring';
 import { Player, useGameLogic } from '../../hooks/useGameLogic';
 import { useSmartScoring } from '../../hooks/useSmartScoring';
@@ -39,6 +43,7 @@ export default function GameScreen() {
   
   const [groupName, setGroupName] = useState(params.groupName as string || '');
   const [groupKey, setGroupKey] = useState(params.groupKey as string || '');
+  const courtName = (params.courtName as string) || '';
   const playersData = useMemo(() => params.players ? JSON.parse(params.players as string) : [], [params.players]);
   const [currentRoster, setCurrentRoster] = useState<Player[]>(playersData);
   const [editingPlayer, setEditingPlayer] = useState<{r:number,g:number,t:number,p:number} | null>(null);
@@ -72,7 +77,10 @@ export default function GameScreen() {
       sessionId, shareCode, isCollaborator, schedule, scores, setScores, inputRefs
   });
 
-  const [isMatchScored, setIsMatchScored] = useState(true); 
+  const { setActiveMatch, clearActiveMatch } = useActiveMatch();
+  const { isPro, isFree, showPaywall, features } = useSubscription();
+
+  const [isMatchScored, setIsMatchScored] = useState(false);
   const [generatingImg, setGeneratingImg] = useState(false); 
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null); 
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -130,6 +138,17 @@ export default function GameScreen() {
           // This ensures Unit B gets exactly what Unit A pushed
           console.log('🔗 Unit B: will pull scores from server...');
           joinAndSync(code);
+          setActiveMatch({
+              shareCode: code,
+              sessionId: sid,
+              groupName,
+              groupKey: groupKey || undefined,
+              matchTitle: saveTitle || groupName,
+              courtName: courtName || undefined,
+              isOwner: false,
+              schedule,
+              players: currentRoster,
+          });
       }
   }, [params.isCollaborator]);
 
@@ -138,6 +157,7 @@ export default function GameScreen() {
       if (matchFinishedByRemote && !saveModalVisible) {
           clearMatchFinished();
           clearScores();
+          clearActiveMatch();
           Alert.alert(
               "Match Complete!",
               "Scores have been saved by your collaborator.",
@@ -218,11 +238,12 @@ export default function GameScreen() {
   };
 
   const handleGenerateReport = async () => {
-    setGeneratingImg(true); setGeneratedImageUrl(null); 
+    setGeneratingImg(true); setGeneratedImageUrl(null);
     try {
+        const uid = await getDeviceId();
         const response = await fetch(`${API_URL}/generate_report_image.php`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ schedule, group_name: reportTitle, date_str: getFormattedDateStr(selectedDate) })
+            body: JSON.stringify({ schedule, group_name: reportTitle, date_str: getFormattedDateStr(selectedDate), court_name: courtName, user_id: uid })
         });
         const data = await response.json(); setGeneratingImg(false);
         if (data.status === 'success') setGeneratedImageUrl(data.url);
@@ -232,8 +253,62 @@ export default function GameScreen() {
 
   const handleShareImage = async () => {
       if (!generatedImageUrl) { Alert.alert("No Image", "Please generate the preview first."); return; }
-      await Share.share({ message: `Match Schedule for ${reportTitle}:\n${generatedImageUrl}`, url: generatedImageUrl });
+      try {
+          // Format date with ordinal suffix (e.g. "Friday, February 20th")
+          const day = selectedDate.getDate();
+          const suffix = (day === 1 || day === 21 || day === 31) ? 'st' : (day === 2 || day === 22) ? 'nd' : (day === 3 || day === 23) ? 'rd' : 'th';
+          const dateLabel = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + suffix;
+          const timeLabel = selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          const courtInfo = courtName ? ` at ${courtName}` : '';
+          const shareMessage = `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtInfo}\n${generatedImageUrl}`;
+
+          // Download image to local cache and share the actual image
+          const filename = generatedImageUrl.split('/').pop() || 'match_report.png';
+          const localUri = FileSystem.cacheDirectory + filename;
+          const download = await FileSystem.downloadAsync(generatedImageUrl, localUri);
+
+          if (Platform.OS === 'ios') {
+              // iOS: Share.share with url sends the actual image file
+              await Share.share({ message: shareMessage, url: download.uri });
+          } else {
+              // Android: Use expo-sharing for file sharing
+              await Sharing.shareAsync(download.uri, { mimeType: 'image/png', dialogTitle: shareMessage });
+          }
+      } catch (e) {
+          console.error('Share error:', e);
+          // Fallback to URL sharing if download fails
+          const day = selectedDate.getDate();
+          const suffix = (day === 1 || day === 21 || day === 31) ? 'st' : (day === 2 || day === 22) ? 'nd' : (day === 3 || day === 23) ? 'rd' : 'th';
+          const dateLabel = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + suffix;
+          const timeLabel = selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          const courtFallback = courtName ? ` at ${courtName}` : '';
+          await Share.share({ message: `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtFallback}\n${generatedImageUrl}`, url: generatedImageUrl });
+      }
+      // Save the match snapshot so the LIVE tab can restore it
+      setActiveMatch({
+          groupName,
+          groupKey: groupKey || undefined,
+          matchTitle: reportTitle || groupName,
+          courtName: courtName || undefined,
+          isOwner: true,
+          schedule,
+          players: currentRoster,
+      });
       setReportModalVisible(false);
+
+      // Nudge free users about watermark
+      if (isFree) {
+          setTimeout(() => {
+              Alert.alert(
+                  'Upgrade to Pro',
+                  'Your report includes a watermark. Upgrade to Pro for clean, professional reports!',
+                  [
+                      { text: 'Maybe Later', style: 'cancel' },
+                      { text: 'Learn More', onPress: () => showPaywall('Get clean, watermark-free HD reports with Pro!') },
+                  ]
+              );
+          }, 500);
+      }
   };
 
   const handleFinish = () => setSaveModalVisible(true);
@@ -243,12 +318,28 @@ export default function GameScreen() {
   // ✅ INVITE COLLABORATOR
   const handleInviteCollaborator = async () => {
       if (sessionId && shareCode) { setShareModalVisible(true); return; }
+      // Gate: free users limited to maxCollabSessions
+      if (isFree && !sessionId) {
+          // For now, free users get 1 collab session at a time (existing session check above handles re-show)
+          // Future: check active session count from server
+      }
       const batchId = groupKey || `collab_${Date.now()}`;
       const result = await createCollabSession(batchId, groupName, schedule);
       if (result) {
           setShareCode(result.shareCode);
           setSessionId(result.sessionId.toString());
           setShareModalVisible(true);
+          setActiveMatch({
+              shareCode: result.shareCode,
+              sessionId: result.sessionId.toString(),
+              groupName,
+              groupKey: groupKey || undefined,
+              matchTitle: saveTitle || groupName,
+              courtName: courtName || undefined,
+              isOwner: true,
+              schedule,
+              players: currentRoster,
+          });
       } else {
           Alert.alert('Error', 'Could not create collaboration session. Try again.');
       }
@@ -286,6 +377,7 @@ export default function GameScreen() {
         
         if (data.status === 'success') {
             await clearScores(); setSaveModalVisible(false);
+            clearActiveMatch();
             Alert.alert("Success!", data.message || "Match saved successfully!");
             router.replace({ pathname: '/(tabs)/leaderboard', params: { groupName, refresh: Date.now().toString() } });
         } else if (data.status === 'already_exists') {
@@ -404,7 +496,7 @@ export default function GameScreen() {
               </View>
               <View style={styles.headerRightControls}>
                   <TouchableOpacity onPress={handleInviteCollaborator} style={styles.shuffleBtn}>
-                      <Ionicons name="people" size={24} color={shareCode ? "#87ca37" : "#fff"} />
+                      <Ionicons name="flash" size={24} color={shareCode ? "#87ca37" : "#fff"} />
                   </TouchableOpacity>
                   {shareCode && connectedUsers > 0 && (
                       <View style={styles.connectedBadge}><Text style={styles.connectedText}>{connectedUsers}</Text></View>
@@ -475,18 +567,24 @@ export default function GameScreen() {
         <Modal visible={reportModalVisible} transparent animationType="slide" onRequestClose={() => setReportModalVisible(false)}>
             <View style={styles.modalOverlay}><View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>GENERATE HD REPORT</Text>
+                {isFree && (
+                    <TouchableOpacity onPress={() => showPaywall('Upgrade to Pro for clean, watermark-free HD reports!')} style={styles.watermarkBadge}>
+                        <Ionicons name="lock-closed" size={12} color="#ff6b35" />
+                        <Text style={styles.watermarkBadgeText}>FREE — Reports include watermark</Text>
+                    </TouchableOpacity>
+                )}
                 <Text style={styles.label}>Match Title</Text>
                 <TextInput style={styles.modalInput} value={reportTitle} onChangeText={(t) => { setReportTitle(t); setGeneratedImageUrl(null); }} placeholder="Enter Title" />
                 <Text style={styles.label}>Date & Time</Text>
                 <View style={styles.datePickerContainer}>
                     <View style={styles.dateRow}>
                         <TouchableOpacity onPress={() => { adjustDate(-1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><Ionicons name="chevron-back" size={24} color="white" /></TouchableOpacity>
-                        <Text style={styles.dateValue}>DAY</Text>
+                        <Text style={styles.dateValue}>{selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
                         <TouchableOpacity onPress={() => { adjustDate(1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><Ionicons name="chevron-forward" size={24} color="white" /></TouchableOpacity>
                     </View>
                     <View style={styles.dateRow}>
                         <TouchableOpacity onPress={() => { adjustTime(-1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><Ionicons name="chevron-back" size={24} color="white" /></TouchableOpacity>
-                        <Text style={styles.dateValue}>TIME</Text>
+                        <Text style={styles.dateValue}>{selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</Text>
                         <TouchableOpacity onPress={() => { adjustTime(1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><Ionicons name="chevron-forward" size={24} color="white" /></TouchableOpacity>
                     </View>
                 </View>
@@ -512,12 +610,12 @@ export default function GameScreen() {
                 <View style={styles.datePickerContainer}>
                     <View style={styles.dateRow}>
                         <TouchableOpacity onPress={() => adjustDate(-1)} style={styles.arrowBtn}><Ionicons name="chevron-back" size={24} color="white" /></TouchableOpacity>
-                        <Text style={styles.dateValue}>DAY</Text>
+                        <Text style={styles.dateValue}>{selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
                         <TouchableOpacity onPress={() => adjustDate(1)} style={styles.arrowBtn}><Ionicons name="chevron-forward" size={24} color="white" /></TouchableOpacity>
                     </View>
                     <View style={styles.dateRow}>
                         <TouchableOpacity onPress={() => adjustTime(-1)} style={styles.arrowBtn}><Ionicons name="chevron-back" size={24} color="white" /></TouchableOpacity>
-                        <Text style={styles.dateValue}>TIME</Text>
+                        <Text style={styles.dateValue}>{selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</Text>
                         <TouchableOpacity onPress={() => adjustTime(1)} style={styles.arrowBtn}><Ionicons name="chevron-forward" size={24} color="white" /></TouchableOpacity>
                     </View>
                 </View>
@@ -616,7 +714,7 @@ const styles = StyleSheet.create({
   datePickerContainer: { marginBottom: 10 },
   dateRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, backgroundColor: '#f0f2f5', padding: 10, borderRadius: 10 },
   arrowBtn: { backgroundColor: '#1b3358', padding: 10, borderRadius: 8 },
-  dateValue: { fontWeight: '900', color: '#1b3358', fontSize: 14 },
+  dateValue: { fontWeight: '900', color: '#1b3358', fontSize: 16, flex: 1, textAlign: 'center' },
   previewText: { textAlign: 'center', color: '#87ca37', fontWeight: 'bold', fontSize: 16, marginBottom: 10 },
   previewContainer: { height: 200, backgroundColor: '#eee', borderRadius: 10, marginBottom: 15, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   previewImage: { width: '100%', height: '100%' },
@@ -626,5 +724,7 @@ const styles = StyleSheet.create({
   modalBtn: { flex: 1, padding: 15, borderRadius: 15, alignItems: 'center' },
   cancelBtn: { backgroundColor: '#ccc' },
   saveBtn: { backgroundColor: '#1b3358' },
-  modalBtnText: { fontWeight: '900', fontSize: 14 }
+  modalBtnText: { fontWeight: '900', fontSize: 14 },
+  watermarkBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#fff5ef', padding: 8, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: '#ff6b35' },
+  watermarkBadgeText: { color: '#ff6b35', fontWeight: '700', fontSize: 11 }
 });

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, TextInput } from 'react-native';
+import { FlatList, Keyboard, TextInput } from 'react-native';
 
 /**
  * useSmartScoring V4 — COLLAB-AWARE
@@ -85,7 +85,7 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
             }
         }
         
-        if (onAllScoresComplete) setTimeout(() => onAllScoresComplete(), 100);
+        if (onAllScoresComplete) setTimeout(() => { Keyboard.dismiss(); onAllScoresComplete(); }, 100);
     };
 
     // CORE RULES ENGINE — returns ScoreChangeResult

@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   searchRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderColor: '#f0f0f0' },
   searchName: { fontSize: 15, fontWeight: '700', color: '#333' },
   searchMeta: { fontSize: 11, color: '#888', marginTop: 2 },
-  listContent: { padding: 20, paddingBottom: 250 },
+  listContent: { padding: 20, paddingBottom: 350 },
   bottomBtnArea: { padding: 15, backgroundColor: '#f4f6f8' },
   playerRow: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
   playerInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },

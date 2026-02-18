@@ -6,7 +6,10 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
+  Linking,
   Modal,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -16,6 +19,8 @@ import {
   View,
 } from 'react-native';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
+import { TrialBanner } from '../../components/TrialBanner';
+import { useSubscription } from '../../context/SubscriptionContext';
 
 interface Court {
   id: number;
@@ -40,8 +45,10 @@ const API_URL = 'https://peoplestar.com/Chipleball/api';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { isPro, isFree, isTrial, trialDaysRemaining, showPaywall, features, subscription, refreshSubscription } = useSubscription();
   const [groups, setGroups] = useState<Group[]>([]);
   const [joinModalVisible, setJoinModalVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
 
@@ -116,6 +123,11 @@ export default function HomeScreen() {
 
   // --- MODAL MANAGEMENT ---
   const openCreateModal = () => {
+    // Gate: free users limited to maxGroups
+    if (isFree && groups.length >= features.maxGroups) {
+      showPaywall(`You've reached the free limit of ${features.maxGroups} groups. Upgrade to Pro for unlimited groups!`);
+      return;
+    }
     setEditingGroup(null);
     setNewGroupName('');
     setSelectedCourtId(null);
@@ -413,20 +425,34 @@ export default function HomeScreen() {
     );
   };
 
+  const handleManageSubscription = () => {
+    if (Platform.OS === 'ios') {
+      Linking.openURL('https://apps.apple.com/account/subscriptions');
+    } else {
+      Linking.openURL('https://play.google.com/store/account/subscriptions');
+    }
+  };
+
+  const tierLabel = isPro ? 'PRO' : isTrial ? 'TRIAL' : 'FREE';
+  const tierColor = isPro ? '#87ca37' : isTrial ? '#87ca37' : '#ff6b35';
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.logoTitle}>PLAY PB NOW</Text>
+        <View style={{ flex: 1, alignItems: 'flex-start' }}>
+          <Image source={require('../../assets/images/PlayPBNow-Logo-SMALL.png')} style={styles.logoImage} resizeMode="contain" />
           <Text style={styles.logoSub}>LOAD A SAVED GROUP</Text>
         </View>
         <TouchableOpacity onPress={() => setJoinModalVisible(true)} style={styles.joinBtn}>
-          <Ionicons name="enter" size={20} color="white" />
+          <Ionicons name="flash" size={20} color="white" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-          <Ionicons name="log-out-outline" size={24} color="white" />
+        <TouchableOpacity onPress={() => setSettingsVisible(true)} style={styles.settingsBtn}>
+          <Ionicons name="settings-outline" size={22} color="white" />
         </TouchableOpacity>
       </View>
+
+      {/* Trial / Subscription Banner */}
+      <TrialBanner />
 
       {loading && (
         <View style={styles.loadingContainer}>
@@ -449,6 +475,9 @@ export default function HomeScreen() {
       />
 
       <View style={styles.footer}>
+        {isFree && (
+          <Text style={styles.groupCountLabel}>{groups.length}/{features.maxGroups} Groups</Text>
+        )}
         <TouchableOpacity style={styles.createBtn} onPress={openCreateModal} disabled={loading}>
           <Ionicons name="add-circle" size={24} color="white" style={{ marginRight: 10 }} />
           <Text style={styles.createBtnText}>CREATE NEW GROUP</Text>
@@ -464,6 +493,77 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
+      {/* SETTINGS MODAL */}
+      <Modal animationType="slide" transparent visible={settingsVisible} onRequestClose={() => setSettingsVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={{ width: 34 }} />
+              <Text style={styles.modalTitleInline}>SETTINGS</Text>
+              <TouchableOpacity onPress={() => setSettingsVisible(false)} style={{ padding: 5 }}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Subscription Status */}
+            <View style={styles.settingsSection}>
+              <Text style={styles.settingsSectionTitle}>SUBSCRIPTION</Text>
+              <View style={styles.settingsRow}>
+                <Text style={styles.settingsLabel}>Current Plan</Text>
+                <View style={[styles.tierBadge, { backgroundColor: tierColor }]}>
+                  <Text style={styles.tierBadgeText}>{tierLabel}</Text>
+                </View>
+              </View>
+              {isTrial && trialDaysRemaining > 0 && (
+                <View style={styles.settingsRow}>
+                  <Text style={styles.settingsLabel}>Trial Ends In</Text>
+                  <Text style={styles.settingsValue}>{trialDaysRemaining} day{trialDaysRemaining === 1 ? '' : 's'}</Text>
+                </View>
+              )}
+              {subscription?.expiryDate && (
+                <View style={styles.settingsRow}>
+                  <Text style={styles.settingsLabel}>Expires</Text>
+                  <Text style={styles.settingsValue}>{new Date(subscription.expiryDate).toLocaleDateString()}</Text>
+                </View>
+              )}
+              {isFree && (
+                <TouchableOpacity style={styles.upgradeBtn} onPress={() => { setSettingsVisible(false); showPaywall(); }}>
+                  <Ionicons name="star" size={18} color="white" />
+                  <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
+                </TouchableOpacity>
+              )}
+              {isPro && (
+                <TouchableOpacity style={styles.manageBtn} onPress={handleManageSubscription}>
+                  <Text style={styles.manageBtnText}>Manage Subscription</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Restore Purchases */}
+            <View style={styles.settingsSection}>
+              <TouchableOpacity style={styles.settingsActionRow} onPress={() => {
+                Alert.alert('Restore Purchases', 'Purchase restoration will be available once in-app purchases are enabled.');
+              }}>
+                <Ionicons name="refresh" size={20} color="#1b3358" />
+                <Text style={styles.settingsActionText}>Restore Purchases</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Account */}
+            <View style={styles.settingsSection}>
+              <Text style={styles.settingsSectionTitle}>ACCOUNT</Text>
+              <TouchableOpacity style={styles.settingsActionRow} onPress={handleLogout}>
+                <Ionicons name="log-out-outline" size={20} color="#e74c3c" />
+                <Text style={[styles.settingsActionText, { color: '#e74c3c' }]}>Log Out</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* App Info */}
+            <Text style={styles.appVersion}>PlayPBNow v1.1.0</Text>
+          </View>
+        </View>
+      </Modal>
+
       <JoinMatchModal visible={joinModalVisible} onClose={() => setJoinModalVisible(false)} />
     </SafeAreaView>
   );
@@ -472,10 +572,10 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#1b3358' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 30, paddingTop: 60 },
-  logoTitle: { fontSize: 32, fontWeight: '900', color: 'white', fontStyle: 'italic', letterSpacing: 1 },
+  logoImage: { height: 100, width: 200 },
   logoSub: { color: '#87ca37', fontWeight: 'bold', fontSize: 12, letterSpacing: 1.5, marginTop: 5 },
   joinBtn: { padding: 8, marginRight: 10 },
-  logoutBtn: { padding: 8 },
+  settingsBtn: { padding: 8 },
   loadingContainer: { alignItems: 'center', marginTop: 40 },
   loadingText: { color: 'white', marginTop: 10, fontSize: 16 },
   listContent: { paddingHorizontal: 20, paddingBottom: 150 },
@@ -533,4 +633,23 @@ const styles = StyleSheet.create({
   
   closeBtn: { marginTop: 15, alignItems: 'center', padding: 10 },
   closeBtnText: { color: '#999', fontWeight: 'bold' },
+
+  // Group count label
+  groupCountLabel: { color: '#ff6b35', fontWeight: '700', fontSize: 12, marginBottom: 8, textAlign: 'center' },
+
+  // Settings Modal
+  settingsSection: { marginBottom: 20 },
+  settingsSectionTitle: { fontSize: 11, fontWeight: '900', color: '#999', letterSpacing: 1.5, marginBottom: 10 },
+  settingsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
+  settingsLabel: { color: '#333', fontSize: 15 },
+  settingsValue: { color: '#666', fontSize: 15, fontWeight: '600' },
+  tierBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
+  tierBadgeText: { color: 'white', fontWeight: '900', fontSize: 12, letterSpacing: 1 },
+  upgradeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#87ca37', padding: 14, borderRadius: 12, marginTop: 12 },
+  upgradeBtnText: { color: 'white', fontWeight: '900', fontSize: 15 },
+  manageBtn: { padding: 12, alignItems: 'center', marginTop: 8 },
+  manageBtnText: { color: '#4a90e2', fontWeight: '700', fontSize: 14, textDecorationLine: 'underline' },
+  settingsActionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  settingsActionText: { color: '#1b3358', fontSize: 15, fontWeight: '600' },
+  appVersion: { textAlign: 'center', color: '#ccc', fontSize: 12, marginTop: 10 },
 });
