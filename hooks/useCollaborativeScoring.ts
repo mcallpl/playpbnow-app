@@ -36,6 +36,8 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     const [lastSyncTime, setLastSyncTime] = useState(0);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [initialSyncDone, setInitialSyncDone] = useState(false);
+    const [matchFinishedByRemote, setMatchFinishedByRemote] = useState(false);
+    const [finishedGroupName, setFinishedGroupName] = useState<string | null>(null);
 
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const localUpdatesRef = useRef<Set<string>>(new Set());
@@ -174,6 +176,19 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             const data = await res.json();
 
             if (data.status === 'success') {
+                // Check if the match was finished by another device
+                if (data.session_status === 'finished') {
+                    console.log('🏁 Match finished by collaborator! Redirecting to podium...');
+                    setFinishedGroupName(data.group_name || null);
+                    setMatchFinishedByRemote(true);
+                    // Stop polling immediately
+                    if (pollIntervalRef.current) {
+                        clearInterval(pollIntervalRef.current);
+                        pollIntervalRef.current = null;
+                    }
+                    return;
+                }
+
                 setConnectedUsers(data.connected_users || 0);
 
                 if (data.updates && data.updates.length > 0) {
@@ -303,6 +318,11 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         setToastMessage(null);
     }, []);
 
+    const clearMatchFinished = useCallback(() => {
+        setMatchFinishedByRemote(false);
+        setFinishedGroupName(null);
+    }, []);
+
     return {
         syncScoreToServer,
         createCollabSession,
@@ -311,6 +331,9 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         connectedUsers,
         toastMessage,
         dismissToast,
-        initialSyncDone
+        initialSyncDone,
+        matchFinishedByRemote,
+        finishedGroupName,
+        clearMatchFinished
     };
 };

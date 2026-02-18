@@ -64,9 +64,10 @@ export default function GameScreen() {
       }
   });
 
-  const { 
+  const {
       syncScoreToServer, createCollabSession, joinAndSync,
-      isSyncing, connectedUsers, toastMessage, dismissToast
+      isSyncing, connectedUsers, toastMessage, dismissToast,
+      matchFinishedByRemote, finishedGroupName, clearMatchFinished
   } = useCollaborativeScoring({
       sessionId, shareCode, isCollaborator, schedule, scores, setScores, inputRefs
   });
@@ -131,6 +132,30 @@ export default function GameScreen() {
           joinAndSync(code);
       }
   }, [params.isCollaborator]);
+
+  // When a collaborator finishes the match, redirect all other devices to podium
+  useEffect(() => {
+      if (matchFinishedByRemote && !saveModalVisible) {
+          clearMatchFinished();
+          clearScores();
+          Alert.alert(
+              "Match Complete!",
+              "Scores have been saved by your collaborator.",
+              [{
+                  text: "View Results",
+                  onPress: () => {
+                      router.replace({
+                          pathname: '/(tabs)/leaderboard',
+                          params: {
+                              groupName: finishedGroupName || groupName,
+                              refresh: Date.now().toString()
+                          }
+                      });
+                  }
+              }]
+          );
+      }
+  }, [matchFinishedByRemote]);
 
   useEffect(() => {
       if (newPlayerName.length < 2) { setSearchResults([]); return; }
@@ -248,10 +273,11 @@ export default function GameScreen() {
     if (matchesToSave.length === 0) { Alert.alert("No Scores", "Enter scores before finishing."); setSaveModalVisible(false); return; }
     try {
         if (!groupName) { Alert.alert("Error", "Group Name Lost."); return; }
-        const payload = { 
+        const payload = {
             group_name: groupName, group_id: groupKey, matches: matchesToSave, user_id: userId,
             custom_timestamp: Math.floor(selectedDate.getTime() / 1000), match_title: saveTitle,
-            force_update: forceUpdate
+            force_update: forceUpdate,
+            share_code: shareCode || undefined
         };
         const res = await fetch(`${API_URL}/save_scores.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
         const responseText = await res.text();
