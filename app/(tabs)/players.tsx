@@ -6,7 +6,11 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    InputAccessoryView,
+    Keyboard,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -41,6 +45,10 @@ export default function PlayersScreen() {
     const [cellPhone, setCellPhone] = useState('');
     const [gender, setGender] = useState<'male' | 'female'>('male');
     const [duprRating, setDuprRating] = useState('');
+    const [homeCourtId, setHomeCourtId] = useState<number | null>(null);
+    const [homeCourtName, setHomeCourtName] = useState('');
+    const [showCourtPicker, setShowCourtPicker] = useState(false);
+    const [courts, setCourts] = useState<Array<{ id: number; name: string; city: string; state: string }>>([]);
 
     // Merge modal state
     const [mergeModalVisible, setMergeModalVisible] = useState(false);
@@ -118,6 +126,19 @@ export default function PlayersScreen() {
         duplicateGroups.reduce((sum, g) => sum + g.count - 1, 0),
     [duplicateGroups]);
 
+    // Load courts for dropdown
+    const loadCourts = useCallback(async () => {
+        try {
+            const res = await fetch(`${API_URL}/get_courts.php`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                setCourts(data.courts || []);
+            }
+        } catch (e) {
+            console.error('Error loading courts:', e);
+        }
+    }, []);
+
     // Load not-duplicate pairs
     const loadNotDuplicates = useCallback(async () => {
         try {
@@ -139,6 +160,7 @@ export default function PlayersScreen() {
             loadPlayers();
             loadGroups();
             loadNotDuplicates();
+            loadCourts();
         }, [])
     );
 
@@ -164,17 +186,22 @@ export default function PlayersScreen() {
         setCellPhone(player.cell_phone || '');
         setGender(player.gender?.toLowerCase().startsWith('f') ? 'female' : 'male');
         setDuprRating(player.dupr_rating ? String(player.dupr_rating) : '');
+        setHomeCourtId(player.home_court_id ? Number(player.home_court_id) : null);
+        setHomeCourtName(player.home_court_name || '');
+        setShowCourtPicker(false);
         setEditModalVisible(true);
     };
 
     // Save player edits
     const handleSavePlayer = async () => {
         if (!editingPlayer) return;
+        Keyboard.dismiss();
         const updates: any = {
             first_name: firstName,
             last_name: lastName,
             cell_phone: cellPhone,
             gender: gender,
+            home_court_id: homeCourtId || '',
         };
         if (duprRating !== '') {
             const rating = parseFloat(duprRating);
@@ -754,98 +781,186 @@ export default function PlayersScreen() {
                 </View>
             </Modal>
 
+            {/* Done toolbar for numeric keyboards */}
+            {Platform.OS === 'ios' && (
+                <InputAccessoryView nativeID="doneToolbar">
+                    <View style={styles.accessoryBar}>
+                        <View style={{ flex: 1 }} />
+                        <TouchableOpacity onPress={() => Keyboard.dismiss()} style={styles.doneButton}>
+                            <Text style={styles.doneButtonText}>Done</Text>
+                        </TouchableOpacity>
+                    </View>
+                </InputAccessoryView>
+            )}
+
             {/* Edit Player Modal */}
             <Modal visible={editModalVisible} animationType="slide" transparent>
-                <View style={styles.modalOverlay}>
+                <KeyboardAvoidingView
+                    style={styles.modalOverlay}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={0}
+                >
                     <View style={styles.modalContainer}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Edit Player</Text>
-                            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                            <TouchableOpacity onPress={() => { setEditModalVisible(false); setShowCourtPicker(false); }}>
                                 <Ionicons name="close" size={28} color="#666" />
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.modalBody}>
-                            <Text style={styles.label}>First Name</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={firstName}
-                                onChangeText={setFirstName}
-                                placeholder="First Name"
-                            />
+                        <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={true}>
+                            {!showCourtPicker ? (
+                                <>
+                                    <Text style={styles.label}>First Name</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={firstName}
+                                        onChangeText={setFirstName}
+                                        placeholder="First Name"
+                                        returnKeyType="next"
+                                    />
 
-                            <Text style={styles.label}>Last Name</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={lastName}
-                                onChangeText={setLastName}
-                                placeholder="Last Name (optional)"
-                            />
+                                    <Text style={styles.label}>Last Name</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={lastName}
+                                        onChangeText={setLastName}
+                                        placeholder="Last Name (optional)"
+                                        returnKeyType="next"
+                                    />
 
-                            <Text style={styles.label}>Phone Number</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={cellPhone}
-                                onChangeText={setCellPhone}
-                                placeholder="(XXX) XXX-XXXX"
-                                keyboardType="phone-pad"
-                            />
+                                    <Text style={styles.label}>Phone Number</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={cellPhone}
+                                        onChangeText={setCellPhone}
+                                        placeholder="(XXX) XXX-XXXX"
+                                        keyboardType="phone-pad"
+                                        inputAccessoryViewID="doneToolbar"
+                                    />
 
-                            <Text style={styles.label}>Gender</Text>
-                            <View style={styles.genderRow}>
-                                <TouchableOpacity
-                                    style={[styles.genderBtn, gender === 'male' && styles.genderBtnActive]}
-                                    onPress={() => setGender('male')}
-                                >
-                                    <Ionicons name="man" size={20} color={gender === 'male' ? 'white' : '#666'} />
-                                    <Text style={[styles.genderBtnText, gender === 'male' && styles.genderBtnTextActive]}>Male</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.genderBtn, gender === 'female' && styles.genderBtnActive]}
-                                    onPress={() => setGender('female')}
-                                >
-                                    <Ionicons name="woman" size={20} color={gender === 'female' ? 'white' : '#666'} />
-                                    <Text style={[styles.genderBtnText, gender === 'female' && styles.genderBtnTextActive]}>Female</Text>
-                                </TouchableOpacity>
-                            </View>
+                                    <Text style={styles.label}>Gender</Text>
+                                    <View style={styles.genderRow}>
+                                        <TouchableOpacity
+                                            style={[styles.genderBtn, gender === 'male' && styles.genderBtnActive]}
+                                            onPress={() => setGender('male')}
+                                        >
+                                            <Ionicons name="man" size={20} color={gender === 'male' ? 'white' : '#666'} />
+                                            <Text style={[styles.genderBtnText, gender === 'male' && styles.genderBtnTextActive]}>Male</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.genderBtn, gender === 'female' && styles.genderBtnActive]}
+                                            onPress={() => setGender('female')}
+                                        >
+                                            <Ionicons name="woman" size={20} color={gender === 'female' ? 'white' : '#666'} />
+                                            <Text style={[styles.genderBtnText, gender === 'female' && styles.genderBtnTextActive]}>Female</Text>
+                                        </TouchableOpacity>
+                                    </View>
 
-                            <Text style={styles.label}>DUPR Rating</Text>
-                            <View style={styles.duprInputRow}>
-                                <TextInput
-                                    style={[styles.input, { flex: 1 }]}
-                                    value={duprRating}
-                                    onChangeText={setDuprRating}
-                                    placeholder="e.g. 3.50 (1.00 - 8.00)"
-                                    keyboardType="decimal-pad"
-                                    maxLength={4}
-                                />
-                                {duprRating !== '' && (
+                                    <Text style={styles.label}>Home Court</Text>
                                     <TouchableOpacity
-                                        style={styles.duprClearBtn}
-                                        onPress={() => setDuprRating('')}
+                                        style={styles.courtSelector}
+                                        onPress={() => { Keyboard.dismiss(); setShowCourtPicker(true); }}
                                     >
-                                        <Ionicons name="close-circle" size={22} color="#999" />
+                                        <Ionicons name="location" size={20} color={homeCourtId ? '#4a90e2' : '#999'} />
+                                        <Text style={[styles.courtSelectorText, !homeCourtId && { color: '#999' }]}>
+                                            {homeCourtName || 'Select a court...'}
+                                        </Text>
+                                        <Ionicons name="chevron-forward" size={18} color="#999" />
                                     </TouchableOpacity>
-                                )}
-                            </View>
 
-                            <TouchableOpacity style={styles.saveBtn} onPress={handleSavePlayer}>
-                                <Text style={styles.saveBtnText}>SAVE CHANGES</Text>
-                            </TouchableOpacity>
+                                    <Text style={styles.label}>DUPR Rating</Text>
+                                    <View style={styles.duprInputRow}>
+                                        <TextInput
+                                            style={[styles.input, { flex: 1 }]}
+                                            value={duprRating}
+                                            onChangeText={setDuprRating}
+                                            placeholder="e.g. 3.50 (1.00 - 8.00)"
+                                            keyboardType="decimal-pad"
+                                            maxLength={4}
+                                            inputAccessoryViewID="doneToolbar"
+                                        />
+                                        {duprRating !== '' && (
+                                            <TouchableOpacity
+                                                style={styles.duprClearBtn}
+                                                onPress={() => setDuprRating('')}
+                                            >
+                                                <Ionicons name="close-circle" size={22} color="#999" />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
 
-                            {/* Merge button — only show if duplicates exist for this name */}
-                            {editingPlayer && players.filter(
-                                p => p.id !== editingPlayer.id &&
-                                     p.first_name.trim().toLowerCase() === editingPlayer.first_name.trim().toLowerCase()
-                            ).length > 0 && (
-                                <TouchableOpacity style={styles.mergeEditBtn} onPress={handleMergeFromEdit}>
-                                    <Ionicons name="git-merge" size={18} color="#ff6b35" />
-                                    <Text style={styles.mergeEditBtnText}>Merge with duplicate...</Text>
-                                </TouchableOpacity>
+                                    <TouchableOpacity style={styles.saveBtn} onPress={handleSavePlayer}>
+                                        <Text style={styles.saveBtnText}>SAVE CHANGES</Text>
+                                    </TouchableOpacity>
+
+                                    {/* Merge button — only show if duplicates exist for this name */}
+                                    {editingPlayer && players.filter(
+                                        p => p.id !== editingPlayer.id &&
+                                             p.first_name.trim().toLowerCase() === editingPlayer.first_name.trim().toLowerCase()
+                                    ).length > 0 && (
+                                        <TouchableOpacity style={styles.mergeEditBtn} onPress={handleMergeFromEdit}>
+                                            <Ionicons name="git-merge" size={18} color="#ff6b35" />
+                                            <Text style={styles.mergeEditBtnText}>Merge with duplicate...</Text>
+                                        </TouchableOpacity>
+                                    )}
+
+                                    <View style={{ height: 40 }} />
+                                </>
+                            ) : (
+                                /* Court Picker View */
+                                <>
+                                    <View style={styles.courtPickerHeader}>
+                                        <TouchableOpacity onPress={() => setShowCourtPicker(false)} style={styles.courtBackBtn}>
+                                            <Ionicons name="arrow-back" size={22} color="#4a90e2" />
+                                            <Text style={styles.courtBackText}>Back</Text>
+                                        </TouchableOpacity>
+                                        <Text style={styles.courtPickerTitle}>Select Court</Text>
+                                    </View>
+
+                                    {/* No court option */}
+                                    <TouchableOpacity
+                                        style={[styles.courtOption, !homeCourtId && styles.courtOptionSelected]}
+                                        onPress={() => {
+                                            setHomeCourtId(null);
+                                            setHomeCourtName('');
+                                            setShowCourtPicker(false);
+                                        }}
+                                    >
+                                        <Ionicons name="close-circle-outline" size={20} color="#999" />
+                                        <Text style={styles.courtOptionText}>No Court</Text>
+                                        {!homeCourtId && <Ionicons name="checkmark" size={20} color="#87ca37" />}
+                                    </TouchableOpacity>
+
+                                    {courts.map((court) => (
+                                        <TouchableOpacity
+                                            key={court.id}
+                                            style={[styles.courtOption, homeCourtId === court.id && styles.courtOptionSelected]}
+                                            onPress={() => {
+                                                setHomeCourtId(court.id);
+                                                setHomeCourtName(court.name);
+                                                setShowCourtPicker(false);
+                                            }}
+                                        >
+                                            <Ionicons name="location" size={20} color="#4a90e2" />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.courtOptionText}>{court.name}</Text>
+                                                {(court.city || court.state) && (
+                                                    <Text style={styles.courtOptionSub}>
+                                                        {[court.city, court.state].filter(Boolean).join(', ')}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                            {homeCourtId === court.id && <Ionicons name="checkmark" size={20} color="#87ca37" />}
+                                        </TouchableOpacity>
+                                    ))}
+
+                                    <View style={{ height: 40 }} />
+                                </>
                             )}
-                        </View>
+                        </ScrollView>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
     );
@@ -992,9 +1107,27 @@ const styles = StyleSheet.create({
     mergingText: { fontSize: 16, fontWeight: '700', color: '#1b3358' },
     mergingProgress: { fontSize: 13, color: '#666', textAlign: 'center' },
 
+    // Done toolbar for numeric keyboards
+    accessoryBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f0f0f0',
+        borderTopWidth: 1,
+        borderTopColor: '#ccc',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+    },
+    doneButton: {
+        backgroundColor: '#4a90e2',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 6,
+    },
+    doneButtonText: { color: 'white', fontWeight: '700', fontSize: 15 },
+
     // Modal styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContainer: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' },
+    modalContainer: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#eee' },
     modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1b3358' },
     modalBody: { padding: 20 },
@@ -1009,6 +1142,48 @@ const styles = StyleSheet.create({
     duprClearBtn: { padding: 4 },
     saveBtn: { backgroundColor: '#87ca37', borderRadius: 25, padding: 15, marginTop: 20, alignItems: 'center' },
     saveBtnText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+
+    // Court selector in edit modal
+    courtSelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        borderRadius: 8,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        gap: 10,
+    },
+    courtSelectorText: { flex: 1, fontSize: 16, color: '#333' },
+
+    // Court picker view
+    courtPickerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 15,
+        gap: 10,
+    },
+    courtBackBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    courtBackText: { color: '#4a90e2', fontSize: 16, fontWeight: '600' },
+    courtPickerTitle: { fontSize: 18, fontWeight: '800', color: '#1b3358' },
+    courtOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        gap: 12,
+    },
+    courtOptionSelected: {
+        backgroundColor: '#e8f5e9',
+        borderRadius: 8,
+    },
+    courtOptionText: { fontSize: 15, fontWeight: '600', color: '#333' },
+    courtOptionSub: { fontSize: 12, color: '#999', marginTop: 2 },
 
     // Merge from edit
     mergeEditBtn: {
