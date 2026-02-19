@@ -31,8 +31,6 @@ import { ShareMatchModal } from '../../components/ShareMatchModal';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
 import { ScoreUpdateToast } from '../../components/ScoreUpdateToast';
 
-AsyncStorage.multiRemove(['device_id', 'active_group_key']);
-
 const API_URL = 'https://peoplestar.com/Chipleball/api';
 
 interface SearchResult { id: string; name: string; source: string; }

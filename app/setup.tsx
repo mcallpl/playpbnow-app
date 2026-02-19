@@ -90,9 +90,13 @@ export default function SetupScreen() {
             if (!did) { Alert.alert('Error', 'Please login first'); return; }
             setDeviceId(did);
 
-            let gKey = params.groupKey as string || await AsyncStorage.getItem('active_group_key') || '';
-            let gName = params.groupName as string || await AsyncStorage.getItem('active_group_name') || '';
-            if (gKey) setGroupKey(gKey);
+            let gKey = params.groupKey as string || '';
+            let gName = params.groupName as string || '';
+            if (!gKey) {
+                Alert.alert('Error', 'Group not loaded properly. Please go back and select again.');
+                return;
+            }
+            setGroupKey(gKey);
             if (gName) setGroupName(gName);
             if (params.groupId) setGroupId(params.groupId as string);
 
@@ -233,7 +237,7 @@ export default function SetupScreen() {
         if (groupName) await AsyncStorage.removeItem(`scores_${groupName}`);
         const res = await fetch(`${API_URL}/generate_schedule.php`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ group_key: groupKey, round_configs: roundsConfig, group: groupName }),
+            body: JSON.stringify({ group_key: groupKey, round_configs: roundsConfig, group: groupName, players: players.map(p => ({ id: p.id, first_name: p.first_name, gender: p.gender })) }),
         });
         const data = await res.json();
         if (data.status === 'success') {
