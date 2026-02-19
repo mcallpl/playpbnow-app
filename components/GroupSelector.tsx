@@ -69,15 +69,16 @@ export function GroupSelector({ groups, selectedGroupId, selectedCount, onSelect
 const styles = StyleSheet.create({
     selectorContainer: {
         position: 'absolute',
-        bottom: 0,
+        bottom: 85,
         left: 0,
         right: 0,
         backgroundColor: 'white',
         padding: 15,
+        paddingBottom: 20,
         borderTopWidth: 2,
         borderTopColor: '#4a90e2',
         shadowColor: '#000',
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.15,
         shadowRadius: 10,
         elevation: 10,
     },
