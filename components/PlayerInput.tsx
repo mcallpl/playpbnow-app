@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface PlayerInputProps {
@@ -9,11 +9,14 @@ interface PlayerInputProps {
 export function PlayerInput({ onAddPlayer }: PlayerInputProps) {
     const [playerName, setPlayerName] = useState('');
     const [gender, setGender] = useState<'male' | 'female'>('male');
+    const inputRef = useRef<TextInput>(null);
 
     const handleAdd = () => {
         if (playerName.trim()) {
             onAddPlayer(playerName.trim(), gender);
             setPlayerName('');
+            // Keep focus on the input for rapid entry
+            setTimeout(() => inputRef.current?.focus(), 50);
         }
     };
 
@@ -21,13 +24,15 @@ export function PlayerInput({ onAddPlayer }: PlayerInputProps) {
         <View style={styles.inputArea}>
             <View style={styles.inputRow}>
                 <TextInput
+                    ref={inputRef}
                     style={styles.input}
                     value={playerName}
                     onChangeText={setPlayerName}
                     placeholder="Enter Player Name"
                     placeholderTextColor="#999"
                     onSubmitEditing={handleAdd}
-                    returnKeyType="done"
+                    returnKeyType="next"
+                    blurOnSubmit={false}
                 />
                 <TouchableOpacity
                     style={[styles.genderBtn, gender === 'male' && styles.genderMale]}
