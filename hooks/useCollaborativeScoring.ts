@@ -38,6 +38,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     const [initialSyncDone, setInitialSyncDone] = useState(false);
     const [matchFinishedByRemote, setMatchFinishedByRemote] = useState(false);
     const [finishedGroupName, setFinishedGroupName] = useState<string | null>(null);
+    const [finishedSessionId, setFinishedSessionId] = useState<string | null>(null);
 
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const localUpdatesRef = useRef<Set<string>>(new Set());
@@ -180,6 +181,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 if (data.session_status === 'finished') {
                     console.log('🏁 Match finished by collaborator! Redirecting to podium...');
                     setFinishedGroupName(data.group_name || null);
+                    setFinishedSessionId(data.saved_session_id ? String(data.saved_session_id) : null);
                     setMatchFinishedByRemote(true);
                     // Stop polling immediately
                     if (pollIntervalRef.current) {
@@ -321,6 +323,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     const clearMatchFinished = useCallback(() => {
         setMatchFinishedByRemote(false);
         setFinishedGroupName(null);
+        setFinishedSessionId(null);
     }, []);
 
     return {
@@ -334,6 +337,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         initialSyncDone,
         matchFinishedByRemote,
         finishedGroupName,
+        finishedSessionId,
         clearMatchFinished
     };
 };

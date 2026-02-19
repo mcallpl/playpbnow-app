@@ -69,7 +69,7 @@ export default function GameScreen() {
   const {
       syncScoreToServer, createCollabSession, joinAndSync,
       isSyncing, connectedUsers, toastMessage, dismissToast,
-      matchFinishedByRemote, finishedGroupName, clearMatchFinished
+      matchFinishedByRemote, finishedGroupName, finishedSessionId, clearMatchFinished
   } = useCollaborativeScoring({
       sessionId, shareCode, isCollaborator, schedule, scores, setScores, inputRefs
   });
@@ -164,6 +164,8 @@ export default function GameScreen() {
                           pathname: '/(tabs)/leaderboard',
                           params: {
                               groupName: finishedGroupName || groupName,
+                              forceGlobal: 'true',
+                              sessionId: finishedSessionId || '',
                               refresh: Date.now().toString()
                           }
                       });
@@ -356,7 +358,12 @@ export default function GameScreen() {
             await clearScores(); setSaveModalVisible(false);
             clearActiveMatch();
             Alert.alert("Success!", data.message || "Match saved successfully!");
-            router.replace({ pathname: '/(tabs)/leaderboard', params: { groupName, refresh: Date.now().toString() } });
+            router.replace({ pathname: '/(tabs)/leaderboard', params: {
+                groupName,
+                forceGlobal: 'true',
+                sessionId: data.session_id ? String(data.session_id) : '',
+                refresh: Date.now().toString()
+            } });
         } else if (data.status === 'already_exists') {
             // Same title, time, AND scores — nothing to save
             Alert.alert("Already Saved", "This match has already been saved with identical scores. Nothing to update.");
