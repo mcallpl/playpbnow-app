@@ -21,8 +21,8 @@ export const TrialBanner: React.FC = () => {
                             ? `Trial ending in ${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'}!`
                             : `Pro Trial \u2014 ${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} remaining`}
                     </Text>
-                    <TouchableOpacity style={styles.subscribeBtn} onPress={() => showPaywall('Subscribe now to keep all Pro features!')}>
-                        <Text style={styles.subscribeBtnText}>Subscribe</Text>
+                    <TouchableOpacity style={styles.subscribeBtn} onPress={() => showPaywall('Your Pro trial includes all premium features!')}>
+                        <Text style={styles.subscribeBtnText}>Learn More</Text>
                     </TouchableOpacity>
                 </View>
                 <TouchableOpacity style={styles.dismissBtn} onPress={() => setDismissed(true)}>
@@ -39,8 +39,8 @@ export const TrialBanner: React.FC = () => {
                 <View style={styles.bannerContent}>
                     <Ionicons name="lock-closed" size={16} color="white" />
                     <Text style={styles.bannerText}>Your trial has ended</Text>
-                    <TouchableOpacity style={styles.subscribeBtn} onPress={() => showPaywall('Upgrade to Pro to get back all your premium features!')}>
-                        <Text style={styles.subscribeBtnText}>Upgrade</Text>
+                    <TouchableOpacity style={styles.subscribeBtn} onPress={() => showPaywall('Pro subscriptions are coming soon! Here is what you will get:')}>
+                        <Text style={styles.subscribeBtnText}>Learn More</Text>
                     </TouchableOpacity>
                 </View>
                 <TouchableOpacity style={styles.dismissBtn} onPress={() => setDismissed(true)}>

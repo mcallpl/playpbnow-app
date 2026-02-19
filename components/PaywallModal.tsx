@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React from 'react';
 import {
-    Alert,
     Image,
     Modal,
     StyleSheet,
@@ -21,27 +20,6 @@ const BENEFITS = [
 
 export const PaywallModal: React.FC = () => {
     const { paywallVisible, paywallMessage, hidePaywall, isTrial, trialDaysRemaining } = useSubscription();
-    const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
-
-    const handlePurchase = () => {
-        if (isTrial && trialDaysRemaining > 0) {
-            Alert.alert(
-                'Pro Trial Active',
-                `You're enjoying a free ${trialDaysRemaining}-day Pro trial! All features are unlocked. You can subscribe anytime before your trial ends.`,
-                [{ text: 'Got it!', onPress: hidePaywall }]
-            );
-        } else {
-            Alert.alert(
-                'Coming Soon',
-                'In-app purchases are coming soon! For now, enjoy all features during your trial period.',
-                [{ text: 'OK' }]
-            );
-        }
-    };
-
-    const handleRestore = () => {
-        Alert.alert('Restore Purchases', 'Purchase restoration will be available once in-app purchases are enabled.', [{ text: 'OK' }]);
-    };
 
     return (
         <Modal visible={paywallVisible} transparent animationType="slide" onRequestClose={hidePaywall}>
@@ -82,37 +60,28 @@ export const PaywallModal: React.FC = () => {
                         ))}
                     </View>
 
-                    {/* Plan Toggle */}
-                    <View style={styles.planToggle}>
-                        <TouchableOpacity
-                            style={[styles.planOption, selectedPlan === 'monthly' && styles.planSelected]}
-                            onPress={() => setSelectedPlan('monthly')}
-                        >
-                            <Text style={[styles.planPrice, selectedPlan === 'monthly' && styles.planPriceSelected]}>$4.99</Text>
-                            <Text style={[styles.planPeriod, selectedPlan === 'monthly' && styles.planPeriodSelected]}>per month</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.planOption, selectedPlan === 'annual' && styles.planSelected]}
-                            onPress={() => setSelectedPlan('annual')}
-                        >
-                            <View style={styles.saveBadge}><Text style={styles.saveBadgeText}>SAVE 33%</Text></View>
-                            <Text style={[styles.planPrice, selectedPlan === 'annual' && styles.planPriceSelected]}>$39.99</Text>
-                            <Text style={[styles.planPeriod, selectedPlan === 'annual' && styles.planPeriodSelected]}>per year</Text>
-                        </TouchableOpacity>
+                    {/* Trial / Coming Soon Info */}
+                    <View style={styles.infoBox}>
+                        {isTrial && trialDaysRemaining > 0 ? (
+                            <>
+                                <Ionicons name="star" size={20} color="#87ca37" />
+                                <Text style={styles.infoText}>
+                                    You're enjoying a free <Text style={styles.infoBold}>{trialDaysRemaining}-day Pro trial</Text>! All features are unlocked.
+                                </Text>
+                            </>
+                        ) : (
+                            <>
+                                <Ionicons name="rocket" size={20} color="#87ca37" />
+                                <Text style={styles.infoText}>
+                                    Pro subscriptions coming soon! Stay tuned for premium features.
+                                </Text>
+                            </>
+                        )}
                     </View>
 
-                    {/* Purchase Button */}
-                    <TouchableOpacity style={styles.purchaseBtn} onPress={handlePurchase} activeOpacity={0.8}>
-                        <Text style={styles.purchaseBtnText}>
-                            {isTrial && trialDaysRemaining > 0
-                                ? `Continue Free Trial (${trialDaysRemaining} days left)`
-                                : `Subscribe — ${selectedPlan === 'monthly' ? '$4.99/mo' : '$39.99/yr'}`}
-                        </Text>
-                    </TouchableOpacity>
-
-                    {/* Restore */}
-                    <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore}>
-                        <Text style={styles.restoreText}>Restore Purchases</Text>
+                    {/* Got It Button */}
+                    <TouchableOpacity style={styles.gotItBtn} onPress={hidePaywall} activeOpacity={0.8}>
+                        <Text style={styles.gotItBtnText}>Got It</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -200,53 +169,28 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginTop: 1,
     },
-    planToggle: {
+    infoBox: {
         flexDirection: 'row',
-        gap: 10,
-        marginBottom: 15,
-    },
-    planOption: {
-        flex: 1,
-        padding: 15,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: '#eee',
         alignItems: 'center',
-    },
-    planSelected: {
-        borderColor: '#87ca37',
         backgroundColor: '#f0fae5',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 15,
+        gap: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(135, 202, 55, 0.3)',
     },
-    planPrice: {
-        fontWeight: '900',
-        fontSize: 22,
-        color: '#333',
+    infoText: {
+        flex: 1,
+        color: '#555',
+        fontSize: 14,
+        lineHeight: 20,
     },
-    planPriceSelected: {
+    infoBold: {
+        fontWeight: '800',
         color: '#1b3358',
     },
-    planPeriod: {
-        fontSize: 12,
-        color: '#888',
-        marginTop: 2,
-    },
-    planPeriodSelected: {
-        color: '#1b3358',
-    },
-    saveBadge: {
-        backgroundColor: '#ff6b35',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 8,
-        marginBottom: 5,
-    },
-    saveBadgeText: {
-        color: 'white',
-        fontWeight: '900',
-        fontSize: 10,
-        letterSpacing: 0.5,
-    },
-    purchaseBtn: {
+    gotItBtn: {
         backgroundColor: '#87ca37',
         padding: 18,
         borderRadius: 15,
@@ -257,19 +201,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 5,
     },
-    purchaseBtnText: {
+    gotItBtnText: {
         color: 'white',
         fontWeight: '900',
         fontSize: 16,
         letterSpacing: 0.5,
-    },
-    restoreBtn: {
-        padding: 12,
-        alignItems: 'center',
-    },
-    restoreText: {
-        color: '#888',
-        fontSize: 13,
-        textDecorationLine: 'underline',
     },
 });
