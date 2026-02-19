@@ -11,6 +11,12 @@ export interface Player {
     last_name?: string;
     gender: string;
     cell_phone?: string;
+    dupr_rating?: number | null;
+    wins?: number;
+    losses?: number;
+    diff?: number;
+    win_pct?: number;
+    group_names?: string;
 }
 
 export function usePlayerManagement() {

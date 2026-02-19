@@ -13,6 +13,7 @@ export interface LeaderboardItem {
   pct: number;
   badges: string[];
   rank?: string;
+  dupr?: number | null;
 }
 
 export interface RosterItem {

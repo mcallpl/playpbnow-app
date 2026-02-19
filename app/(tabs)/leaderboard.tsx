@@ -211,7 +211,10 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
                 <Text style={styles.name}>{item.name}</Text>
                 {item.badges && item.badges.map((b: string, i: number) => <Text key={i} style={{fontSize:14}}>{b}</Text>)}
             </View>
-            <Text style={styles.record}>{item.w}W - {item.l}L  •  {item.diff > 0 ? '+' : ''}{item.diff} Diff</Text>
+            <Text style={styles.record}>
+                {item.w}W - {item.l}L  •  {item.diff > 0 ? '+' : ''}{item.diff} Diff
+                {item.dupr ? `  •  DUPR ${Number(item.dupr).toFixed(2)}` : ''}
+            </Text>
         </View>
         <View style={styles.pctBox}><Text style={styles.pct}>{item.pct}%</Text></View>
       </View>
@@ -237,6 +240,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
                   <Text style={styles.podiumName} numberOfLines={1}>{p.name} <Text style={{fontSize:10}}>{badges}</Text></Text>
                   <Text style={styles.podiumStat}>{p.w}W - {p.l}L</Text>
                   <Text style={[styles.podiumStat, {fontSize:9, opacity:0.8}]}>{p.diff > 0 ? '+' : ''}{p.diff} Diff</Text>
+                  {p.dupr && <Text style={[styles.podiumStat, {fontSize:9, color: '#87ca37'}]}>DUPR {Number(p.dupr).toFixed(2)}</Text>}
                   <Text style={[styles.podiumStat, rank === 'gold' ? styles.textGold : null, {marginTop:2}]}>{p.pct}%</Text>
               </>
           );
