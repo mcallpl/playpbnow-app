@@ -598,6 +598,15 @@ export default function PlayersScreen() {
                                     Select which players are the same person, then tap MERGE. If two players share a name but are different people, tap "Not Same Person" to stop flagging them.
                                 </Text>
 
+                                {duplicateGroups.length > 0 && (
+                                    <TouchableOpacity style={styles.mergeAllBtn} onPress={mergeAllDuplicates}>
+                                        <Ionicons name="git-merge" size={20} color="white" />
+                                        <Text style={styles.mergeAllBtnText}>
+                                            MERGE ALL ({totalDuplicates} duplicate{totalDuplicates !== 1 ? 's' : ''} across {duplicateGroups.length} name{duplicateGroups.length !== 1 ? 's' : ''})
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+
                                 {duplicateGroups.map((group, idx) => {
                                     const key = group.name.toLowerCase();
                                     const selected = selectedMergeIds[key] || [];
@@ -669,15 +678,6 @@ export default function PlayersScreen() {
                                         </View>
                                     );
                                 })}
-
-                                {duplicateGroups.length > 1 && (
-                                    <TouchableOpacity style={styles.mergeAllBtn} onPress={mergeAllDuplicates}>
-                                        <Ionicons name="git-merge" size={20} color="white" />
-                                        <Text style={styles.mergeAllBtnText}>
-                                            MERGE ALL ({totalDuplicates} duplicate{totalDuplicates !== 1 ? 's' : ''})
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
 
                                 <View style={{ height: 30 }} />
                             </ScrollView>
