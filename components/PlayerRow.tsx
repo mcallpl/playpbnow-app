@@ -9,6 +9,8 @@ export interface PlayerRowData {
     gender: string;
     cell_phone?: string;
     dupr_rating?: number | null;
+    wins?: number;
+    losses?: number;
 }
 
 interface PlayerRowProps {
@@ -48,6 +50,11 @@ export function PlayerRow({ player, selectionMode, isSelected, onToggleSelect, o
                         <Text style={styles.playerName}>
                             {player.first_name} {player.last_name || ''}
                         </Text>
+                        {((player.wins ?? 0) > 0 || (player.losses ?? 0) > 0) && (
+                            <Text style={styles.wlText}>
+                                ({player.wins ?? 0}W-{player.losses ?? 0}L)
+                            </Text>
+                        )}
                         {player.dupr_rating != null && player.dupr_rating > 0 && (
                             <View style={styles.duprBadge}>
                                 <Text style={styles.duprText}>{Number(player.dupr_rating).toFixed(2)}</Text>
@@ -120,6 +127,11 @@ const styles = StyleSheet.create({
         fontSize: 14, 
         color: '#666', 
         marginTop: 2 
+    },
+    wlText: {
+        fontSize: 13,
+        color: '#888',
+        fontWeight: '600',
     },
     duprBadge: {
         backgroundColor: '#1b3358',
