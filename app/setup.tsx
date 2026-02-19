@@ -152,13 +152,20 @@ export default function SetupScreen() {
           });
           const data = await res.json();
           if (data.status === 'success') {
-              setPlayers([{
-                  id: result.player_key, db_id: result.id, first_name: result.first_name,
-                  last_name: result.last_name, gender: result.gender,
-                  home_court_name: result.home_court_name, wins: result.wins,
-                  losses: result.losses, win_pct: result.win_pct,
-                  groups: result.groups, is_verified: result.is_verified
-              }, ...players]);
+              // Reload full roster to get accurate stats from DB
+              try {
+                  const rosterRes = await fetch(`${API_URL}/get_players.php?group_key=${groupKey}`);
+                  const rosterData = await rosterRes.json();
+                  if (rosterData.status === 'success') setPlayers(rosterData.players || []);
+              } catch (e) {
+                  setPlayers([{
+                      id: result.player_key, db_id: result.id, first_name: result.first_name,
+                      last_name: result.last_name, gender: result.gender,
+                      home_court_name: result.home_court_name, wins: result.wins,
+                      losses: result.losses, win_pct: result.win_pct,
+                      groups: result.groups, is_verified: result.is_verified
+                  }, ...players]);
+              }
               setNewPlayerName(''); setSearchResults([]); setShowSearchResults(false); setShowPhoneInput(false); setNewPlayerPhone('');
           } else { Alert.alert('Error', data.message); }
       } catch (e) { Alert.alert('Error', 'Failed to add player'); }
@@ -228,10 +235,18 @@ export default function SetupScreen() {
                   ]
               );
           } else if (data.status === 'success') {
-              setPlayers([{
-                  id: data.player_key || pk, first_name: data.first_name || name,
-                  gender, home_court_name: courtName || null
-              }, ...players]);
+              // Reload the full roster to get stats and home court from DB
+              try {
+                  const rosterRes = await fetch(`${API_URL}/get_players.php?group_key=${groupKey}`);
+                  const rosterData = await rosterRes.json();
+                  if (rosterData.status === 'success') setPlayers(rosterData.players || []);
+              } catch (e) {
+                  // Fallback: add locally without stats
+                  setPlayers([{
+                      id: data.player_key || pk, first_name: data.first_name || name,
+                      gender, home_court_name: courtName || null
+                  }, ...players]);
+              }
               setNewPlayerName(''); setSearchResults([]); setShowSearchResults(false); setShowPhoneInput(false); setNewPlayerPhone('');
           } else { Alert.alert('Error', data.message); }
       } catch (e) {
@@ -318,11 +333,11 @@ export default function SetupScreen() {
                      <Text style={styles.playerName}>{item.first_name}</Text>
                      {item.is_verified && <Ionicons name="checkmark-circle" size={14} color="#87ca37" />}
                  </View>
-                 {hasStats ? (
-                     <Text style={styles.playerStats}>{item.wins}W-{item.losses}L • {(item.win_pct || 0).toFixed(0)}% • Diff: {(item.diff || 0) > 0 ? '+' : ''}{item.diff || 0}</Text>
-                 ) : item.home_court_name ? (
-                     <Text style={styles.playerStats}>{item.home_court_name}</Text>
-                 ) : null}
+                 <Text style={styles.playerStats}>
+                     {hasStats ? `${item.wins}W-${item.losses}L • ${(item.win_pct || 0).toFixed(0)}% • Diff: ${(item.diff || 0) > 0 ? '+' : ''}${item.diff || 0}` : ''}
+                     {hasStats && item.home_court_name ? ' • ' : ''}
+                     {item.home_court_name || ''}
+                 </Text>
              </View>
           </View>
           <TouchableOpacity onPress={() => removePlayer(item.id)}>
