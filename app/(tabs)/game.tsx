@@ -23,6 +23,7 @@ import {
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useActiveMatch } from '../../context/ActiveMatchContext';
+import { useSubscription } from '../../context/SubscriptionContext';
 import { useCollaborativeScoring } from '../../hooks/useCollaborativeScoring';
 import { Player, useGameLogic } from '../../hooks/useGameLogic';
 import { useSmartScoring } from '../../hooks/useSmartScoring';
@@ -75,6 +76,7 @@ export default function GameScreen() {
   });
 
   const { setActiveMatch, clearActiveMatch } = useActiveMatch();
+  const { isPro, isFree, showPaywall, features } = useSubscription();
 
   const [isMatchScored, setIsMatchScored] = useState(false);
   const [generatingImg, setGeneratingImg] = useState(false); 
@@ -293,6 +295,20 @@ export default function GameScreen() {
           players: currentRoster,
       });
       setReportModalVisible(false);
+
+      // Post-share nudge for free users
+      if (isFree) {
+          setTimeout(() => {
+              Alert.alert(
+                  'Upgrade to Pro',
+                  'Your report includes a watermark. Upgrade to Pro for clean, HD reports!',
+                  [
+                      { text: 'Maybe Later', style: 'cancel' },
+                      { text: 'Learn More', onPress: () => showPaywall('Remove watermarks and unlock all features with Pro!') }
+                  ]
+              );
+          }, 500);
+      }
   };
 
   const handleFinish = () => setSaveModalVisible(true);
@@ -551,6 +567,12 @@ export default function GameScreen() {
         <Modal visible={reportModalVisible} transparent animationType="slide" onRequestClose={() => setReportModalVisible(false)}>
             <View style={styles.modalOverlay}><View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>GENERATE HD REPORT</Text>
+                {isFree && (
+                    <TouchableOpacity onPress={() => showPaywall('Upgrade to Pro for clean, watermark-free reports!')} style={styles.watermarkBadge}>
+                        <Ionicons name="lock-closed" size={12} color="#ff6b35" />
+                        <Text style={styles.watermarkBadgeText}>FREE — Reports include watermark</Text>
+                    </TouchableOpacity>
+                )}
                 <Text style={styles.label}>Match Title</Text>
                 <TextInput style={styles.modalInput} value={reportTitle} onChangeText={(t) => { setReportTitle(t); setGeneratedImageUrl(null); }} placeholder="Enter Title" />
                 <Text style={styles.label}>Date & Time</Text>
@@ -703,4 +725,6 @@ const styles = StyleSheet.create({
   cancelBtn: { backgroundColor: '#ccc' },
   saveBtn: { backgroundColor: '#1b3358' },
   modalBtnText: { fontWeight: '900', fontSize: 14 },
+  watermarkBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff3e0', padding: 8, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#ff6b35' },
+  watermarkBadgeText: { color: '#ff6b35', fontWeight: '700', fontSize: 12 },
 });

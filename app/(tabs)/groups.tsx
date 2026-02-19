@@ -7,7 +7,9 @@ import {
   Alert,
   FlatList,
   Image,
+  Linking,
   Modal,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -17,6 +19,8 @@ import {
   View,
 } from 'react-native';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
+import { TrialBanner } from '../../components/TrialBanner';
+import { useSubscription } from '../../context/SubscriptionContext';
 
 interface Court {
   id: number;
@@ -41,6 +45,7 @@ const API_URL = 'https://peoplestar.com/Chipleball/api';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { isPro, isFree, isTrial, trialDaysRemaining, showPaywall, features, subscription, refreshSubscription } = useSubscription();
   const [groups, setGroups] = useState<Group[]>([]);
   const [joinModalVisible, setJoinModalVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -118,6 +123,10 @@ export default function HomeScreen() {
 
   // --- MODAL MANAGEMENT ---
   const openCreateModal = () => {
+    if (isFree && groups.length >= features.maxGroups) {
+      showPaywall(`You've reached the free limit of ${features.maxGroups} groups. Upgrade to Pro for unlimited groups!`);
+      return;
+    }
     setEditingGroup(null);
     setNewGroupName('');
     setSelectedCourtId(null);
@@ -241,6 +250,17 @@ export default function HomeScreen() {
       });
     } catch (e) { Alert.alert("Error", "Could not load group."); }
   };
+
+  const handleManageSubscription = async () => {
+    if (Platform.OS === 'ios') {
+      Linking.openURL('https://apps.apple.com/account/subscriptions');
+    } else {
+      Linking.openURL('https://play.google.com/store/account/subscriptions');
+    }
+  };
+
+  const tierLabel = isPro ? 'PRO' : isTrial ? 'TRIAL' : 'FREE';
+  const tierColor = isPro ? '#87ca37' : isTrial ? '#4a90e2' : '#ff6b35';
 
   const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
 
@@ -437,6 +457,12 @@ export default function HomeScreen() {
         </View>
       )}
 
+      <TrialBanner />
+
+      {isFree && (
+        <Text style={styles.groupCountLabel}>{groups.length}/{features.maxGroups} Groups</Text>
+      )}
+
       <FlatList
         data={groups}
         keyExtractor={(item) => item.group_key}
@@ -478,6 +504,41 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Subscription */}
+            <View style={styles.settingsSection}>
+              <Text style={styles.settingsSectionTitle}>SUBSCRIPTION</Text>
+              <View style={styles.settingsActionRow}>
+                <Text style={styles.settingsActionText}>Current Plan</Text>
+                <View style={[styles.tierBadge, { backgroundColor: tierColor }]}>
+                  <Text style={styles.tierBadgeText}>{tierLabel}</Text>
+                </View>
+              </View>
+              {isTrial && trialDaysRemaining !== null && (
+                <Text style={{ color: '#4a90e2', fontSize: 13, marginBottom: 8 }}>
+                  Trial Ends In {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''}
+                </Text>
+              )}
+              {subscription?.expires_at && (
+                <Text style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
+                  Expires: {new Date(subscription.expires_at).toLocaleDateString()}
+                </Text>
+              )}
+              {!isPro && (
+                <TouchableOpacity style={styles.upgradeBtn} onPress={() => showPaywall('Unlock all features with Pro!')}>
+                  <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
+                </TouchableOpacity>
+              )}
+              {isPro && (
+                <TouchableOpacity style={styles.manageBtn} onPress={handleManageSubscription}>
+                  <Text style={styles.manageBtnText}>Manage Subscription</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.settingsActionRow} onPress={refreshSubscription}>
+                <Ionicons name="refresh" size={18} color="#4a90e2" />
+                <Text style={[styles.settingsActionText, { color: '#4a90e2' }]}>Restore Purchases</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Account */}
             <View style={styles.settingsSection}>
               <Text style={styles.settingsSectionTitle}>ACCOUNT</Text>
@@ -488,7 +549,7 @@ export default function HomeScreen() {
             </View>
 
             {/* App Info */}
-            <Text style={styles.appVersion}>PlayPBNow v1.2.0</Text>
+            <Text style={styles.appVersion}>PlayPBNow v1.3.0</Text>
           </View>
         </View>
       </Modal>
@@ -563,10 +624,19 @@ const styles = StyleSheet.create({
   closeBtn: { marginTop: 15, alignItems: 'center', padding: 10 },
   closeBtnText: { color: '#999', fontWeight: 'bold' },
 
+  // Group count label
+  groupCountLabel: { color: '#87ca37', fontSize: 12, fontWeight: '700', textAlign: 'center', marginBottom: 8, letterSpacing: 1 },
+
   // Settings Modal
   settingsSection: { marginBottom: 20 },
   settingsSectionTitle: { fontSize: 11, fontWeight: '900', color: '#999', letterSpacing: 1.5, marginBottom: 10 },
   settingsActionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
   settingsActionText: { color: '#1b3358', fontSize: 15, fontWeight: '600' },
+  tierBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  tierBadgeText: { color: 'white', fontWeight: '900', fontSize: 11, letterSpacing: 1 },
+  upgradeBtn: { backgroundColor: '#ff6b35', padding: 12, borderRadius: 10, alignItems: 'center', marginVertical: 8 },
+  upgradeBtnText: { color: 'white', fontWeight: '900', fontSize: 14 },
+  manageBtn: { backgroundColor: '#f0f2f5', padding: 12, borderRadius: 10, alignItems: 'center', marginVertical: 8 },
+  manageBtnText: { color: '#1b3358', fontWeight: '700', fontSize: 14 },
   appVersion: { textAlign: 'center', color: '#ccc', fontSize: 12, marginTop: 10 },
 });
