@@ -8,6 +8,7 @@ export interface PlayerRowData {
     last_name?: string;
     gender: string;
     cell_phone?: string;
+    dupr_rating?: number | null;
 }
 
 interface PlayerRowProps {
@@ -43,9 +44,16 @@ export function PlayerRow({ player, selectionMode, isSelected, onToggleSelect, o
                     <Text style={styles.genderText}>{isFemale ? 'F' : 'M'}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.playerName}>
-                        {player.first_name} {player.last_name || ''}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.playerName}>
+                            {player.first_name} {player.last_name || ''}
+                        </Text>
+                        {player.dupr_rating != null && player.dupr_rating > 0 && (
+                            <View style={styles.duprBadge}>
+                                <Text style={styles.duprText}>{Number(player.dupr_rating).toFixed(2)}</Text>
+                            </View>
+                        )}
+                    </View>
                     {player.cell_phone && <Text style={styles.playerPhone}>{player.cell_phone}</Text>}
                 </View>
             </View>
@@ -113,11 +121,22 @@ const styles = StyleSheet.create({
         color: '#666', 
         marginTop: 2 
     },
-    actions: { 
-        flexDirection: 'row', 
-        gap: 10 
+    duprBadge: {
+        backgroundColor: '#1b3358',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
     },
-    actionBtn: { 
-        padding: 8 
+    duprText: {
+        color: '#87ca37',
+        fontSize: 11,
+        fontWeight: '800',
+    },
+    actions: {
+        flexDirection: 'row',
+        gap: 10
+    },
+    actionBtn: {
+        padding: 8
     },
 });
