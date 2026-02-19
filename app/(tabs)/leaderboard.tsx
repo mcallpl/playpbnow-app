@@ -76,32 +76,46 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
         if (localHistory && localHistory.length > 0) return;
 
         const init = async () => {
+            // If coming from a finished match, force global mode and select that session
+            const forceGlobal = params.forceGlobal === 'true';
+            const incomingSessionId = params.sessionId as string;
+
+            if (forceGlobal && !isGlobal) {
+                setIsGlobal(true);
+                await AsyncStorage.setItem('leaderboard_mode', 'global');
+            }
+
+            const useGlobal = forceGlobal || isGlobal;
+
             let activeGroup = params.groupName as string;
             if (!activeGroup) {
-                // Load group name specific to current mode
-                const storageKey = isGlobal ? 'active_group_name_global' : 'active_group_name';
+                const storageKey = useGlobal ? 'active_group_name_global' : 'active_group_name';
                 activeGroup = await AsyncStorage.getItem(storageKey) || '';
             }
             if (activeGroup) {
                 setGroupName(activeGroup);
-                const storageKey = isGlobal ? 'active_group_name_global' : 'active_group_name';
+                const storageKey = useGlobal ? 'active_group_name_global' : 'active_group_name';
                 await AsyncStorage.setItem(storageKey, activeGroup);
             }
 
-            // Force reset to 'all' on load
-            setSelectedBatchId('all');
+            // If a specific session was passed, use it; otherwise reset to 'all'
+            const batchToUse = incomingSessionId || 'all';
+            setSelectedBatchId(batchToUse);
 
             if (activeGroup && deviceId) {
-                fetchLeaderboard(activeGroup, deviceId, isGlobal, 'all');
-                fetchUniversalSessions(deviceId, isGlobal);
+                fetchLeaderboard(activeGroup, deviceId, useGlobal, batchToUse);
+                fetchUniversalSessions(deviceId, useGlobal);
             } else if (deviceId) {
-                // No group name — just load sessions so user can pick one
-                fetchUniversalSessions(deviceId, isGlobal);
-                setLoading(false);
+                // No group name — in global mode, still fetch with empty group
+                if (useGlobal) {
+                    fetchLeaderboard('', deviceId, true, batchToUse);
+                }
+                fetchUniversalSessions(deviceId, useGlobal);
+                if (!useGlobal) setLoading(false);
             }
         };
         init();
-    }, [params.groupName, localHistory, deviceId]) 
+    }, [params.groupName, params.forceGlobal, params.sessionId, localHistory, deviceId])
   );
 
   // --- RE-FETCH ON TOGGLE ---
