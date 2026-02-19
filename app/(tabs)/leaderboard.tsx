@@ -46,6 +46,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [compareModalVisible, setCompareModalVisible] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [skipBatchReset, setSkipBatchReset] = useState(false);
 
   // Load saved MINE/GLOBAL preference on mount
   useEffect(() => {
@@ -64,8 +65,12 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   useEffect(() => {
       const savePreference = async () => {
           await AsyncStorage.setItem('leaderboard_mode', isGlobal ? 'global' : 'mine');
-          // Reset to 'all' when toggling to avoid mismatched group/batch
-          setSelectedBatchId('all');
+          // Reset to 'all' when toggling — UNLESS we just came from a finished match
+          if (skipBatchReset) {
+              setSkipBatchReset(false);
+          } else {
+              setSelectedBatchId('all');
+          }
       };
       savePreference();
   }, [isGlobal]);
@@ -81,6 +86,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             const incomingSessionId = params.sessionId as string;
 
             if (forceGlobal && !isGlobal) {
+                setSkipBatchReset(true);
                 setIsGlobal(true);
                 await AsyncStorage.setItem('leaderboard_mode', 'global');
             }
@@ -123,25 +129,32 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       if (localHistory && localHistory.length > 0) return;
 
       const refetch = async () => {
+          // If we have an incoming session from match finish, always use it
+          const incomingSessionId = params.sessionId as string;
+          const batchToUse = incomingSessionId || selectedBatchId;
+
           // Load the correct group name for the current mode
           const storageKey = isGlobal ? 'active_group_name_global' : 'active_group_name';
           const modeGroupName = await AsyncStorage.getItem(storageKey);
-          
+
           // Use stored name if exists, otherwise keep current groupName
           const nameToUse = modeGroupName || groupName;
-          
+
           if (nameToUse && deviceId) {
               if (modeGroupName) setGroupName(modeGroupName);
               setLoading(true);
-              fetchLeaderboard(nameToUse, deviceId, isGlobal, selectedBatchId);
+              fetchLeaderboard(nameToUse, deviceId, isGlobal, batchToUse);
               fetchUniversalSessions(deviceId, isGlobal);
           } else if (deviceId) {
-              // No group name available — just fetch sessions to let user select one
+              if (isGlobal) {
+                  setLoading(true);
+                  fetchLeaderboard('', deviceId, true, batchToUse);
+              }
               fetchUniversalSessions(deviceId, isGlobal);
-              setLoading(false);
+              if (!isGlobal) setLoading(false);
           }
       };
-      
+
       refetch();
   }, [isGlobal, selectedBatchId, localHistory]);
 
