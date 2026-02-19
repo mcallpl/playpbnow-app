@@ -370,28 +370,83 @@ export default function PlayersScreen() {
         loadNotDuplicates();
     };
 
-    // Merge ALL duplicate groups at once
-    const mergeAllDuplicates = async () => {
+    // Check if all players across all groups are selected
+    const allSelected = useMemo(() => {
+        return duplicateGroups.every(group => {
+            const key = group.name.toLowerCase();
+            const selected = selectedMergeIds[key] || [];
+            return group.players.every((p: any) => selected.includes(p.id));
+        });
+    }, [duplicateGroups, selectedMergeIds]);
+
+    // Select All / Deselect All
+    const toggleSelectAll = () => {
+        if (allSelected) {
+            // Deselect all
+            setSelectedMergeIds({});
+        } else {
+            // Select all players in every group
+            const newSelected: Record<string, number[]> = {};
+            duplicateGroups.forEach(group => {
+                const key = group.name.toLowerCase();
+                newSelected[key] = group.players.map((p: any) => p.id);
+            });
+            setSelectedMergeIds(newSelected);
+        }
+    };
+
+    // Count how many groups have 2+ selected (ready to merge)
+    const mergeReadyCount = useMemo(() => {
+        return duplicateGroups.filter(group => {
+            const key = group.name.toLowerCase();
+            const selected = selectedMergeIds[key] || [];
+            return selected.length >= 2;
+        }).length;
+    }, [duplicateGroups, selectedMergeIds]);
+
+    // Merge all groups that have 2+ selected players
+    const mergeAllSelected = async () => {
+        const groupsToMerge = duplicateGroups.filter(group => {
+            const key = group.name.toLowerCase();
+            const selected = selectedMergeIds[key] || [];
+            return selected.length >= 2;
+        });
+
+        if (groupsToMerge.length === 0) {
+            Alert.alert('Nothing to Merge', 'Select at least 2 players in a group to merge.');
+            return;
+        }
+
+        const totalToMerge = groupsToMerge.reduce((sum, group) => {
+            const key = group.name.toLowerCase();
+            return sum + (selectedMergeIds[key] || []).length - 1;
+        }, 0);
+
         Alert.alert(
-            'Merge All Duplicates',
-            `This will merge ${totalDuplicates} duplicate player record${totalDuplicates !== 1 ? 's' : ''} across ${duplicateGroups.length} name${duplicateGroups.length !== 1 ? 's' : ''}. For each name, the oldest record is kept and all duplicates are merged into it.\n\nMatch history and stats will be preserved.\n\nContinue?`,
+            'Merge All Selected',
+            `This will merge ${totalToMerge} duplicate record${totalToMerge !== 1 ? 's' : ''} across ${groupsToMerge.length} name${groupsToMerge.length !== 1 ? 's' : ''}. For each name, the oldest selected record is kept.\n\nMatch history and stats will be combined.\n\nContinue?`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Merge All',
+                    text: 'Merge',
                     style: 'destructive',
                     onPress: async () => {
                         setIsMerging(true);
                         let totalMerged = 0;
-                        for (const group of duplicateGroups) {
-                            const sorted = [...group.players].sort((a: any, b: any) => a.id - b.id);
-                            const keepPlayer = sorted[0];
-                            // Pick the first phone number found across all records
-                            const firstPhone = sorted.find((p: any) => p.cell_phone)?.cell_phone || null;
-                            for (let i = 1; i < sorted.length; i++) {
-                                setMergeProgress(`Merging "${group.name}" (${i}/${sorted.length - 1})...`);
+                        for (const group of groupsToMerge) {
+                            const key = group.name.toLowerCase();
+                            const selected = selectedMergeIds[key] || [];
+                            const selectedPlayers = group.players
+                                .filter((p: any) => selected.includes(p.id))
+                                .sort((a: any, b: any) => a.id - b.id);
+
+                            const keepPlayer = selectedPlayers[0];
+                            const firstPhone = selectedPlayers.find((p: any) => p.cell_phone)?.cell_phone || null;
+
+                            for (let i = 1; i < selectedPlayers.length; i++) {
+                                setMergeProgress(`Merging "${group.name}" (${i}/${selectedPlayers.length - 1})...`);
                                 try {
-                                    const body: any = { keep_id: keepPlayer.id, merge_id: sorted[i].id };
+                                    const body: any = { keep_id: keepPlayer.id, merge_id: selectedPlayers[i].id };
                                     if (firstPhone) body.preferred_phone = firstPhone;
                                     const res = await fetch(`${API_URL}/merge_players.php`, {
                                         method: 'POST',
@@ -405,6 +460,7 @@ export default function PlayersScreen() {
                         }
                         setIsMerging(false);
                         setMergeProgress('');
+                        setSelectedMergeIds({});
                         setMergeModalVisible(false);
                         Alert.alert('All Done!', `Merged ${totalMerged} duplicate player record${totalMerged !== 1 ? 's' : ''}.`);
                         loadPlayers();
@@ -599,12 +655,24 @@ export default function PlayersScreen() {
                                 </Text>
 
                                 {duplicateGroups.length > 0 && (
-                                    <TouchableOpacity style={styles.mergeAllBtn} onPress={mergeAllDuplicates}>
-                                        <Ionicons name="git-merge" size={20} color="white" />
-                                        <Text style={styles.mergeAllBtnText}>
-                                            MERGE ALL ({totalDuplicates} duplicate{totalDuplicates !== 1 ? 's' : ''} across {duplicateGroups.length} name{duplicateGroups.length !== 1 ? 's' : ''})
-                                        </Text>
-                                    </TouchableOpacity>
+                                    <View style={styles.topActionRow}>
+                                        <TouchableOpacity style={styles.selectAllBtn} onPress={toggleSelectAll}>
+                                            <Ionicons name={allSelected ? 'checkbox' : 'square-outline'} size={20} color="white" />
+                                            <Text style={styles.selectAllBtnText}>
+                                                {allSelected ? 'DESELECT ALL' : 'SELECT ALL'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.mergeAllBtn, mergeReadyCount === 0 && styles.btnDisabled]}
+                                            onPress={mergeAllSelected}
+                                            disabled={mergeReadyCount === 0}
+                                        >
+                                            <Ionicons name="git-merge" size={20} color="white" />
+                                            <Text style={styles.mergeAllBtnText}>
+                                                MERGE{mergeReadyCount > 0 ? ` (${mergeReadyCount})` : ''}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 )}
 
                                 {duplicateGroups.map((group, idx) => {
@@ -893,17 +961,33 @@ const styles = StyleSheet.create({
     },
     notSameBtnText: { color: '#666', fontWeight: '600', fontSize: 12 },
     btnDisabled: { opacity: 0.4 },
-    mergeAllBtn: {
+    topActionRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginTop: 10,
+    },
+    selectAllBtn: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 10,
-        backgroundColor: '#e74c3c',
-        padding: 16,
+        gap: 8,
+        backgroundColor: '#4a90e2',
+        padding: 14,
         borderRadius: 12,
-        marginTop: 10,
     },
-    mergeAllBtnText: { color: 'white', fontWeight: '900', fontSize: 14 },
+    selectAllBtnText: { color: 'white', fontWeight: '900', fontSize: 13 },
+    mergeAllBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#e74c3c',
+        padding: 14,
+        borderRadius: 12,
+    },
+    mergeAllBtnText: { color: 'white', fontWeight: '900', fontSize: 13 },
     mergingOverlay: { padding: 40, alignItems: 'center', gap: 15 },
     mergingText: { fontSize: 16, fontWeight: '700', color: '#1b3358' },
     mergingProgress: { fontSize: 13, color: '#666', textAlign: 'center' },
