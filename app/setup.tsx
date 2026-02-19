@@ -61,6 +61,7 @@ export default function SetupScreen() {
   const [newPlayerGender, setNewPlayerGender] = useState<'male' | 'female'>('male');
   const [newPlayerPhone, setNewPlayerPhone] = useState('');
   const [showPhoneInput, setShowPhoneInput] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   // Court (from group)
   const [courtId, setCourtId] = useState<number | null>(null);
@@ -163,25 +164,73 @@ export default function SetupScreen() {
       } catch (e) { Alert.alert('Error', 'Failed to add player'); }
   };
 
-  // --- ADD NEW PLAYER ---
-  const addNewPlayer = async () => {
-      if (!newPlayerName.trim()) { Alert.alert('Enter Name', 'Please enter a player name.'); return; }
+  // --- ADD NEW PLAYER (with duplicate detection + debounce) ---
+  const addPlayerForceNew = async (name: string, gender: 'male' | 'female', phone: string | null) => {
       try {
           const pk = 'pk_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
-          const phone = newPlayerPhone.trim() || null;
           const res = await fetch(`${API_URL}/add_player.php`, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                  group_key: groupKey, first_name: newPlayerName.trim(),
-                  gender: newPlayerGender, player_key: pk,
-                  cell_phone: phone
+                  group_key: groupKey, first_name: name,
+                  gender, player_key: pk, cell_phone: phone,
+                  force_new: true
               })
           });
           const data = await res.json();
           if (data.status === 'success') {
               setPlayers([{
-                  id: data.player_key || pk, first_name: data.first_name || newPlayerName.trim(),
-                  gender: newPlayerGender, home_court_name: courtName || null
+                  id: data.player_key || pk, first_name: data.first_name || name,
+                  gender, home_court_name: courtName || null
+              }, ...players]);
+              setNewPlayerName(''); setSearchResults([]); setShowSearchResults(false); setShowPhoneInput(false); setNewPlayerPhone('');
+          } else { Alert.alert('Error', data.message); }
+      } catch (e) { Alert.alert('Error', 'Failed to add player'); }
+  };
+
+  const addNewPlayer = async () => {
+      if (isAdding) return;
+      if (!newPlayerName.trim()) { Alert.alert('Enter Name', 'Please enter a player name.'); return; }
+      setIsAdding(true);
+      try {
+          const pk = 'pk_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+          const phone = newPlayerPhone.trim() || null;
+          const name = newPlayerName.trim();
+          const gender = newPlayerGender;
+          const res = await fetch(`${API_URL}/add_player.php`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  group_key: groupKey, first_name: name,
+                  gender, player_key: pk, cell_phone: phone
+              })
+          });
+          const data = await res.json();
+          if (data.status === 'duplicate_name') {
+              // Ask user if this is the same person or a different one
+              const existing = data.existing_players[0];
+              Alert.alert(
+                  'Player Already Exists',
+                  `"${existing.first_name}" is already in this group. Is this the same person?`,
+                  [
+                      {
+                          text: 'Same Person',
+                          onPress: () => addExistingPlayer({
+                              id: existing.id, player_key: existing.player_key,
+                              first_name: existing.first_name, last_name: existing.last_name || '',
+                              gender: existing.gender, home_court_name: null,
+                              wins: 0, losses: 0, win_pct: 0, groups: [], is_verified: false, source: 'duplicate'
+                          })
+                      },
+                      {
+                          text: 'Different Person',
+                          onPress: () => addPlayerForceNew(name, gender, phone)
+                      },
+                      { text: 'Cancel', style: 'cancel' }
+                  ]
+              );
+          } else if (data.status === 'success') {
+              setPlayers([{
+                  id: data.player_key || pk, first_name: data.first_name || name,
+                  gender, home_court_name: courtName || null
               }, ...players]);
               setNewPlayerName(''); setSearchResults([]); setShowSearchResults(false); setShowPhoneInput(false); setNewPlayerPhone('');
           } else { Alert.alert('Error', data.message); }
@@ -189,6 +238,8 @@ export default function SetupScreen() {
           // Fallback local add
           setPlayers([{ id: Date.now().toString(), first_name: newPlayerName.trim(), gender: newPlayerGender }, ...players]);
           setNewPlayerName(''); setShowPhoneInput(false); setNewPlayerPhone('');
+      } finally {
+          setIsAdding(false);
       }
   };
 
@@ -327,13 +378,15 @@ export default function SetupScreen() {
             <View style={styles.inputRow}>
                 <TextInput style={styles.input} placeholder="Search or add player..."
                     value={newPlayerName} onChangeText={handleNameChange}
-                    onSubmitEditing={addNewPlayer} returnKeyType="done" blurOnSubmit={false} />
-                <TouchableOpacity style={[styles.genderBtn, newPlayerGender === 'male' ? styles.maleActive : styles.femaleActive]} 
-                    onPress={() => setNewPlayerGender(prev => prev === 'male' ? 'female' : 'male')}>
+                    onSubmitEditing={isAdding ? undefined : addNewPlayer} returnKeyType="done" blurOnSubmit={false}
+                    editable={!isAdding} />
+                <TouchableOpacity style={[styles.genderBtn, newPlayerGender === 'male' ? styles.maleActive : styles.femaleActive]}
+                    onPress={() => setNewPlayerGender(prev => prev === 'male' ? 'female' : 'male')}
+                    disabled={isAdding}>
                     <Ionicons name={newPlayerGender === 'male' ? 'man' : 'woman'} size={20} color="white" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.addBtn} onPress={addNewPlayer}>
-                    <Ionicons name="add" size={28} color="white" />
+                <TouchableOpacity style={[styles.addBtn, isAdding && { opacity: 0.5 }]} onPress={addNewPlayer} disabled={isAdding}>
+                    {isAdding ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="add" size={28} color="white" />}
                 </TouchableOpacity>
             </View>
             
