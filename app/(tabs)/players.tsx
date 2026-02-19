@@ -210,6 +210,38 @@ export default function PlayersScreen() {
         });
     };
 
+    // Execute the actual merge API calls
+    const executeMerge = async (keepPlayer: any, mergeTargets: any[], preferredPhone: string | null, groupKey: string) => {
+        setIsMerging(true);
+        let mergedCount = 0;
+
+        for (const target of mergeTargets) {
+            setMergeProgress(`Merging "${target.first_name}" (ID: ${target.id}) into ID: ${keepPlayer.id}...`);
+            try {
+                const body: any = { keep_id: keepPlayer.id, merge_id: target.id };
+                if (preferredPhone !== null) {
+                    body.preferred_phone = preferredPhone;
+                }
+                const res = await fetch(`${API_URL}/merge_players.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (data.status === 'success') mergedCount++;
+                else console.warn('Merge failed:', data.message);
+            } catch (e) {
+                console.error('Merge error:', e);
+            }
+        }
+
+        setIsMerging(false);
+        setMergeProgress('');
+        setSelectedMergeIds(prev => ({ ...prev, [groupKey]: [] }));
+        Alert.alert('Merge Complete', `Merged ${mergedCount} duplicate "${keepPlayer.first_name}" record${mergedCount !== 1 ? 's' : ''}.`);
+        loadPlayers();
+    };
+
     // Merge selected players in a group (keep oldest, merge rest)
     const mergeSelectedInGroup = async (group: { name: string; players: any[]; count: number }) => {
         const key = group.name.toLowerCase();
@@ -227,43 +259,45 @@ export default function PlayersScreen() {
         const keepPlayer = selectedPlayers[0];
         const mergeTargets = selectedPlayers.slice(1);
 
-        Alert.alert(
-            'Merge Players',
-            `Merge ${mergeTargets.length} record${mergeTargets.length !== 1 ? 's' : ''} into "${keepPlayer.first_name}"${keepPlayer.last_name ? ' ' + keepPlayer.last_name : ''} (ID: ${keepPlayer.id})?\n\nMatch history and stats will be preserved.`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Merge',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setIsMerging(true);
-                        let mergedCount = 0;
+        // Collect all unique phone numbers across selected players
+        const allPhones: string[] = [];
+        selectedPlayers.forEach((p: any) => {
+            if (p.cell_phone && !allPhones.includes(p.cell_phone)) {
+                allPhones.push(p.cell_phone);
+            }
+        });
 
-                        for (const target of mergeTargets) {
-                            setMergeProgress(`Merging "${target.first_name}" (ID: ${target.id}) into ID: ${keepPlayer.id}...`);
-                            try {
-                                const res = await fetch(`${API_URL}/merge_players.php`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ keep_id: keepPlayer.id, merge_id: target.id })
-                                });
-                                const data = await res.json();
-                                if (data.status === 'success') mergedCount++;
-                                else console.warn('Merge failed:', data.message);
-                            } catch (e) {
-                                console.error('Merge error:', e);
-                            }
-                        }
+        if (allPhones.length > 1) {
+            // Multiple different phone numbers — ask which to keep
+            const phoneButtons = allPhones.map(phone => ({
+                text: phone,
+                onPress: () => executeMerge(keepPlayer, mergeTargets, phone, key)
+            }));
+            phoneButtons.push({
+                text: 'No Phone',
+                onPress: () => executeMerge(keepPlayer, mergeTargets, '', key)
+            });
 
-                        setIsMerging(false);
-                        setMergeProgress('');
-                        setSelectedMergeIds(prev => ({ ...prev, [key]: [] }));
-                        Alert.alert('Merge Complete', `Merged ${mergedCount} duplicate "${group.name}" record${mergedCount !== 1 ? 's' : ''}.`);
-                        loadPlayers();
+            Alert.alert(
+                'Which Phone Number?',
+                `These "${group.name}" records have different phone numbers. Which one should the merged player keep?`,
+                [{ text: 'Cancel', style: 'cancel' as const }, ...phoneButtons]
+            );
+        } else {
+            // 0 or 1 phone — straightforward merge
+            Alert.alert(
+                'Merge Players',
+                `Merge ${mergeTargets.length} record${mergeTargets.length !== 1 ? 's' : ''} into "${keepPlayer.first_name}"${keepPlayer.last_name ? ' ' + keepPlayer.last_name : ''}?\n\nMatch history and stats will be preserved.`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Merge',
+                        style: 'destructive',
+                        onPress: () => executeMerge(keepPlayer, mergeTargets, null, key)
                     }
-                }
-            ]
-        );
+                ]
+            );
+        }
     };
 
     // Mark all unselected players in a group as "not the same person" as the selected ones
@@ -352,13 +386,17 @@ export default function PlayersScreen() {
                         for (const group of duplicateGroups) {
                             const sorted = [...group.players].sort((a: any, b: any) => a.id - b.id);
                             const keepPlayer = sorted[0];
+                            // Pick the first phone number found across all records
+                            const firstPhone = sorted.find((p: any) => p.cell_phone)?.cell_phone || null;
                             for (let i = 1; i < sorted.length; i++) {
                                 setMergeProgress(`Merging "${group.name}" (${i}/${sorted.length - 1})...`);
                                 try {
+                                    const body: any = { keep_id: keepPlayer.id, merge_id: sorted[i].id };
+                                    if (firstPhone) body.preferred_phone = firstPhone;
                                     const res = await fetch(`${API_URL}/merge_players.php`, {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ keep_id: keepPlayer.id, merge_id: sorted[i].id })
+                                        body: JSON.stringify(body)
                                     });
                                     const data = await res.json();
                                     if (data.status === 'success') totalMerged++;
