@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FlatList, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// ✅ FIXED: Absolute imports
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
+// FIXED: Absolute imports
 import { MatchCard } from '@/components/MatchCard';
 import { MatchRecord } from '@/hooks/useHeadToHead';
 
@@ -15,28 +17,30 @@ interface FilteredGamesModalProps {
 
 export function FilteredGamesModal({ visible, onClose, games, title }: FilteredGamesModalProps) {
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     return (
-        <Modal 
-            visible={visible} 
-            animationType="slide" 
-            presentationStyle="pageSheet" 
+        <Modal
+            visible={visible}
+            animationType="slide"
+            presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
             <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? insets.top : 20 }]}>
-                
+
                 <View style={styles.header}>
-                    <TouchableOpacity 
-                        onPress={onClose} 
-                        style={styles.closeBtn} 
-                        hitSlop={{top:20, bottom:20, left:20, right:20}} 
+                    <TouchableOpacity
+                        onPress={onClose}
+                        style={styles.closeBtn}
+                        hitSlop={{top:20, bottom:20, left:20, right:20}}
                     >
-                        <Ionicons name="close" size={30} color="white" />
+                        <Ionicons name="close" size={30} color={colors.text} />
                     </TouchableOpacity>
                     <Text style={styles.title}>{title}</Text>
                     <View style={styles.placeholder} />
                 </View>
-                
+
                 <FlatList
                     data={games}
                     keyExtractor={(_, index) => index.toString()}
@@ -49,8 +53,8 @@ export function FilteredGamesModal({ visible, onClose, games, title }: FilteredG
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#1b3358' },
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.bg },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -58,12 +62,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 15,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
-        backgroundColor: '#152945'
+        borderBottomColor: c.border,
+        backgroundColor: c.surfaceLight
     },
     closeBtn: { padding: 5 },
-    title: { color: 'white', fontSize: 18, fontWeight: '900', fontStyle: 'italic' },
+    title: { color: c.text, fontSize: 18, fontFamily: FONT_DISPLAY_EXTRABOLD, fontStyle: 'italic' },
     placeholder: { width: 40 },
     listContent: { padding: 20, paddingBottom: 60 },
-    emptyText: { color: '#aaa', textAlign: 'center', marginTop: 30, fontSize: 16 }
+    emptyText: { color: c.textSoft, textAlign: 'center', marginTop: 30, fontSize: 16, fontFamily: FONT_BODY_REGULAR }
 });

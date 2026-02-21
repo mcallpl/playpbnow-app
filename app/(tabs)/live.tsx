@@ -1,17 +1,25 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useActiveMatch } from '../../context/ActiveMatchContext';
+import { useTheme } from '../../context/ThemeContext';
+import {
+    ThemeColors,
+    FONT_DISPLAY_EXTRABOLD,
+    FONT_BODY_REGULAR,
+    FONT_BODY_BOLD,
+} from '../../constants/theme';
 
 export default function LiveTab() {
     const { activeMatch } = useActiveMatch();
     const router = useRouter();
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     useFocusEffect(
         useCallback(() => {
             if (activeMatch) {
-                // Small delay to let the tab finish rendering before navigating
                 const timer = setTimeout(() => {
                     router.push({
                         pathname: '/(tabs)/game',
@@ -39,12 +47,16 @@ export default function LiveTab() {
             <View style={styles.center}>
                 {activeMatch ? (
                     <>
-                        <ActivityIndicator size="large" color="#87ca37" />
+                        <ActivityIndicator size="large" color={colors.accent} />
                         <Text style={styles.loadingText}>Loading match...</Text>
                     </>
                 ) : (
                     <>
-                        <Text style={styles.emoji}>🏓</Text>
+                        <Image
+                            source={require('../../assets/images/PlayPBNow-Logo-SMALL.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
                         <Text style={styles.title}>No Active Match</Text>
                         <Text style={styles.sub}>Share a match schedule or start a collaborative session to keep your match available here.</Text>
                     </>
@@ -54,11 +66,11 @@ export default function LiveTab() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f4f6f8' },
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.bg },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
-    emoji: { fontSize: 48, marginBottom: 15 },
-    title: { fontSize: 20, fontWeight: '900', color: '#1b3358', marginBottom: 8 },
-    sub: { fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 20 },
-    loadingText: { color: '#1b3358', fontWeight: '700', marginTop: 12, fontSize: 14 },
+    logo: { width: 64, height: 64, marginBottom: 15 },
+    title: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 20, color: c.text, marginBottom: 8 },
+    sub: { fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: c.textMuted, textAlign: 'center', lineHeight: 20 },
+    loadingText: { fontFamily: FONT_BODY_BOLD, color: c.text, marginTop: 12, fontSize: 14 },
 });

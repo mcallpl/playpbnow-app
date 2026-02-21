@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 interface Group {
     id: number;
@@ -18,12 +20,15 @@ interface GroupSelectorProps {
 }
 
 export function GroupSelector({ groups, selectedGroupId, selectedCount, onSelectGroup, onAddToGroup, onCreateMatch }: GroupSelectorProps) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     if (selectedCount === 0) return null;
 
     return (
         <View style={styles.selectorContainer}>
             <View style={styles.header}>
-                <Ionicons name="people" size={20} color="#4a90e2" />
+                <Ionicons name="people" size={20} color={colors.secondary} />
                 <Text style={styles.headerText}>
                     {selectedCount} player{selectedCount > 1 ? 's' : ''} selected
                 </Text>
@@ -37,26 +42,26 @@ export function GroupSelector({ groups, selectedGroupId, selectedCount, onSelect
                 >
                     <Picker.Item label="Select a group..." value={null} />
                     {groups.map(group => (
-                        <Picker.Item 
-                            key={group.id} 
-                            label={group.name} 
-                            value={group.id} 
+                        <Picker.Item
+                            key={group.id}
+                            label={group.name}
+                            value={group.id}
                         />
                     ))}
                 </Picker>
             </View>
 
             <View style={styles.buttonRow}>
-                <TouchableOpacity 
-                    style={[styles.addBtn, !selectedGroupId && styles.addBtnDisabled]} 
+                <TouchableOpacity
+                    style={[styles.addBtn, !selectedGroupId && styles.addBtnDisabled]}
                     onPress={onAddToGroup}
                     disabled={!selectedGroupId}
                 >
                     <Text style={styles.addBtnText}>ADD TO GROUP</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.matchBtn} 
+                <TouchableOpacity
+                    style={styles.matchBtn}
                     onPress={onCreateMatch}
                 >
                     <Text style={styles.matchBtnText}>CREATE MATCH NOW</Text>
@@ -66,17 +71,17 @@ export function GroupSelector({ groups, selectedGroupId, selectedCount, onSelect
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
     selectorContainer: {
         position: 'absolute',
         bottom: 85,
         left: 0,
         right: 0,
-        backgroundColor: 'white',
+        backgroundColor: c.card,
         padding: 15,
         paddingBottom: 20,
         borderTopWidth: 2,
-        borderTopColor: '#4a90e2',
+        borderTopColor: c.secondary,
         shadowColor: '#000',
         shadowOpacity: 0.15,
         shadowRadius: 10,
@@ -90,18 +95,19 @@ const styles = StyleSheet.create({
     },
     headerText: {
         fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
+        fontFamily: FONT_BODY_BOLD,
+        color: c.text,
     },
     pickerContainer: {
-        backgroundColor: '#f5f5f5',
+        backgroundColor: c.inputBg,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: c.border,
         marginBottom: 10,
     },
     picker: {
         height: 50,
+        color: c.inputText,
     },
     buttonRow: {
         flexDirection: 'row',
@@ -109,29 +115,29 @@ const styles = StyleSheet.create({
     },
     addBtn: {
         flex: 1,
-        backgroundColor: '#4a90e2',
+        backgroundColor: c.secondary,
         borderRadius: 25,
         padding: 15,
         alignItems: 'center',
     },
     addBtnDisabled: {
-        backgroundColor: '#ccc',
+        backgroundColor: c.textMuted,
     },
     addBtnText: {
-        color: 'white',
+        color: c.text,
         fontSize: 14,
-        fontWeight: 'bold',
+        fontFamily: FONT_BODY_BOLD,
     },
     matchBtn: {
         flex: 1,
-        backgroundColor: '#87ca37',
+        backgroundColor: c.accent,
         borderRadius: 25,
         padding: 15,
         alignItems: 'center',
     },
     matchBtnText: {
-        color: 'white',
+        color: c.text,
         fontSize: 14,
-        fontWeight: 'bold',
+        fontFamily: FONT_BODY_BOLD,
     },
 });

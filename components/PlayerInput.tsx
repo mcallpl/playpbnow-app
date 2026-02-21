@@ -1,12 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 interface PlayerInputProps {
     onAddPlayer: (name: string, gender: 'male' | 'female') => void;
 }
 
 export function PlayerInput({ onAddPlayer }: PlayerInputProps) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     const [playerName, setPlayerName] = useState('');
     const [gender, setGender] = useState<'male' | 'female'>('male');
     const inputRef = useRef<TextInput>(null);
@@ -29,7 +34,7 @@ export function PlayerInput({ onAddPlayer }: PlayerInputProps) {
                     value={playerName}
                     onChangeText={setPlayerName}
                     placeholder="Enter Player Name"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={colors.inputPlaceholder}
                     onSubmitEditing={handleAdd}
                     returnKeyType="next"
                     blurOnSubmit={false}
@@ -38,28 +43,28 @@ export function PlayerInput({ onAddPlayer }: PlayerInputProps) {
                     style={[styles.genderBtn, gender === 'male' && styles.genderMale]}
                     onPress={() => setGender('male')}
                 >
-                    <Ionicons name="man" size={20} color="white" />
+                    <Ionicons name="man" size={20} color={colors.text} />
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.genderBtn, gender === 'female' && styles.genderFemale]}
                     onPress={() => setGender('female')}
                 >
-                    <Ionicons name="woman" size={20} color="white" />
+                    <Ionicons name="woman" size={20} color={colors.text} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
-                    <Ionicons name="add-circle" size={32} color="#87ca37" />
+                    <Ionicons name="add-circle" size={32} color={colors.accent} />
                 </TouchableOpacity>
             </View>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
-    inputArea: { padding: 15, backgroundColor: 'white', borderBottomWidth: 1, borderColor: '#eee' },
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+    inputArea: { padding: 15, backgroundColor: c.card, borderBottomWidth: 1, borderColor: c.border },
     inputRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-    input: { flex: 1, backgroundColor: '#f5f5f5', borderRadius: 25, paddingHorizontal: 20, paddingVertical: 12, fontSize: 16, borderWidth: 1, borderColor: '#ddd' },
-    genderBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#ccc', justifyContent: 'center', alignItems: 'center' },
-    genderMale: { backgroundColor: '#4a90e2' },
-    genderFemale: { backgroundColor: '#ff69b4' },
+    input: { flex: 1, backgroundColor: c.inputBg, borderRadius: 25, paddingHorizontal: 20, paddingVertical: 12, fontSize: 16, fontFamily: FONT_BODY_REGULAR, borderWidth: 1, borderColor: c.border, color: c.inputText },
+    genderBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.textMuted, justifyContent: 'center', alignItems: 'center' },
+    genderMale: { backgroundColor: c.male },
+    genderFemale: { backgroundColor: c.female },
     addBtn: { padding: 5 },
 });

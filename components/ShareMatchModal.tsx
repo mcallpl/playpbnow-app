@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
     Alert,
     Modal,
@@ -10,6 +10,8 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 interface ShareMatchModalProps {
     visible: boolean;
@@ -20,6 +22,8 @@ interface ShareMatchModalProps {
 
 export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: ShareMatchModalProps) {
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     const handleShare = async () => {
         try {
@@ -49,7 +53,7 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
                     <View style={styles.header}>
                         <Text style={styles.title}>SHARE LIVE MATCH</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                            <Ionicons name="close" size={28} color="#666" />
+                            <Ionicons name="close" size={28} color={colors.textMuted} />
                         </TouchableOpacity>
                     </View>
 
@@ -71,22 +75,22 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.copyBtn} onPress={copyToClipboard}>
-                            <Ionicons name="copy" size={20} color="#1b3358" style={{ marginRight: 8 }} />
+                            <Ionicons name="copy" size={20} color={colors.surface} style={{ marginRight: 8 }} />
                             <Text style={styles.copyBtnText}>COPY</Text>
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.features}>
                         <View style={styles.feature}>
-                            <Ionicons name="eye" size={20} color="#87ca37" />
+                            <Ionicons name="eye" size={20} color={colors.accent} />
                             <Text style={styles.featureText}>Live score updates</Text>
                         </View>
                         <View style={styles.feature}>
-                            <Ionicons name="pencil" size={20} color="#87ca37" />
+                            <Ionicons name="pencil" size={20} color={colors.accent} />
                             <Text style={styles.featureText}>Collaborative scoring</Text>
                         </View>
                         <View style={styles.feature}>
-                            <Ionicons name="people" size={20} color="#87ca37" />
+                            <Ionicons name="people" size={20} color={colors.accent} />
                             <Text style={styles.featureText}>View who's connected</Text>
                         </View>
                     </View>
@@ -96,14 +100,14 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: c.modalOverlay,
         justifyContent: 'flex-end',
     },
     container: {
-        backgroundColor: 'white',
+        backgroundColor: c.modalBg,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 25,
@@ -116,45 +120,46 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 20,
-        fontWeight: '900',
-        color: '#1b3358',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
+        color: c.text,
     },
     closeBtn: {
         padding: 5,
     },
     subtitle: {
         fontSize: 14,
-        color: '#666',
+        color: c.textMuted,
         marginBottom: 20,
-        fontWeight: '600',
+        fontFamily: FONT_BODY_SEMIBOLD,
     },
     codeContainer: {
-        backgroundColor: '#f0f2f5',
+        backgroundColor: c.inputBg,
         borderRadius: 15,
         padding: 25,
         alignItems: 'center',
         marginBottom: 20,
         borderWidth: 2,
-        borderColor: '#87ca37',
+        borderColor: c.accent,
     },
     codeLabel: {
         fontSize: 12,
-        color: '#666',
-        fontWeight: 'bold',
+        color: c.textMuted,
+        fontFamily: FONT_BODY_BOLD,
         marginBottom: 10,
     },
     code: {
         fontSize: 48,
-        fontWeight: '900',
-        color: '#1b3358',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
+        color: c.text,
         letterSpacing: 8,
     },
     instructions: {
         fontSize: 14,
-        color: '#666',
+        color: c.textMuted,
         textAlign: 'center',
         marginBottom: 25,
         lineHeight: 20,
+        fontFamily: FONT_BODY_REGULAR,
     },
     buttons: {
         flexDirection: 'row',
@@ -163,7 +168,7 @@ const styles = StyleSheet.create({
     },
     shareBtn: {
         flex: 2,
-        backgroundColor: '#87ca37',
+        backgroundColor: c.accent,
         padding: 15,
         borderRadius: 12,
         flexDirection: 'row',
@@ -172,12 +177,12 @@ const styles = StyleSheet.create({
     },
     shareBtnText: {
         color: 'white',
-        fontWeight: '900',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
         fontSize: 16,
     },
     copyBtn: {
         flex: 1,
-        backgroundColor: '#e0e0e0',
+        backgroundColor: c.surfaceLight,
         padding: 15,
         borderRadius: 12,
         flexDirection: 'row',
@@ -185,8 +190,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     copyBtnText: {
-        color: '#1b3358',
-        fontWeight: '900',
+        color: c.text,
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
         fontSize: 14,
     },
     features: {
@@ -199,7 +204,7 @@ const styles = StyleSheet.create({
     },
     featureText: {
         fontSize: 14,
-        color: '#666',
-        fontWeight: '600',
+        color: c.textMuted,
+        fontFamily: FONT_BODY_SEMIBOLD,
     },
 });

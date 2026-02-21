@@ -1,10 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
     StyleSheet,
     Text,
@@ -13,9 +12,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScoreUpdateToast } from '../components/ScoreUpdateToast';
+import { useTheme } from '../context/ThemeContext';
+import {
+    ThemeColors,
+    FONT_DISPLAY_EXTRABOLD,
+    FONT_DISPLAY_BOLD,
+    FONT_BODY_BOLD,
+    FONT_BODY_REGULAR,
+} from '../constants/theme';
 
 const API_URL = 'https://peoplestar.com/Chipleball/api';
-const POLL_INTERVAL = 3000; // 3 seconds
+const POLL_INTERVAL = 3000;
 
 interface Match {
     id: number;
@@ -32,29 +39,29 @@ interface Match {
 export default function LiveMatchScreen() {
     const params = useLocalSearchParams();
     const router = useRouter();
-    
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     const sessionId = params.sessionId as string;
     const shareCode = params.shareCode as string;
     const groupName = params.groupName as string;
     const matchTitle = params.matchTitle as string;
     const isOwner = params.isOwner === 'true';
-    
+
     const [matches, setMatches] = useState<Match[]>([]);
     const [loading, setLoading] = useState(true);
     const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
     const [userId, setUserId] = useState('');
-    
-    // Toast notification state
+
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [recentlyChangedIds, setRecentlyChangedIds] = useState<number[]>([]);
     const previousMatchesRef = useRef<Match[]>([]);
 
-    // Fetch match data
     const fetchMatchData = async () => {
         try {
             const uid = await AsyncStorage.getItem('user_id');
-            
+
             const response = await fetch(`${API_URL}/join_match.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -68,17 +75,15 @@ export default function LiveMatchScreen() {
 
             if (data.status === 'success') {
                 const newMatches = data.matches;
-                
-                // Detect changes and show notification
+
                 if (previousMatchesRef.current.length > 0 && !loading) {
                     const changes = detectScoreChanges(previousMatchesRef.current, newMatches);
                     if (changes.length > 0) {
-                        const change = changes[0]; // Show first change
-                        setToastMessage(change);
+                        setToastMessage(changes[0]);
                         setToastVisible(true);
                     }
                 }
-                
+
                 previousMatchesRef.current = newMatches;
                 setMatches(newMatches);
                 setUserId(uid || '');
@@ -90,17 +95,15 @@ export default function LiveMatchScreen() {
             setLoading(false);
         }
     };
-    
-    // Detect what changed between old and new matches
+
     const detectScoreChanges = (oldMatches: Match[], newMatches: Match[]): string[] => {
         const changes: string[] = [];
         const changedIds: number[] = [];
-        
+
         newMatches.forEach(newMatch => {
             const oldMatch = oldMatches.find(m => m.id === newMatch.id);
-            
+
             if (oldMatch) {
-                // Check if scores changed
                 if (oldMatch.s1 !== newMatch.s1 || oldMatch.s2 !== newMatch.s2) {
                     const roundCourt = `Round ${newMatch.round_num}, Court ${newMatch.court_num}`;
                     const score = `${newMatch.s1}-${newMatch.s2}`;
@@ -108,47 +111,34 @@ export default function LiveMatchScreen() {
                     changedIds.push(newMatch.id);
                 }
             } else {
-                // New match added
                 changes.push(`New match added: Round ${newMatch.round_num}`);
                 changedIds.push(newMatch.id);
             }
         });
-        
-        // Highlight changed matches
+
         if (changedIds.length > 0) {
             setRecentlyChangedIds(changedIds);
-            // Clear highlight after 5 seconds
-            setTimeout(() => {
-                setRecentlyChangedIds([]);
-            }, 5000);
+            setTimeout(() => setRecentlyChangedIds([]), 5000);
         }
-        
+
         return changes;
     };
 
-    // Initial load
     useEffect(() => {
         fetchMatchData();
     }, []);
 
-    // Polling - fetch every 3 seconds
     useEffect(() => {
-        const interval = setInterval(() => {
-            fetchMatchData();
-        }, POLL_INTERVAL);
-
+        const interval = setInterval(() => fetchMatchData(), POLL_INTERVAL);
         return () => clearInterval(interval);
     }, [shareCode]);
 
     const renderMatch = ({ item }: { item: Match }) => {
         const isT1Win = item.s1 > item.s2;
         const isRecentlyChanged = recentlyChangedIds.includes(item.id);
-        
+
         return (
-            <View style={[
-                styles.matchCard,
-                isRecentlyChanged && styles.matchCardHighlight
-            ]}>
+            <View style={[styles.matchCard, isRecentlyChanged && styles.matchCardHighlight]}>
                 <View style={styles.matchHeader}>
                     <Text style={styles.matchLabel}>
                         Round {item.round_num} - Court {item.court_num}
@@ -186,7 +176,6 @@ export default function LiveMatchScreen() {
     const formatTime = (date: Date) => {
         const now = new Date();
         const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-        
         if (diff < 10) return 'Just now';
         if (diff < 60) return `${diff}s ago`;
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -194,16 +183,15 @@ export default function LiveMatchScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Score Update Toast */}
-            <ScoreUpdateToast 
+            <ScoreUpdateToast
                 visible={toastVisible}
                 message={toastMessage}
                 onHide={() => setToastVisible(false)}
             />
-            
+
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color="white" />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.title}>{matchTitle || groupName}</Text>
@@ -217,7 +205,7 @@ export default function LiveMatchScreen() {
 
             <View style={styles.infoBar}>
                 <View style={styles.shareCodeContainer}>
-                    <Ionicons name="link" size={16} color="#87ca37" />
+                    <Ionicons name="link" size={16} color={colors.accent} />
                     <Text style={styles.shareCodeText}>{shareCode}</Text>
                 </View>
                 <Text style={styles.lastUpdateText}>
@@ -227,7 +215,7 @@ export default function LiveMatchScreen() {
 
             {loading ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#87ca37" />
+                    <ActivityIndicator size="large" color={colors.accent} />
                     <Text style={styles.loadingText}>Loading match...</Text>
                 </View>
             ) : (
@@ -238,7 +226,7 @@ export default function LiveMatchScreen() {
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="tennisball-outline" size={64} color="#666" />
+                            <Ionicons name="tennisball-outline" size={64} color={colors.textMuted} />
                             <Text style={styles.emptyText}>No scores yet</Text>
                             <Text style={styles.emptySubtext}>
                                 Scores will appear here as they're entered
@@ -250,7 +238,7 @@ export default function LiveMatchScreen() {
 
             {isOwner && (
                 <View style={styles.footer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.editBtn}
                         onPress={() => {
                             router.push({
@@ -268,17 +256,17 @@ export default function LiveMatchScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1b3358',
+        backgroundColor: c.bg,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 20,
         paddingVertical: 15,
-        backgroundColor: '#152945',
+        backgroundColor: c.surface,
     },
     backBtn: {
         padding: 8,
@@ -286,14 +274,13 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 20,
-        fontWeight: '900',
-        color: 'white',
-        fontStyle: 'italic',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
+        color: c.text,
     },
     subtitle: {
         fontSize: 12,
-        color: '#87ca37',
-        fontWeight: 'bold',
+        color: c.accent,
+        fontFamily: FONT_DISPLAY_BOLD,
         marginTop: 2,
     },
     liveIndicator: {
@@ -309,12 +296,12 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#ff4444',
+        backgroundColor: c.danger,
     },
     liveText: {
-        color: '#ff4444',
+        color: c.danger,
         fontSize: 12,
-        fontWeight: '900',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
     },
     infoBar: {
         flexDirection: 'row',
@@ -322,7 +309,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 20,
         paddingVertical: 12,
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: c.glassBg,
     },
     shareCodeContainer: {
         flexDirection: 'row',
@@ -330,14 +317,15 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     shareCodeText: {
-        color: '#87ca37',
+        color: c.accent,
         fontSize: 14,
-        fontWeight: '900',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
         letterSpacing: 2,
     },
     lastUpdateText: {
-        color: '#999',
+        color: c.textMuted,
         fontSize: 12,
+        fontFamily: FONT_BODY_REGULAR,
     },
     loadingContainer: {
         flex: 1,
@@ -345,26 +333,27 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     loadingText: {
-        color: 'white',
+        color: c.text,
         marginTop: 15,
         fontSize: 16,
+        fontFamily: FONT_BODY_REGULAR,
     },
     listContent: {
         padding: 20,
         paddingBottom: 100,
     },
     matchCard: {
-        backgroundColor: '#2c3e50',
+        backgroundColor: c.card,
         padding: 12,
-        borderRadius: 12,
+        borderRadius: 16,
         marginBottom: 15,
         borderWidth: 1,
-        borderColor: '#34495e',
+        borderColor: c.border,
     },
     matchCardHighlight: {
-        borderColor: '#87ca37',
+        borderColor: c.accent,
         borderWidth: 2,
-        backgroundColor: 'rgba(135, 202, 55, 0.1)',
+        backgroundColor: c.accentSoft,
     },
     matchHeader: {
         flexDirection: 'row',
@@ -373,12 +362,12 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     matchLabel: {
-        color: '#bbb',
-        fontWeight: 'bold',
+        color: c.textMuted,
+        fontFamily: FONT_BODY_BOLD,
         fontSize: 12,
     },
     newBadge: {
-        backgroundColor: '#87ca37',
+        backgroundColor: c.accent,
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 8,
@@ -386,44 +375,44 @@ const styles = StyleSheet.create({
     newBadgeText: {
         color: 'white',
         fontSize: 10,
-        fontWeight: '900',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
     },
     teamBlock: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 12,
-        borderRadius: 8,
+        borderRadius: 10,
         marginBottom: 4,
     },
     teamBlockBlue: {
-        backgroundColor: 'rgba(52, 152, 219, 0.15)',
+        backgroundColor: 'rgba(79, 172, 254, 0.1)',
         borderLeftWidth: 4,
-        borderLeftColor: '#3498db',
+        borderLeftColor: c.male,
     },
     teamBlockRed: {
-        backgroundColor: 'rgba(231, 76, 60, 0.15)',
+        backgroundColor: 'rgba(247, 140, 162, 0.1)',
         borderLeftWidth: 4,
-        borderLeftColor: '#e74c3c',
+        borderLeftColor: c.female,
     },
     teamNames: {
         flex: 1,
     },
     teamText: {
-        color: '#eee',
-        fontWeight: 'bold',
+        color: c.text,
+        fontFamily: FONT_BODY_BOLD,
         fontSize: 14,
         marginBottom: 2,
     },
     teamScore: {
         fontSize: 24,
-        fontWeight: '900',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
     },
     scoreWin: {
-        color: '#87ca37',
+        color: c.accent,
     },
     scoreLose: {
-        color: '#999',
+        color: c.textMuted,
         opacity: 0.7,
     },
     emptyContainer: {
@@ -431,14 +420,15 @@ const styles = StyleSheet.create({
         marginTop: 100,
     },
     emptyText: {
-        color: 'white',
+        color: c.text,
         fontSize: 18,
-        fontWeight: 'bold',
+        fontFamily: FONT_DISPLAY_BOLD,
         marginTop: 20,
     },
     emptySubtext: {
-        color: '#999',
+        color: c.textMuted,
         fontSize: 14,
+        fontFamily: FONT_BODY_REGULAR,
         marginTop: 8,
         textAlign: 'center',
     },
@@ -448,20 +438,22 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         padding: 20,
-        backgroundColor: '#1b3358',
+        backgroundColor: c.surface,
+        borderTopWidth: 1,
+        borderTopColor: c.border,
     },
     editBtn: {
-        backgroundColor: '#87ca37',
+        backgroundColor: c.accent,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 16,
-        borderRadius: 12,
+        borderRadius: 14,
         gap: 8,
     },
     editBtnText: {
         color: 'white',
         fontSize: 16,
-        fontWeight: '900',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
     },
 });

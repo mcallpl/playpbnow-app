@@ -1,11 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSubscription } from '../context/SubscriptionContext';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 export const TrialBanner: React.FC = () => {
     const { isTrial, isFree, trialDaysRemaining, showPaywall, subscription } = useSubscription();
     const [dismissed, setDismissed] = useState(false);
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     if (dismissed) return null;
 
@@ -15,7 +19,7 @@ export const TrialBanner: React.FC = () => {
         return (
             <View style={[styles.banner, isUrgent ? styles.urgentBanner : styles.trialBanner]}>
                 <View style={styles.bannerContent}>
-                    <Ionicons name={isUrgent ? 'flash' : 'star'} size={18} color="white" />
+                    <Ionicons name={isUrgent ? 'flash' : 'star'} size={18} color={colors.text} />
                     <Text style={styles.bannerText}>
                         {isUrgent
                             ? `Trial ending in ${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'}!`
@@ -37,7 +41,7 @@ export const TrialBanner: React.FC = () => {
         return (
             <View style={[styles.banner, styles.expiredBanner]}>
                 <View style={styles.bannerContent}>
-                    <Ionicons name="lock-closed" size={16} color="white" />
+                    <Ionicons name="lock-closed" size={16} color={colors.text} />
                     <Text style={styles.bannerText}>Your trial has ended</Text>
                     <TouchableOpacity style={styles.subscribeBtn} onPress={() => showPaywall('Pro subscriptions are coming soon! Here is what you will get:')}>
                         <Text style={styles.subscribeBtnText}>Learn More</Text>
@@ -53,7 +57,7 @@ export const TrialBanner: React.FC = () => {
     return null;
 };
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
     banner: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -64,13 +68,13 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     trialBanner: {
-        backgroundColor: '#87ca37',
+        backgroundColor: c.accent,
     },
     urgentBanner: {
         backgroundColor: '#ff6b35',
     },
     expiredBanner: {
-        backgroundColor: '#e74c3c',
+        backgroundColor: c.danger,
     },
     bannerContent: {
         flex: 1,
@@ -79,8 +83,8 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     bannerText: {
-        color: 'white',
-        fontWeight: '700',
+        color: c.text,
+        fontFamily: FONT_BODY_BOLD,
         fontSize: 13,
         flex: 1,
     },
@@ -91,8 +95,8 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     subscribeBtnText: {
-        color: 'white',
-        fontWeight: '900',
+        color: c.text,
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
         fontSize: 12,
     },
     dismissBtn: {

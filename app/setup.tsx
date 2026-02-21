@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -19,6 +19,16 @@ import {
 } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useTheme } from '../context/ThemeContext';
+import {
+    ThemeColors,
+    FONT_DISPLAY_BOLD,
+    FONT_DISPLAY_EXTRABOLD,
+    FONT_BODY_REGULAR,
+    FONT_BODY_MEDIUM,
+    FONT_BODY_BOLD,
+    FONT_BODY_SEMIBOLD,
+} from '../constants/theme';
 
 interface Player {
   id: string;
@@ -50,12 +60,14 @@ const API_URL = 'https://peoplestar.com/Chipleball/api';
 export default function SetupScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const [groupId, setGroupId] = useState(params.groupId as string || '');
   const [groupName, setGroupName] = useState(params.groupName as string || '');
   const [groupKey, setGroupKey] = useState(params.groupKey as string || '');
   const [deviceId, setDeviceId] = useState('');
-  
+
   const [players, setPlayers] = useState<Player[]>([]);
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerGender, setNewPlayerGender] = useState<'male' | 'female'>('male');
@@ -63,16 +75,13 @@ export default function SetupScreen() {
   const [showPhoneInput, setShowPhoneInput] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
-  // Court (from group)
   const [courtId, setCourtId] = useState<number | null>(null);
   const [courtName, setCourtName] = useState('');
 
-  // Global search
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
-  // Modals
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [saveAsName, setSaveAsName] = useState('');
   const [configModalVisible, setConfigModalVisible] = useState(false);
@@ -83,7 +92,6 @@ export default function SetupScreen() {
       { type: 'mixed' }, { type: 'mixed' }, { type: 'mixed' }
   ]);
 
-  // --- LOAD DATA ---
   useFocusEffect(
     useCallback(() => {
         const load = async () => {
@@ -101,7 +109,6 @@ export default function SetupScreen() {
             if (gName) setGroupName(gName);
             if (params.groupId) setGroupId(params.groupId as string);
 
-            // Court from params
             if (params.courtId) setCourtId(parseInt(params.courtId as string));
             if (params.courtName) setCourtName(params.courtName as string);
 
@@ -122,7 +129,6 @@ export default function SetupScreen() {
     }, [params.groupId, params.groupName, params.groupKey])
   );
 
-  // --- GLOBAL SEARCH ---
   const searchGlobalPlayers = useCallback(async (query: string) => {
       if (query.length < 2) { setSearchResults([]); setShowSearchResults(false); return; }
       setIsSearching(true);
@@ -143,7 +149,6 @@ export default function SetupScreen() {
       searchGlobalPlayers(text);
   };
 
-  // --- ADD EXISTING PLAYER ---
   const addExistingPlayer = async (result: SearchResult) => {
       try {
           const res = await fetch(`${API_URL}/add_player.php`, {
@@ -152,7 +157,6 @@ export default function SetupScreen() {
           });
           const data = await res.json();
           if (data.status === 'success') {
-              // Reload full roster to get accurate stats from DB
               try {
                   const rosterRes = await fetch(`${API_URL}/get_players.php?group_key=${groupKey}`);
                   const rosterData = await rosterRes.json();
@@ -171,7 +175,6 @@ export default function SetupScreen() {
       } catch (e) { Alert.alert('Error', 'Failed to add player'); }
   };
 
-  // --- ADD NEW PLAYER (with duplicate detection + debounce) ---
   const addPlayerForceNew = async (name: string, gender: 'male' | 'female', phone: string | null) => {
       try {
           const pk = 'pk_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
@@ -212,7 +215,6 @@ export default function SetupScreen() {
           });
           const data = await res.json();
           if (data.status === 'duplicate_name') {
-              // Ask user if this is the same person or a different one
               const existing = data.existing_players[0];
               Alert.alert(
                   'Player Already Exists',
@@ -235,13 +237,11 @@ export default function SetupScreen() {
                   ]
               );
           } else if (data.status === 'success') {
-              // Reload the full roster to get stats and home court from DB
               try {
                   const rosterRes = await fetch(`${API_URL}/get_players.php?group_key=${groupKey}`);
                   const rosterData = await rosterRes.json();
                   if (rosterData.status === 'success') setPlayers(rosterData.players || []);
               } catch (e) {
-                  // Fallback: add locally without stats
                   setPlayers([{
                       id: data.player_key || pk, first_name: data.first_name || name,
                       gender, home_court_name: courtName || null
@@ -250,7 +250,6 @@ export default function SetupScreen() {
               setNewPlayerName(''); setSearchResults([]); setShowSearchResults(false); setShowPhoneInput(false); setNewPlayerPhone('');
           } else { Alert.alert('Error', data.message); }
       } catch (e) {
-          // Fallback local add
           setPlayers([{ id: Date.now().toString(), first_name: newPlayerName.trim(), gender: newPlayerGender }, ...players]);
           setNewPlayerName(''); setShowPhoneInput(false); setNewPlayerPhone('');
       } finally {
@@ -260,7 +259,6 @@ export default function SetupScreen() {
 
   const removePlayer = (pid: string) => setPlayers(players.filter(p => p.id !== pid));
 
-  // --- SAVE ---
   const handleSavePress = () => { setSaveAsName(groupName); setSaveModalVisible(true); };
   const performSave = async () => {
      try {
@@ -276,7 +274,6 @@ export default function SetupScreen() {
   };
   const handleSmartSave = async () => { if (!saveAsName.trim()) { Alert.alert("Error", "Enter a group name."); return; } await performSave(); };
 
-  // --- DRAG ORDER ---
   const handleDragEnd = ({ data }: { data: Player[] }) => {
       setPlayers(data);
       if (groupKey && deviceId) {
@@ -287,7 +284,6 @@ export default function SetupScreen() {
       }
   };
 
-  // --- MATCH SETUP ---
   const handleSetupPress = () => {
     if (players.length < 4) { Alert.alert('Not Enough Players', 'You need at least 4 players.'); return; }
     setConfigModalVisible(true);
@@ -315,33 +311,34 @@ export default function SetupScreen() {
     } catch (e) { Alert.alert("Error", "Network error."); }
   };
 
-  // --- RENDER ---
   const renderItem = ({ item, drag, isActive }: RenderItemParams<Player>) => {
     const totalGames = (item.wins || 0) + (item.losses || 0);
     const hasStats = totalGames > 0;
     return (
       <ScaleDecorator>
-        <View style={[styles.playerRow, isActive && { backgroundColor: '#eef', elevation: 5 }]}>
+        <View style={[styles.playerRow, isActive && { backgroundColor: colors.cardHover, elevation: 5 }]}>
           <View style={styles.playerInfo}>
              <Pressable onPressIn={drag} hitSlop={20} style={styles.dragHandle}>
-                 <Ionicons name="menu" size={28} color="#999" />
+                 <Ionicons name="menu" size={24} color={colors.textMuted} />
              </Pressable>
-             <Ionicons name={item.gender === 'female' ? 'woman' : 'man'} size={20} 
-                color={item.gender === 'female' ? '#ff69b4' : '#4dabf7'} style={{ marginLeft: 10 }} />
-             <View style={{ marginLeft: 10, flex: 1 }}>
+             <View style={[styles.genderIcon, { backgroundColor: item.gender === 'female' ? 'rgba(247,140,162,0.15)' : 'rgba(79,172,254,0.15)' }]}>
+                 <Ionicons name={item.gender === 'female' ? 'woman' : 'man'} size={16}
+                    color={item.gender === 'female' ? colors.female : colors.male} />
+             </View>
+             <View style={{ marginLeft: 12, flex: 1 }}>
                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                      <Text style={styles.playerName}>{item.first_name}</Text>
-                     {item.is_verified && <Ionicons name="checkmark-circle" size={14} color="#87ca37" />}
+                     {item.is_verified && <Ionicons name="checkmark-circle" size={14} color={colors.accent} />}
                  </View>
                  <Text style={styles.playerStats}>
-                     {hasStats ? `${item.wins}W-${item.losses}L • ${(item.win_pct || 0).toFixed(0)}% • Diff: ${(item.diff || 0) > 0 ? '+' : ''}${item.diff || 0}` : ''}
-                     {hasStats && item.home_court_name ? ' • ' : ''}
+                     {hasStats ? `${item.wins}W-${item.losses}L · ${(item.win_pct || 0).toFixed(0)}%` : ''}
+                     {hasStats && item.home_court_name ? ' · ' : ''}
                      {item.home_court_name || ''}
                  </Text>
              </View>
           </View>
           <TouchableOpacity onPress={() => removePlayer(item.id)}>
-            <Ionicons name="close-circle" size={24} color="#ff4444" />
+            <Ionicons name="close-circle" size={22} color={colors.danger} style={{ opacity: 0.5 }} />
           </TouchableOpacity>
         </View>
       </ScaleDecorator>
@@ -356,18 +353,17 @@ export default function SetupScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        
+
         <View style={styles.header}>
             <TouchableOpacity onPress={() => router.replace('/(tabs)/groups')} style={styles.backBtn}>
-                <Ionicons name="arrow-back" size={24} color="white" />
+                <Ionicons name="arrow-back" size={22} color={colors.text} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
                 <Text style={styles.headerTitle}>{groupName ? groupName.toUpperCase() : 'NEW GROUP'}</Text>
-                <Text style={styles.headerSub}>{players.length} PLAYERS: {femaleCount} F & {maleCount} M</Text>
                 {courtName ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                        <Ionicons name="location" size={11} color="#87ca37" />
-                        <Text style={{ color: '#87ca37', fontSize: 10, fontWeight: '700' }}>{courtName}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                        <Ionicons name="location" size={10} color={colors.accent} />
+                        <Text style={styles.courtText}>{courtName}</Text>
                     </View>
                 ) : null}
             </View>
@@ -376,15 +372,28 @@ export default function SetupScreen() {
             </TouchableOpacity>
         </View>
 
+        {/* Player count chips */}
+        <View style={styles.chipRow}>
+            <View style={[styles.chip, { backgroundColor: colors.accentSoft }]}>
+                <Text style={[styles.chipText, { color: colors.accent }]}>{players.length} Players</Text>
+            </View>
+            <View style={[styles.chip, { backgroundColor: 'rgba(79,172,254,0.1)' }]}>
+                <Text style={[styles.chipText, { color: colors.male }]}>{maleCount} M</Text>
+            </View>
+            <View style={[styles.chip, { backgroundColor: 'rgba(247,140,162,0.1)' }]}>
+                <Text style={[styles.chipText, { color: colors.female }]}>{femaleCount} F</Text>
+            </View>
+        </View>
+
         {/* ACTION BUTTONS */}
         <View style={styles.actionButtons}>
             <TouchableOpacity style={styles.createMatchBtn} onPress={handleSetupPress}>
-                <Ionicons name="game-controller" size={20} color="white" />
-                <Text style={styles.actionBtnText}>CREATE MATCH</Text>
+                <Ionicons name="game-controller" size={18} color={colors.bg} />
+                <Text style={styles.createMatchBtnText}>CREATE MATCH</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.editPlayersBtn} onPress={() => router.push('/(tabs)/players')}>
-                <Ionicons name="people" size={20} color="white" />
-                <Text style={styles.actionBtnText}>ALL PLAYERS</Text>
+                <Ionicons name="people" size={18} color={colors.textSoft} />
+                <Text style={styles.editPlayersBtnText}>ALL PLAYERS</Text>
             </TouchableOpacity>
         </View>
 
@@ -392,6 +401,7 @@ export default function SetupScreen() {
         <View style={styles.inputArea}>
             <View style={styles.inputRow}>
                 <TextInput style={styles.input} placeholder="Search or add player..."
+                    placeholderTextColor={colors.inputPlaceholder}
                     value={newPlayerName} onChangeText={handleNameChange}
                     onSubmitEditing={isAdding ? undefined : addNewPlayer} returnKeyType="done" blurOnSubmit={false}
                     editable={!isAdding} />
@@ -401,31 +411,30 @@ export default function SetupScreen() {
                     <Ionicons name={newPlayerGender === 'male' ? 'man' : 'woman'} size={20} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.addBtn, isAdding && { opacity: 0.5 }]} onPress={addNewPlayer} disabled={isAdding}>
-                    {isAdding ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="add" size={28} color="white" />}
+                    {isAdding ? <ActivityIndicator size="small" color={colors.text} /> : <Ionicons name="add" size={24} color={colors.text} />}
                 </TouchableOpacity>
             </View>
-            
-            {/* Optional phone input */}
+
             {!showPhoneInput ? (
                 <TouchableOpacity onPress={() => setShowPhoneInput(true)} style={styles.phoneToggle}>
-                    <Ionicons name="call-outline" size={14} color="#4a90e2" />
+                    <Ionicons name="call-outline" size={14} color={colors.secondary} />
                     <Text style={styles.phoneToggleText}>Add phone number</Text>
                     <TouchableOpacity onPress={() => setPhoneInfoVisible(true)} hitSlop={10}>
-                        <Ionicons name="information-circle-outline" size={16} color="#999" />
+                        <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
                     </TouchableOpacity>
                 </TouchableOpacity>
             ) : (
                 <View style={styles.phoneRow}>
                     <TextInput style={styles.phoneInput} placeholder="Phone (optional)"
+                        placeholderTextColor={colors.inputPlaceholder}
                         value={newPlayerPhone} onChangeText={setNewPlayerPhone}
                         keyboardType="phone-pad" />
                     <TouchableOpacity onPress={() => { setShowPhoneInput(false); setNewPlayerPhone(''); }}>
-                        <Ionicons name="close" size={20} color="#999" />
+                        <Ionicons name="close" size={20} color={colors.textMuted} />
                     </TouchableOpacity>
                 </View>
             )}
-            
-            {/* SEARCH RESULTS */}
+
             {showSearchResults && (
                 <View style={styles.searchDropdown}>
                     <Text style={styles.searchHeader}>EXISTING PLAYERS</Text>
@@ -433,48 +442,42 @@ export default function SetupScreen() {
                         <TouchableOpacity key={result.id} style={styles.searchRow} onPress={() => addExistingPlayer(result)}>
                             <View style={{ flex: 1 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                    <Ionicons name={result.gender === 'female' ? 'woman' : 'man'} size={16} 
-                                        color={result.gender === 'female' ? '#ff69b4' : '#4dabf7'} />
+                                    <Ionicons name={result.gender === 'female' ? 'woman' : 'man'} size={16}
+                                        color={result.gender === 'female' ? colors.female : colors.male} />
                                     <Text style={styles.searchName}>{result.first_name} {result.last_name}</Text>
-                                    {result.is_verified && <Ionicons name="checkmark-circle" size={12} color="#87ca37" />}
+                                    {result.is_verified && <Ionicons name="checkmark-circle" size={12} color={colors.accent} />}
                                 </View>
                                 <Text style={styles.searchMeta}>
-                                    {result.source}{result.groups.length > 0 ? ` • ${result.groups.join(', ')}` : ''}
-                                    {result.wins + result.losses > 0 ? ` • ${result.wins}W-${result.losses}L` : ''}
+                                    {result.source}{result.groups.length > 0 ? ` · ${result.groups.join(', ')}` : ''}
+                                    {result.wins + result.losses > 0 ? ` · ${result.wins}W-${result.losses}L` : ''}
                                 </Text>
                             </View>
-                            <Ionicons name="add-circle" size={24} color="#87ca37" />
+                            <Ionicons name="add-circle" size={24} color={colors.accent} />
                         </TouchableOpacity>
                     ))}
-                    {isSearching && <ActivityIndicator size="small" color="#4a90e2" style={{ padding: 10 }} />}
+                    {isSearching && <ActivityIndicator size="small" color={colors.secondary} style={{ padding: 10 }} />}
                 </View>
             )}
         </View>
 
         <DraggableFlatList data={players} onDragEnd={handleDragEnd} keyExtractor={(item) => item.id}
-          renderItem={renderItem} contentContainerStyle={styles.listContent} 
+          renderItem={renderItem} contentContainerStyle={styles.listContent}
           ListEmptyComponent={<Text style={styles.emptyText}>No players added yet. Type a name above to search or create.</Text>} />
-
-        <View style={styles.bottomBtnArea}>
-            <TouchableOpacity style={styles.startBtn} onPress={handleSetupPress}>
-                <Text style={styles.startBtnText}>MATCH SETUP</Text>
-            </TouchableOpacity>
-        </View>
 
         {/* PHONE INFO MODAL */}
         <Modal visible={phoneInfoVisible} transparent animationType="fade">
             <View style={styles.modalOverlay}>
                 <View style={[styles.modalContent, { padding: 30 }]}>
-                    <Ionicons name="shield-checkmark" size={48} color="#87ca37" style={{ alignSelf: 'center', marginBottom: 15 }} />
+                    <Ionicons name="shield-checkmark" size={48} color={colors.accent} style={{ alignSelf: 'center', marginBottom: 15 }} />
                     <Text style={styles.modalTitle}>Why Add a Phone?</Text>
                     <Text style={styles.infoText}>
-                        Adding a phone number creates a <Text style={{ fontWeight: '900' }}>verified player profile</Text> that tracks stats across ALL groups and courts.
+                        Adding a phone number creates a <Text style={{ fontFamily: FONT_BODY_BOLD }}>verified player profile</Text> that tracks stats across ALL groups and courts.
                     </Text>
                     <Text style={[styles.infoText, { marginTop: 10 }]}>
                         Without a phone number, players are matched by name only, which can create duplicates if someone plays in multiple groups.
                     </Text>
                     <Text style={[styles.infoText, { marginTop: 10 }]}>
-                        Phone numbers are <Text style={{ fontWeight: '900' }}>never shared</Text> with other users — they're only used to link player records.
+                        Phone numbers are <Text style={{ fontFamily: FONT_BODY_BOLD }}>never shared</Text> with other users.
                     </Text>
                     <TouchableOpacity style={styles.infoCloseBtn} onPress={() => setPhoneInfoVisible(false)}>
                         <Text style={styles.infoCloseBtnText}>GOT IT</Text>
@@ -487,10 +490,11 @@ export default function SetupScreen() {
         <Modal visible={saveModalVisible} transparent animationType="slide">
             <View style={styles.modalOverlay}><View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>SAVE ROSTER</Text>
-                <TextInput style={styles.modalInput} value={saveAsName} onChangeText={setSaveAsName} />
-                <TouchableOpacity style={[styles.optionBtn, styles.createOption]} onPress={handleSmartSave}>
-                    <Ionicons name="save" size={24} color="white" />
-                    <Text style={[styles.optionTitle, {color:'white'}]}>SAVE GROUP</Text>
+                <TextInput style={styles.modalInput} value={saveAsName} onChangeText={setSaveAsName}
+                    placeholderTextColor={colors.inputPlaceholder} />
+                <TouchableOpacity style={styles.saveOptionBtn} onPress={handleSmartSave}>
+                    <Ionicons name="save" size={24} color={colors.bg} />
+                    <Text style={styles.saveOptionText}>SAVE GROUP</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setSaveModalVisible(false)} style={styles.closeModalBtn}>
                     <Text style={styles.closeText}>CANCEL</Text>
@@ -504,25 +508,25 @@ export default function SetupScreen() {
                 <Text style={styles.modalTitle}>MATCH SETUP</Text>
                 {courtName ? (
                     <View style={styles.courtDisplayBar}>
-                        <Ionicons name="location" size={16} color="#87ca37" />
+                        <Ionicons name="location" size={16} color={colors.accent} />
                         <Text style={styles.courtDisplayText}>{courtName}</Text>
                     </View>
                 ) : null}
                 <View style={styles.infoBox}>
                     <Text style={styles.infoBoxText}>{players.length} Players</Text>
-                    <Text style={styles.infoBoxText}>•</Text>
+                    <Text style={styles.infoBoxText}>·</Text>
                     <Text style={styles.infoBoxText}>{courtCount} Courts</Text>
                 </View>
                 <View style={styles.counterRow}>
                     <Text style={styles.label}>ROUNDS:</Text>
                     <View style={styles.roundControls}>
-                        <TouchableOpacity onPress={removeRound} style={styles.roundBtn}><Ionicons name="remove" size={24} color="#1b3358" /></TouchableOpacity>
+                        <TouchableOpacity onPress={removeRound} style={styles.roundBtn}><Ionicons name="remove" size={24} color={colors.text} /></TouchableOpacity>
                         <Text style={styles.roundCountText}>{roundsConfig.length}</Text>
-                        <TouchableOpacity onPress={addRound} style={styles.roundBtn}><Ionicons name="add" size={24} color="#1b3358" /></TouchableOpacity>
+                        <TouchableOpacity onPress={addRound} style={styles.roundBtn}><Ionicons name="add" size={24} color={colors.text} /></TouchableOpacity>
                     </View>
                 </View>
-                <View style={{height: 250, marginVertical: 10, borderWidth: 1, borderColor: '#eee', borderRadius: 10}}>
-                    <ScrollView contentContainerStyle={{padding: 10}}>
+                <View style={{ height: 250, marginVertical: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 12 }}>
+                    <ScrollView contentContainerStyle={{ padding: 10 }}>
                         {roundsConfig.map((conf, index) => (
                             <View key={index} style={styles.roundConfigRow}>
                                 <Text style={styles.roundNum}>#{index + 1}</Text>
@@ -530,7 +534,7 @@ export default function SetupScreen() {
                                     {(['mixed', 'gender', 'mixer'] as const).map(t => (
                                         <TouchableOpacity key={t} style={[styles.smallTypeBtn, conf.type === t && styles.smallTypeActive]}
                                             onPress={() => updateRoundType(index, t)}>
-                                            <Text style={[styles.smallTypeText, conf.type === t && {color:'#1b3358'}]}>{t.toUpperCase()}</Text>
+                                            <Text style={[styles.smallTypeText, conf.type === t && { color: colors.bg }]}>{t.toUpperCase()}</Text>
                                         </TouchableOpacity>
                                     ))}
                                 </View>
@@ -553,73 +557,213 @@ export default function SetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f6f8' },
-  header: { backgroundColor: '#1b3358', padding: 20, paddingTop: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle: { color: 'white', fontSize: 20, fontWeight: '900', fontStyle: 'italic' },
-  headerSub: { color: '#87ca37', fontSize: 10, fontWeight: 'bold' },
-  backBtn: { padding: 5 },
-  saveHeaderBtn: { backgroundColor: '#87ca37', paddingVertical: 5, paddingHorizontal: 15, borderRadius: 20 },
-  saveHeaderText: { color: 'white', fontWeight: '900', fontSize: 12 },
-  actionButtons: { flexDirection: 'row', padding: 15, gap: 10 },
-  createMatchBtn: { flex: 1, backgroundColor: '#87ca37', borderRadius: 25, padding: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  editPlayersBtn: { flex: 1, backgroundColor: '#4a90e2', borderRadius: 25, padding: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  actionBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-  inputArea: { backgroundColor: 'white', borderBottomWidth: 1, borderColor: '#eee' },
-  inputRow: { flexDirection: 'row', gap: 10, alignItems: 'center', padding: 15 },
-  input: { flex: 1, backgroundColor: '#f0f2f5', borderRadius: 10, paddingHorizontal: 15, fontSize: 16, height: 44 },
-  genderBtn: { width: 50, height: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 10 },
-  maleActive: { backgroundColor: '#4dabf7' },
-  femaleActive: { backgroundColor: '#ff69b4' },
-  addBtn: { backgroundColor: '#1b3358', width: 50, height: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 10 },
-  phoneToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 15, paddingBottom: 12 },
-  phoneToggleText: { color: '#4a90e2', fontSize: 13, fontWeight: '600' },
-  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 15, paddingBottom: 12 },
-  phoneInput: { flex: 1, backgroundColor: '#f0f2f5', borderRadius: 10, paddingHorizontal: 15, fontSize: 16, height: 40 },
-  searchDropdown: { backgroundColor: '#fafafa', borderTopWidth: 1, borderColor: '#eee', paddingBottom: 5 },
-  searchHeader: { fontSize: 10, fontWeight: '900', color: '#999', paddingHorizontal: 15, paddingTop: 8, paddingBottom: 4 },
-  searchRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderColor: '#f0f0f0' },
-  searchName: { fontSize: 15, fontWeight: '700', color: '#333' },
-  searchMeta: { fontSize: 11, color: '#888', marginTop: 2 },
+const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.bg },
+  header: {
+    backgroundColor: c.surfaceLight,
+    padding: 20,
+    paddingTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontFamily: FONT_DISPLAY_EXTRABOLD,
+    fontSize: 20,
+    color: c.text,
+  },
+  courtText: {
+    fontFamily: FONT_BODY_MEDIUM,
+    fontSize: 11,
+    color: c.accent,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: c.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  saveHeaderBtn: {
+    backgroundColor: c.accent,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  saveHeaderText: {
+    color: c.bg,
+    fontFamily: FONT_BODY_BOLD,
+    fontSize: 12,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: c.surfaceLight,
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  chipText: {
+    fontFamily: FONT_BODY_SEMIBOLD,
+    fontSize: 11,
+  },
+  actionButtons: { flexDirection: 'row', padding: 16, gap: 10 },
+  createMatchBtn: {
+    flex: 1,
+    backgroundColor: c.accent,
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  createMatchBtnText: {
+    color: c.bg,
+    fontFamily: FONT_DISPLAY_BOLD,
+    fontSize: 14,
+  },
+  editPlayersBtn: {
+    flex: 1,
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.glassStroke,
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  editPlayersBtnText: {
+    color: c.textSoft,
+    fontFamily: FONT_DISPLAY_BOLD,
+    fontSize: 14,
+  },
+  inputArea: { paddingHorizontal: 20, paddingBottom: 12 },
+  inputRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  input: {
+    flex: 1,
+    backgroundColor: c.inputBg,
+    borderWidth: 1,
+    borderColor: c.glassStroke,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    fontFamily: FONT_BODY_REGULAR,
+    color: c.inputText,
+    height: 48,
+  },
+  genderBtn: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center', borderRadius: 14 },
+  maleActive: { backgroundColor: c.male },
+  femaleActive: { backgroundColor: c.female },
+  addBtn: {
+    backgroundColor: c.card,
+    borderWidth: 1,
+    borderColor: c.glassStroke,
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 14,
+  },
+  phoneToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 10 },
+  phoneToggleText: { color: c.secondary, fontSize: 13, fontFamily: FONT_BODY_SEMIBOLD },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 10 },
+  phoneInput: {
+    flex: 1,
+    backgroundColor: c.inputBg,
+    borderWidth: 1,
+    borderColor: c.glassStroke,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    fontFamily: FONT_BODY_REGULAR,
+    color: c.inputText,
+    height: 40,
+  },
+  searchDropdown: { backgroundColor: c.surfaceLight, borderTopWidth: 1, borderColor: c.border, marginTop: 8, borderRadius: 12, paddingBottom: 5 },
+  searchHeader: { fontSize: 10, fontFamily: FONT_BODY_BOLD, color: c.textMuted, paddingHorizontal: 15, paddingTop: 8, paddingBottom: 4, letterSpacing: 1 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border },
+  searchName: { fontSize: 15, fontFamily: FONT_DISPLAY_BOLD, color: c.text },
+  searchMeta: { fontSize: 11, fontFamily: FONT_BODY_REGULAR, color: c.textMuted, marginTop: 2 },
   listContent: { padding: 20, paddingBottom: 350 },
-  bottomBtnArea: { padding: 15, backgroundColor: '#f4f6f8' },
-  playerRow: { backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+  playerRow: {
+    backgroundColor: c.card,
+    padding: 14,
+    borderRadius: 16,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: c.border,
+  },
   playerInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  dragHandle: { padding: 5, marginRight: 10 },
-  playerName: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  playerStats: { fontSize: 11, color: '#888', marginTop: 2, fontWeight: '600' },
-  emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontSize: 16, paddingHorizontal: 30 },
-  startBtn: { backgroundColor: '#87ca37', padding: 18, borderRadius: 30, alignItems: 'center' },
-  startBtnText: { color: 'white', fontWeight: '900', fontSize: 18, letterSpacing: 1 },
-  courtDisplayBar: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f0fff0', padding: 10, borderRadius: 10, marginBottom: 15 },
-  courtDisplayText: { flex: 1, fontWeight: '700', color: '#1b3358', fontSize: 14 },
+  dragHandle: { padding: 4 },
+  genderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
+  playerName: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 16, color: c.text },
+  playerStats: { fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: c.textMuted, marginTop: 2 },
+  emptyText: { textAlign: 'center', marginTop: 50, color: c.textMuted, fontSize: 15, fontFamily: FONT_BODY_REGULAR, paddingHorizontal: 30 },
   // Info modal
-  infoText: { fontSize: 15, color: '#555', lineHeight: 22 },
-  infoCloseBtn: { backgroundColor: '#87ca37', borderRadius: 25, padding: 15, marginTop: 20, alignItems: 'center' },
-  infoCloseBtnText: { color: 'white', fontWeight: '900', fontSize: 16 },
+  infoText: { fontSize: 15, fontFamily: FONT_BODY_REGULAR, color: c.textSoft, lineHeight: 22 },
+  infoCloseBtn: { backgroundColor: c.accent, borderRadius: 14, padding: 15, marginTop: 20, alignItems: 'center' },
+  infoCloseBtnText: { color: c.bg, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16 },
   // Modals
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: 'white', borderRadius: 20, padding: 25, maxHeight: '90%' },
-  modalTitle: { fontSize: 22, fontWeight: '900', color: '#1b3358', textAlign: 'center', marginBottom: 20 },
-  modalInput: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 12, fontSize: 16, marginBottom: 10 },
-  optionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15, padding: 15, borderRadius: 12, marginBottom: 10 },
-  createOption: { backgroundColor: '#1b3358' },
-  optionTitle: { fontWeight: 'bold', fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: c.modalOverlay, justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: c.modalBg, borderRadius: 20, padding: 25, maxHeight: '90%' },
+  modalTitle: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 22, color: c.text, textAlign: 'center', marginBottom: 20 },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: c.inputBorder,
+    backgroundColor: c.inputBg,
+    borderRadius: 14,
+    padding: 12,
+    fontSize: 16,
+    fontFamily: FONT_BODY_MEDIUM,
+    color: c.inputText,
+    marginBottom: 10,
+  },
+  saveOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 15,
+    padding: 15,
+    borderRadius: 14,
+    backgroundColor: c.accent,
+    marginBottom: 10,
+  },
+  saveOptionText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.bg },
   closeModalBtn: { marginTop: 10, alignItems: 'center', padding: 10 },
-  closeText: { color: '#999', fontWeight: 'bold' },
-  infoBox: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 20, backgroundColor: '#f0f2f5', padding: 10, borderRadius: 10 },
-  infoBoxText: { fontWeight: 'bold', color: '#666' },
+  closeText: { color: c.textMuted, fontFamily: FONT_BODY_BOLD },
+  courtDisplayBar: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.accentSoft, padding: 10, borderRadius: 10, marginBottom: 15 },
+  courtDisplayText: { flex: 1, fontFamily: FONT_BODY_BOLD, color: c.accent, fontSize: 14 },
+  infoBox: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 20, backgroundColor: c.surfaceLight, padding: 10, borderRadius: 10 },
+  infoBoxText: { fontFamily: FONT_BODY_BOLD, color: c.textSoft },
   counterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  label: { fontSize: 14, fontWeight: '900', color: '#999' },
+  label: { fontSize: 14, fontFamily: FONT_BODY_BOLD, color: c.textMuted },
   roundControls: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  roundBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' },
-  roundCountText: { fontSize: 20, fontWeight: '900', color: '#1b3358' },
-  roundConfigRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingVertical: 5, borderBottomWidth: 1, borderColor: '#f9f9f9' },
-  roundNum: { width: 30, fontWeight: 'bold', color: '#ccc' },
+  roundBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: c.surfaceLight, justifyContent: 'center', alignItems: 'center' },
+  roundCountText: { fontSize: 20, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.text },
+  roundConfigRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingVertical: 5, borderBottomWidth: 1, borderColor: c.border },
+  roundNum: { width: 30, fontFamily: FONT_BODY_BOLD, color: c.textMuted },
   toggleGroup: { flex: 1, flexDirection: 'row', gap: 5 },
-  smallTypeBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: '#f9f9f9', alignItems: 'center' },
-  smallTypeActive: { backgroundColor: '#eef', borderWidth: 1, borderColor: '#1b3358' },
-  smallTypeText: { fontSize: 10, fontWeight: 'bold', color: '#ccc' },
-  startMatchBtn: { backgroundColor: '#87ca37', padding: 15, borderRadius: 15, marginTop: 10, alignItems: 'center' },
-  startMatchText: { color: 'white', fontWeight: '900', fontSize: 16 }
+  smallTypeBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: c.surfaceLight, alignItems: 'center' },
+  smallTypeActive: { backgroundColor: c.accent },
+  smallTypeText: { fontSize: 10, fontFamily: FONT_BODY_BOLD, color: c.textMuted },
+  startMatchBtn: { backgroundColor: c.accent, padding: 15, borderRadius: 14, marginTop: 10, alignItems: 'center' },
+  startMatchText: { color: c.bg, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16 },
 });

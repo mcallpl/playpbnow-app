@@ -2,25 +2,29 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { useActiveMatch } from '../../context/ActiveMatchContext';
+import { useTheme } from '../../context/ThemeContext';
+import { FONT_DISPLAY_BOLD } from '../../constants/theme';
 
 export default function TabLayout() {
   const { activeMatch } = useActiveMatch();
+  const { colors } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#1b3358',
-          borderTopWidth: 0,
+          backgroundColor: colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
           height: 60,
           paddingBottom: 5,
           paddingTop: 5,
         },
-        tabBarActiveTintColor: '#87ca37',
-        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.4)',
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
-          fontWeight: 'bold',
+          fontFamily: FONT_DISPLAY_BOLD,
           fontSize: 10,
         },
       }}
@@ -69,9 +73,9 @@ export default function TabLayout() {
             <Ionicons name="radio" size={24} color={color} />
           ),
           tabBarLabelStyle: {
-            fontWeight: 'bold',
+            fontFamily: FONT_DISPLAY_BOLD,
             fontSize: 10,
-            color: '#87ca37',
+            color: colors.accent,
           },
         } : {
           href: null,

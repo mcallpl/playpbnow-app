@@ -17,6 +17,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import HeadToHeadModal from '../../components/HeadToHeadModal';
 import { HistoryModal } from '../../components/HistoryModal';
 import { SessionSelectModal, UniversalSession } from '../../components/SessionSelectModal';
+import {
+    ThemeColors,
+    FONT_DISPLAY_BOLD,
+    FONT_DISPLAY_EXTRABOLD,
+    FONT_BODY_REGULAR,
+    FONT_BODY_MEDIUM,
+    FONT_BODY_BOLD,
+    FONT_BODY_SEMIBOLD,
+} from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { LeaderboardItem, useLeaderboardLogic } from '../../hooks/useLeaderboardLogic';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -24,7 +34,9 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 export default function LeaderboardScreen({ localHistory, localRoster }: { localHistory?: any[], localRoster?: any[] }) {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
   const {
       groupName, setGroupName,
       leaderboard,
@@ -211,14 +223,14 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   };
 
   const getActiveFilterLabel = (): string => {
-      if (localHistory && localHistory.length > 0) return "CURRENT SESSION"; 
+      if (localHistory && localHistory.length > 0) return "CURRENT SESSION";
       if (selectedBatchId === 'all') return "ALL TIME / SELECT SESSION";
       const session = universalSessions.find((s: any) => s.id === selectedBatchId);
       return session?.label || "Select Session";
   };
 
   const checkDeleteSessionPermission = () => {
-      if (localHistory && localHistory.length > 0) return false; 
+      if (localHistory && localHistory.length > 0) return false;
       const currentSession = universalSessions.find((s: any) => s.id === selectedBatchId);
       return selectedBatchId !== 'all' && (!isGlobal || isSessionOwner(currentSession));
   };
@@ -250,14 +262,14 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
 
   const renderPedestal = () => {
       if (leaderboard.length === 0) return null;
-      
+
       const topThree = sortedLeaderboard.slice(0, 3);
-      const gold = topThree[0] || { name: '-', w:0, l:0, diff:0, pct:0 }; 
-      const silver = topThree[1] || { name: '-', w:0, l:0, diff:0, pct:0 }; 
+      const gold = topThree[0] || { name: '-', w:0, l:0, diff:0, pct:0 };
+      const silver = topThree[1] || { name: '-', w:0, l:0, diff:0, pct:0 };
       const bronze = topThree[2] || { name: '-', w:0, l:0, diff:0, pct:0 };
-      
-      const gInitial = gold.name.charAt(0); 
-      const sInitial = silver.name.charAt(0); 
+
+      const gInitial = gold.name.charAt(0);
+      const sInitial = silver.name.charAt(0);
       const bInitial = bronze.name.charAt(0);
 
       const renderPodiumStats = (p: LeaderboardItem | any, rank: string) => {
@@ -267,7 +279,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
                   <Text style={styles.podiumName} numberOfLines={1}>{p.name} <Text style={{fontSize:10}}>{badges}</Text></Text>
                   <Text style={styles.podiumStat}>{p.w}W - {p.l}L</Text>
                   <Text style={[styles.podiumStat, {fontSize:9, opacity:0.8}]}>{p.diff > 0 ? '+' : ''}{p.diff} Diff</Text>
-                  {p.dupr && <Text style={[styles.podiumStat, {fontSize:9, color: '#87ca37'}]}>DUPR {Number(p.dupr).toFixed(2)}</Text>}
+                  {p.dupr && <Text style={[styles.podiumStat, {fontSize:9, color: colors.accent}]}>DUPR {Number(p.dupr).toFixed(2)}</Text>}
                   <Text style={[styles.podiumStat, rank === 'gold' ? styles.textGold : null, {marginTop:2}]}>{p.pct}%</Text>
               </>
           );
@@ -300,20 +312,20 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.replace('/')} style={styles.backBtn}>
-            <Ionicons name="home" size={24} color="white" />
+            <Ionicons name="home" size={24} color={colors.text} />
         </TouchableOpacity>
-        
+
         <View style={{alignItems:'center', gap: 5}}>
             <Text style={styles.title}>GAME STATS</Text>
-            
+
             <View style={styles.toggleRow}>
                 <Text style={[styles.toggleLabel, !isGlobal && styles.activeLabel]}>MINE</Text>
-                <Switch 
+                <Switch
                     value={isGlobal}
                     onValueChange={setIsGlobal}
-                    trackColor={{false: '#555', true: '#87ca37'}}
-                    thumbColor={'white'}
-                    style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }} 
+                    trackColor={{false: colors.textMuted, true: colors.accent}}
+                    thumbColor={colors.text}
+                    style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                 />
                 <Text style={[styles.toggleLabel, isGlobal && styles.activeLabel]}>GLOBAL</Text>
             </View>
@@ -333,13 +345,13 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
 
         <View style={{flexDirection:'row', gap: 10}}>
             <TouchableOpacity onPress={() => setCompareModalVisible(true)} style={styles.backBtn}>
-                <Ionicons name="people" size={24} color="white" />
+                <Ionicons name="people" size={24} color={colors.text} />
             </TouchableOpacity>
         </View>
       </View>
 
       <TouchableOpacity onPress={() => {
-          fetchUniversalSessions(deviceId, isGlobal); 
+          fetchUniversalSessions(deviceId, isGlobal);
           setFilterModalVisible(true);
       }} style={styles.dateBar}>
           <Text style={styles.dateBarText}>
@@ -348,20 +360,20 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       </TouchableOpacity>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#87ca37" style={{marginTop:50}} />
+        <ActivityIndicator size="large" color={colors.accent} style={{marginTop:50}} />
       ) : (
         <FlatList
             data={sortedLeaderboard.length >= 3 ? sortedLeaderboard.slice(3) : []}
             renderItem={renderLeaderboardRow}
             keyExtractor={(i) => i.id}
-            ListHeaderComponent={renderPedestal} 
+            ListHeaderComponent={renderPedestal}
             contentContainerStyle={{padding: 20, paddingBottom: 100}}
             ListEmptyComponent={<Text style={styles.empty}>{leaderboard.length === 0 ? "No data found." : ""}</Text>}
         />
       )}
 
       {/* MODALS */}
-      <SessionSelectModal 
+      <SessionSelectModal
           visible={filterModalVisible}
           onClose={() => setFilterModalVisible(false)}
           sessions={universalSessions}
@@ -372,7 +384,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           currentDeviceId={deviceId}
       />
 
-      <HistoryModal 
+      <HistoryModal
           visible={historyModalVisible}
           onClose={() => setHistoryModalVisible(false)}
           history={history}
@@ -385,8 +397,8 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           canDeleteSession={checkDeleteSessionPermission()}
       />
 
-      <HeadToHeadModal 
-          visible={compareModalVisible} 
+      <HeadToHeadModal
+          visible={compareModalVisible}
           onClose={() => setCompareModalVisible(false)}
           groupName={groupName}
           history={history}
@@ -399,42 +411,42 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1b3358' },
-  header: { padding: 15, paddingTop: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#152945' },
-  title: { color: '#87ca37', fontSize: 16, fontWeight: '900', fontStyle: 'italic', textTransform: 'uppercase', textAlign:'center', marginBottom: 5 },
+const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.bg },
+  header: { padding: 15, paddingTop: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: c.surface },
+  title: { color: c.accent, fontSize: 16, fontFamily: FONT_DISPLAY_EXTRABOLD, textTransform: 'uppercase', textAlign:'center', marginBottom: 5 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 },
-  toggleLabel: { color: '#777', fontWeight: 'bold', fontSize: 10 },
-  activeLabel: { color: 'white' },
+  toggleLabel: { color: c.textMuted, fontFamily: FONT_BODY_BOLD, fontSize: 10 },
+  activeLabel: { color: c.text },
   sortRow: { flexDirection: 'row', gap: 8, marginTop: 5 },
-  sortBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)' },
-  sortBtnActive: { backgroundColor: 'white' },
-  sortBtnText: { color: '#aaa', fontSize: 10, fontWeight: 'bold' },
-  sortBtnTextActive: { color: '#152945' },
-  dateBar: { backgroundColor: 'rgba(255,255,255,0.1)', padding: 10, alignItems: 'center' },
-  dateBarText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
+  sortBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, backgroundColor: c.surfaceLight },
+  sortBtnActive: { backgroundColor: isDark ? c.text : c.card, borderWidth: 1, borderColor: c.border },
+  sortBtnText: { color: c.textMuted, fontSize: 10, fontFamily: FONT_BODY_BOLD },
+  sortBtnTextActive: { color: isDark ? c.surface : c.text },
+  dateBar: { backgroundColor: c.surface, padding: 10, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: c.border },
+  dateBarText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 12 },
   backBtn: { padding: 5 },
   pedestalContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', height: 230, marginBottom: 30, marginTop: 20 },
   podiumCol: { alignItems: 'center', width: SCREEN_WIDTH * 0.28 },
   podiumBar: { width: '100%', borderTopLeftRadius: 10, borderTopRightRadius: 10, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 10 },
-  barGold: { height: 120, backgroundColor: 'rgba(255, 215, 0, 0.2)', borderWidth: 2, borderColor: '#FFD700' },
-  barSilver: { height: 90, backgroundColor: 'rgba(192, 192, 192, 0.2)', borderWidth: 2, borderColor: '#C0C0C0' },
-  barBronze: { height: 70, backgroundColor: 'rgba(205, 127, 50, 0.2)', borderWidth: 2, borderColor: '#CD7F32' },
-  placeText: { fontWeight: '900', color: 'white', opacity: 0.5, fontSize: 30 },
+  barGold: { height: 120, backgroundColor: isDark ? 'rgba(255, 210, 63, 0.15)' : 'rgba(245, 166, 35, 0.15)', borderWidth: 2, borderColor: c.gold },
+  barSilver: { height: 90, backgroundColor: isDark ? 'rgba(192, 199, 214, 0.15)' : 'rgba(142, 153, 164, 0.15)', borderWidth: 2, borderColor: c.silver },
+  barBronze: { height: 70, backgroundColor: isDark ? 'rgba(232, 152, 90, 0.15)' : 'rgba(205, 127, 50, 0.15)', borderWidth: 2, borderColor: c.bronze },
+  placeText: { fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.text, opacity: 0.5, fontSize: 30 },
   crown: { fontSize: 30, marginBottom: -10, zIndex: 20 },
-  avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#f0f2f5', justifyContent: 'center', alignItems: 'center', marginBottom: 5, borderWidth:2, borderColor: 'white' },
-  avatarGold: { borderColor: '#FFD700' },
-  avatarText: { fontWeight: '900', fontSize: 24, color: '#1b3358' },
-  podiumName: { color: 'white', fontWeight: 'bold', fontSize: 11, marginBottom: 2, textAlign: 'center' },
-  podiumStat: { color: '#aaa', fontSize: 10, fontWeight: 'bold', marginBottom: 2 },
-  textGold: { color: '#FFD700' },
-  card: { backgroundColor: 'white', padding: 15, borderRadius: 15, flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: c.surfaceLight, justifyContent: 'center', alignItems: 'center', marginBottom: 5, borderWidth:2, borderColor: c.border },
+  avatarGold: { borderColor: c.gold },
+  avatarText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 24, color: c.text },
+  podiumName: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 11, marginBottom: 2, textAlign: 'center' },
+  podiumStat: { color: c.textSoft, fontSize: 10, fontFamily: FONT_BODY_BOLD, marginBottom: 2 },
+  textGold: { color: c.gold },
+  card: { backgroundColor: c.card, padding: 15, borderRadius: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: c.border },
   rankBox: { width: 30, alignItems: 'center' },
-  rankText: { fontSize: 16, fontWeight: '900', color: '#ccc' },
+  rankText: { fontSize: 16, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.textMuted },
   nameBox: { flex: 1, paddingHorizontal: 10 },
-  name: { fontSize: 18, fontWeight: 'bold', color: '#1b3358' },
-  record: { fontSize: 12, color: '#888', fontWeight: 'bold', marginTop: 2 },
+  name: { fontSize: 18, fontFamily: FONT_DISPLAY_BOLD, color: c.text },
+  record: { fontSize: 12, color: c.textSoft, fontFamily: FONT_BODY_MEDIUM, marginTop: 2 },
   pctBox: { alignItems: 'flex-end' },
-  pct: { fontSize: 20, fontWeight: '900', color: '#87ca37' },
-  empty: { textAlign: 'center', color: 'white', marginTop: 50, opacity: 0.5 },
+  pct: { fontSize: 20, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.accent },
+  empty: { textAlign: 'center', color: c.text, fontFamily: FONT_BODY_REGULAR, marginTop: 50, opacity: 0.5 },
 });

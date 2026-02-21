@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -12,6 +12,8 @@ import {
     View
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 interface JoinMatchModalProps {
     visible: boolean;
@@ -22,6 +24,8 @@ const API_URL = 'https://peoplestar.com/Chipleball/api';
 
 export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
     const router = useRouter();
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
     const [shareCode, setShareCode] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -36,7 +40,7 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
 
         try {
             const userId = await AsyncStorage.getItem('user_id') || '';
-            
+
             const response = await fetch(`${API_URL}/collab_join_match.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -51,7 +55,7 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
             if (data.status === 'success') {
                 onClose();
                 setShareCode('');
-                
+
                 // Navigate to the game screen with full schedule from the collab session
                 router.push({
                     pathname: '/(tabs)/game',
@@ -83,7 +87,7 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                     <View style={styles.header}>
                         <Text style={styles.title}>JOIN LIVE MATCH</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                            <Ionicons name="close" size={28} color="#666" />
+                            <Ionicons name="close" size={28} color={colors.textMuted} />
                         </TouchableOpacity>
                     </View>
 
@@ -95,7 +99,7 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                         <TextInput
                             style={styles.input}
                             placeholder="ABC123"
-                            placeholderTextColor="#999"
+                            placeholderTextColor={colors.inputPlaceholder}
                             value={shareCode}
                             onChangeText={(text) => setShareCode(text.toUpperCase())}
                             autoCapitalize="characters"
@@ -121,15 +125,15 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
 
                     <View style={styles.features}>
                         <View style={styles.feature}>
-                            <Ionicons name="eye" size={18} color="#87ca37" />
+                            <Ionicons name="eye" size={18} color={colors.accent} />
                             <Text style={styles.featureText}>See live score updates</Text>
                         </View>
                         <View style={styles.feature}>
-                            <Ionicons name="pencil" size={18} color="#87ca37" />
+                            <Ionicons name="pencil" size={18} color={colors.accent} />
                             <Text style={styles.featureText}>Help keep score</Text>
                         </View>
                         <View style={styles.feature}>
-                            <Ionicons name="people" size={18} color="#87ca37" />
+                            <Ionicons name="people" size={18} color={colors.accent} />
                             <Text style={styles.featureText}>See who's connected</Text>
                         </View>
                     </View>
@@ -139,15 +143,15 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: c.modalOverlay,
         justifyContent: 'center',
         padding: 20,
     },
     container: {
-        backgroundColor: 'white',
+        backgroundColor: c.modalBg,
         borderRadius: 20,
         padding: 25,
     },
@@ -159,35 +163,36 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 20,
-        fontWeight: '900',
-        color: '#1b3358',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
+        color: c.text,
     },
     closeBtn: {
         padding: 5,
     },
     instructions: {
         fontSize: 14,
-        color: '#666',
+        color: c.textMuted,
         marginBottom: 25,
         lineHeight: 20,
+        fontFamily: FONT_BODY_REGULAR,
     },
     inputContainer: {
         marginBottom: 20,
     },
     input: {
-        backgroundColor: '#f0f2f5',
+        backgroundColor: c.inputBg,
         padding: 20,
         borderRadius: 12,
         fontSize: 32,
-        fontWeight: '900',
-        color: '#1b3358',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
+        color: c.inputText,
         textAlign: 'center',
         letterSpacing: 8,
         borderWidth: 2,
-        borderColor: '#87ca37',
+        borderColor: c.accent,
     },
     joinBtn: {
-        backgroundColor: '#87ca37',
+        backgroundColor: c.accent,
         padding: 18,
         borderRadius: 12,
         flexDirection: 'row',
@@ -197,7 +202,7 @@ const styles = StyleSheet.create({
     },
     joinBtnText: {
         color: 'white',
-        fontWeight: '900',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
         fontSize: 16,
     },
     features: {
@@ -210,7 +215,7 @@ const styles = StyleSheet.create({
     },
     featureText: {
         fontSize: 13,
-        color: '#666',
-        fontWeight: '600',
+        color: c.textMuted,
+        fontFamily: FONT_BODY_SEMIBOLD,
     },
 });

@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 export interface PlayerRowData {
     id: number;
@@ -23,26 +25,29 @@ interface PlayerRowProps {
 }
 
 export function PlayerRow({ player, selectionMode, isSelected, onToggleSelect, onEdit, onDelete }: PlayerRowProps) {
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
+
     const isFemale = player.gender?.toLowerCase().startsWith('f');
 
     return (
-        <TouchableOpacity 
-            style={[styles.playerRow, isSelected && styles.playerRowSelected]} 
+        <TouchableOpacity
+            style={[styles.playerRow, isSelected && styles.playerRowSelected]}
             onPress={selectionMode ? onToggleSelect : undefined}
             activeOpacity={selectionMode ? 0.7 : 1}
         >
             {selectionMode && (
                 <View style={styles.checkboxContainer}>
-                    <Ionicons 
-                        name={isSelected ? 'checkbox' : 'square-outline'} 
-                        size={24} 
-                        color={isSelected ? '#4a90e2' : '#ccc'} 
+                    <Ionicons
+                        name={isSelected ? 'checkbox' : 'square-outline'}
+                        size={24}
+                        color={isSelected ? colors.secondary : colors.textMuted}
                     />
                 </View>
             )}
-            
+
             <View style={styles.playerInfo}>
-                <View style={[styles.genderBadge, { backgroundColor: isFemale ? '#ff69b4' : '#4a90e2' }]}>
+                <View style={[styles.genderBadge, { backgroundColor: isFemale ? colors.female : colors.male }]}>
                     <Text style={styles.genderText}>{isFemale ? 'F' : 'M'}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
@@ -68,10 +73,10 @@ export function PlayerRow({ player, selectionMode, isSelected, onToggleSelect, o
             {!selectionMode && (
                 <View style={styles.actions}>
                     <TouchableOpacity onPress={onEdit} style={styles.actionBtn}>
-                        <Ionicons name="pencil" size={20} color="#4a90e2" />
+                        <Ionicons name="pencil" size={20} color={colors.secondary} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={onDelete} style={styles.actionBtn}>
-                        <Ionicons name="trash" size={20} color="#e74c3c" />
+                        <Ionicons name="trash" size={20} color={colors.danger} />
                     </TouchableOpacity>
                 </View>
             )}
@@ -79,70 +84,73 @@ export function PlayerRow({ player, selectionMode, isSelected, onToggleSelect, o
     );
 }
 
-const styles = StyleSheet.create({
-    playerRow: { 
-        backgroundColor: 'white', 
-        padding: 15, 
-        borderRadius: 12, 
-        marginBottom: 10, 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        shadowColor: '#000', 
-        shadowOpacity: 0.05, 
-        shadowRadius: 3, 
-        elevation: 2 
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+    playerRow: {
+        backgroundColor: c.card,
+        padding: 15,
+        borderRadius: 16,
+        marginBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: c.border,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 2
     },
-    playerRowSelected: { 
-        backgroundColor: '#e3f2fd', 
-        borderWidth: 2, 
-        borderColor: '#4a90e2' 
+    playerRowSelected: {
+        backgroundColor: c.accentSoft,
+        borderWidth: 2,
+        borderColor: c.secondary
     },
-    checkboxContainer: { 
-        marginRight: 12 
+    checkboxContainer: {
+        marginRight: 12
     },
-    playerInfo: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        flex: 1 
+    playerInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1
     },
-    genderBadge: { 
-        width: 36, 
-        height: 36, 
-        borderRadius: 18, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        marginRight: 12 
+    genderBadge: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12
     },
-    genderText: { 
-        color: 'white', 
-        fontWeight: 'bold', 
-        fontSize: 14 
+    genderText: {
+        color: c.text,
+        fontFamily: FONT_BODY_BOLD,
+        fontSize: 14
     },
-    playerName: { 
-        fontSize: 16, 
-        fontWeight: 'bold', 
-        color: '#333' 
+    playerName: {
+        fontSize: 16,
+        fontFamily: FONT_BODY_BOLD,
+        color: c.text
     },
-    playerPhone: { 
-        fontSize: 14, 
-        color: '#666', 
-        marginTop: 2 
+    playerPhone: {
+        fontSize: 14,
+        fontFamily: FONT_BODY_REGULAR,
+        color: c.textMuted,
+        marginTop: 2
     },
     wlText: {
         fontSize: 13,
-        color: '#888',
-        fontWeight: '600',
+        color: c.textSoft,
+        fontFamily: FONT_BODY_SEMIBOLD,
     },
     duprBadge: {
-        backgroundColor: '#1b3358',
+        backgroundColor: c.surface,
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 6,
     },
     duprText: {
-        color: '#87ca37',
+        color: c.accent,
         fontSize: 11,
-        fontWeight: '800',
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
     },
     actions: {
         flexDirection: 'row',

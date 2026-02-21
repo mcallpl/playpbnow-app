@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -14,6 +14,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 interface GatekeeperModalProps {
     visible: boolean;
@@ -24,6 +26,8 @@ interface GatekeeperModalProps {
 export function GatekeeperModal({ visible, onClose, onSuccess }: GatekeeperModalProps) {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [loading, setLoading] = useState(false);
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     const handleSave = async () => {
         const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
@@ -53,11 +57,11 @@ export function GatekeeperModal({ visible, onClose, onSuccess }: GatekeeperModal
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
                     <View style={styles.content}>
                         <TouchableOpacity onPress={onClose} style={styles.closeIcon}>
-                            <Ionicons name="close" size={24} color="#ccc" />
+                            <Ionicons name="close" size={24} color={colors.textMuted} />
                         </TouchableOpacity>
 
                         <Text style={styles.title}>Unlock Features</Text>
-                        
+
                         <Text style={styles.subtitle}>
                             To enter scores and share match reports via text, please register your cell phone number.
                             {"\n\n"}
@@ -65,11 +69,11 @@ export function GatekeeperModal({ visible, onClose, onSuccess }: GatekeeperModal
                         </Text>
 
                         <View style={styles.inputContainer}>
-                            <Ionicons name="call-outline" size={20} color="#666" style={{marginRight: 10}} />
-                            <TextInput 
+                            <Ionicons name="call-outline" size={20} color={colors.textMuted} style={{marginRight: 10}} />
+                            <TextInput
                                 style={styles.input}
                                 placeholder="(555) 123-4567"
-                                placeholderTextColor="#999"
+                                placeholderTextColor={colors.inputPlaceholder}
                                 keyboardType="phone-pad"
                                 value={phoneNumber}
                                 onChangeText={setPhoneNumber}
@@ -78,7 +82,7 @@ export function GatekeeperModal({ visible, onClose, onSuccess }: GatekeeperModal
 
                         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={loading}>
                             {loading ? (
-                                <ActivityIndicator color="white" />
+                                <ActivityIndicator color={colors.text} />
                             ) : (
                                 <Text style={styles.saveBtnText}>UNLOCK NOW</Text>
                             )}
@@ -94,16 +98,16 @@ export function GatekeeperModal({ visible, onClose, onSuccess }: GatekeeperModal
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
     overlay: { flex: 1, justifyContent: 'center', padding: 20 },
-    content: { backgroundColor: 'white', borderRadius: 20, padding: 25, shadowColor: "#000", shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
+    content: { backgroundColor: c.modalBg, borderRadius: 20, padding: 25, shadowColor: "#000", shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
     closeIcon: { alignSelf: 'flex-end', padding: 5 },
-    title: { fontSize: 22, fontWeight: '900', color: '#1b3358', marginBottom: 10, textAlign: 'center' },
-    subtitle: { fontSize: 15, color: '#555', textAlign: 'center', marginBottom: 25, lineHeight: 22 },
-    inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f2f5', borderRadius: 10, paddingHorizontal: 15, height: 50, marginBottom: 20, borderWidth: 1, borderColor: '#ddd' },
-    input: { flex: 1, fontSize: 16, color: '#1b3358', fontWeight: 'bold' },
-    saveBtn: { backgroundColor: '#87ca37', paddingVertical: 15, borderRadius: 10, alignItems: 'center', marginBottom: 10 },
-    saveBtnText: { color: 'white', fontWeight: '900', fontSize: 16, letterSpacing: 1 },
+    title: { fontSize: 22, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.text, marginBottom: 10, textAlign: 'center' },
+    subtitle: { fontSize: 15, color: c.textSoft, textAlign: 'center', marginBottom: 25, lineHeight: 22, fontFamily: FONT_BODY_REGULAR },
+    inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.inputBg, borderRadius: 10, paddingHorizontal: 15, height: 50, marginBottom: 20, borderWidth: 1, borderColor: c.inputBorder },
+    input: { flex: 1, fontSize: 16, color: c.inputText, fontFamily: FONT_BODY_BOLD },
+    saveBtn: { backgroundColor: c.accent, paddingVertical: 15, borderRadius: 10, alignItems: 'center', marginBottom: 10 },
+    saveBtnText: { color: c.text, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, letterSpacing: 1 },
     skipBtn: { alignItems: 'center', padding: 10 },
-    skipText: { color: '#999', fontWeight: 'bold' }
+    skipText: { color: c.textMuted, fontFamily: FONT_BODY_BOLD },
 });

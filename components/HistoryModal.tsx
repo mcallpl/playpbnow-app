@@ -11,6 +11,8 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 import { MatchRecord } from '../hooks/useHeadToHead';
 
@@ -27,12 +29,12 @@ export interface HistoryModalProps {
     canDeleteSession: boolean;
 }
 
-export function HistoryModal({ 
-    visible, 
-    onClose, 
-    history, 
-    sessionLabel, 
-    isGlobal, 
+export function HistoryModal({
+    visible,
+    onClose,
+    history,
+    sessionLabel,
+    isGlobal,
     deviceId,
     onDeleteSession,
     onSaveMatch,
@@ -41,22 +43,24 @@ export function HistoryModal({
 }: HistoryModalProps) {
 
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     const [editTargetId, setEditTargetId] = useState<string | null>(null);
     const [editOriginalMatch, setEditOriginalMatch] = useState<MatchRecord | null>(null);
-    
+
     const [editData, setEditData] = useState({
-        s1: '', s2: '', 
-        p1_name: '', p2_name: '', 
+        s1: '', s2: '',
+        p1_name: '', p2_name: '',
         p3_name: '', p4_name: ''
     });
 
     const startEditing = (match: any) => {
         setEditTargetId(match._uniqueId);
         setEditOriginalMatch(match);
-        
-        setEditData({ 
-            s1: match.s1.toString(), 
+
+        setEditData({
+            s1: match.s1.toString(),
             s2: match.s2.toString(),
             p1_name: match.p1_name || '',
             p2_name: match.p2_name || '',
@@ -67,7 +71,7 @@ export function HistoryModal({
 
     const saveEdit = () => {
         if (!editOriginalMatch) return;
-        
+
         if (!editOriginalMatch.group) {
             Alert.alert("Error", "Cannot save. Missing group information.");
             return;
@@ -75,9 +79,9 @@ export function HistoryModal({
 
         const s1Val = parseInt(editData.s1);
         const s2Val = parseInt(editData.s2);
-        if (isNaN(s1Val) || isNaN(s2Val)) { 
-            Alert.alert("Error", "Invalid scores."); 
-            return; 
+        if (isNaN(s1Val) || isNaN(s2Val)) {
+            Alert.alert("Error", "Invalid scores.");
+            return;
         }
         onSaveMatch(editOriginalMatch, s1Val, s2Val, editData);
         setEditTargetId(null);
@@ -90,7 +94,7 @@ export function HistoryModal({
         return n + (s[(v - 20) % 10] || s[v] || s[0]);
     };
 
-    // ✅ FIXED: Use stored round_num and court_num from database
+    // FIXED: Use stored round_num and court_num from database
     const processedSections = useMemo(() => {
         if (!history || history.length === 0) return [];
 
@@ -112,34 +116,34 @@ export function HistoryModal({
     const renderHistoryCard = ({ item }: { item: any }) => {
         const isEditingThisRow = editTargetId === item._uniqueId;
         const isT1Win = item.s1 > item.s2;
-        
+
         // GLOBAL mode is always read-only, MINE mode allows editing
         const canEdit = !isGlobal;
         const displayLabel = item.derivedLabel || 'Game';
 
         if (isEditingThisRow) {
             return (
-                <View style={[styles.visualCard, { borderColor: '#87ca37', borderWidth: 2 }]}>
+                <View style={[styles.visualCard, { borderColor: colors.accent, borderWidth: 2 }]}>
                     <View style={styles.visualHeader}>
                         <Text style={styles.visualLabel}>{displayLabel}</Text>
                         <View style={{flexDirection:'row', gap:15}}>
-                            <TouchableOpacity onPress={saveEdit}><Ionicons name="checkmark-circle" size={28} color="#87ca37" /></TouchableOpacity>
-                            <TouchableOpacity onPress={() => { setEditTargetId(null); setEditOriginalMatch(null); }}><Ionicons name="close-circle" size={28} color="#ccc" /></TouchableOpacity>
+                            <TouchableOpacity onPress={saveEdit}><Ionicons name="checkmark-circle" size={28} color={colors.accent} /></TouchableOpacity>
+                            <TouchableOpacity onPress={() => { setEditTargetId(null); setEditOriginalMatch(null); }}><Ionicons name="close-circle" size={28} color={colors.textMuted} /></TouchableOpacity>
                         </View>
                     </View>
 
                     <View style={[styles.teamBlock, styles.teamBlockBlue]}>
                         <View style={styles.teamNames}>
-                            <TextInput style={styles.editNameInput} value={editData.p1_name} onChangeText={(t) => setEditData({...editData, p1_name: t})} placeholder="Player 1" placeholderTextColor="#666"/>
-                            <TextInput style={styles.editNameInput} value={editData.p2_name} onChangeText={(t) => setEditData({...editData, p2_name: t})} placeholder="Player 2" placeholderTextColor="#666"/>
+                            <TextInput style={styles.editNameInput} value={editData.p1_name} onChangeText={(t) => setEditData({...editData, p1_name: t})} placeholder="Player 1" placeholderTextColor={colors.inputPlaceholder}/>
+                            <TextInput style={styles.editNameInput} value={editData.p2_name} onChangeText={(t) => setEditData({...editData, p2_name: t})} placeholder="Player 2" placeholderTextColor={colors.inputPlaceholder}/>
                         </View>
                         <TextInput style={styles.editInput} value={editData.s1} onChangeText={(t) => setEditData({...editData, s1: t})} keyboardType="numeric" maxLength={2} selectTextOnFocus />
                     </View>
 
                     <View style={[styles.teamBlock, styles.teamBlockRed]}>
                         <View style={styles.teamNames}>
-                            <TextInput style={styles.editNameInput} value={editData.p3_name} onChangeText={(t) => setEditData({...editData, p3_name: t})} placeholder="Player 3" placeholderTextColor="#666"/>
-                            <TextInput style={styles.editNameInput} value={editData.p4_name} onChangeText={(t) => setEditData({...editData, p4_name: t})} placeholder="Player 4" placeholderTextColor="#666"/>
+                            <TextInput style={styles.editNameInput} value={editData.p3_name} onChangeText={(t) => setEditData({...editData, p3_name: t})} placeholder="Player 3" placeholderTextColor={colors.inputPlaceholder}/>
+                            <TextInput style={styles.editNameInput} value={editData.p4_name} onChangeText={(t) => setEditData({...editData, p4_name: t})} placeholder="Player 4" placeholderTextColor={colors.inputPlaceholder}/>
                         </View>
                         <TextInput style={styles.editInput} value={editData.s2} onChangeText={(t) => setEditData({...editData, s2: t})} keyboardType="numeric" maxLength={2} selectTextOnFocus />
                     </View>
@@ -153,7 +157,7 @@ export function HistoryModal({
                         <View style={{flexDirection:'row', gap:15}}>
                         {canEdit && (
                             <>
-                                <TouchableOpacity onPress={() => startEditing(item)}><Ionicons name="pencil" size={18} color="#aaa" /></TouchableOpacity>
+                                <TouchableOpacity onPress={() => startEditing(item)}><Ionicons name="pencil" size={18} color={colors.textSoft} /></TouchableOpacity>
                                 <TouchableOpacity onPress={() => onDeleteMatch(item)}><Ionicons name="trash" size={18} color="#ff6961" /></TouchableOpacity>
                             </>
                         )}
@@ -184,12 +188,12 @@ export function HistoryModal({
         <Modal visible={visible} animationType="slide" presentationStyle="overFullScreen">
             <View style={styles.container}>
                 <View style={[styles.compHeader, { paddingTop: insets.top + 40 }]}>
-                    <TouchableOpacity 
-                        onPress={onClose} 
+                    <TouchableOpacity
+                        onPress={onClose}
                         hitSlop={{top:40, bottom:40, left:40, right:40}}
                         style={styles.closeBtn}
                     >
-                        <Ionicons name="close" size={36} color="white" />
+                        <Ionicons name="close" size={36} color={colors.text} />
                     </TouchableOpacity>
                     <Text style={styles.compTitle}>GAME HISTORY</Text>
                     <View style={{width:36}} />
@@ -198,7 +202,7 @@ export function HistoryModal({
                 <View style={styles.sessionRow}>
                     {canDeleteSession && (
                         <TouchableOpacity onPress={onDeleteSession} style={styles.deleteSessionBtnFull}>
-                            <Ionicons name="trash-bin" size={20} color="white" style={{marginRight:8}} />
+                            <Ionicons name="trash-bin" size={20} color={colors.text} style={{marginRight:8}} />
                             <Text style={styles.deleteSessionText}>DELETE ENTIRE MATCH</Text>
                         </TouchableOpacity>
                     )}
@@ -219,35 +223,35 @@ export function HistoryModal({
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#1b3358' },
-    compHeader: { 
-        flexDirection: 'row', 
-        justifyContent: 'space-between', 
-        paddingHorizontal: 20, 
-        paddingBottom: 20, 
-        alignItems: 'center', 
-        backgroundColor: '#152945',
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.bg },
+    compHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        alignItems: 'center',
+        backgroundColor: c.surfaceLight,
         zIndex: 10
     },
     closeBtn: { padding: 5, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20 },
-    compTitle: { color: 'white', fontSize: 20, fontWeight: '900', fontStyle: 'italic' },
-    compSubtitle: { color: '#87ca37', textAlign: 'center', fontWeight: 'bold', marginVertical: 10, fontSize: 14 },
+    compTitle: { color: c.text, fontSize: 20, fontFamily: FONT_DISPLAY_EXTRABOLD, fontStyle: 'italic' },
+    compSubtitle: { color: c.accent, textAlign: 'center', fontFamily: FONT_BODY_BOLD, marginVertical: 10, fontSize: 14 },
     sessionRow: { paddingHorizontal: 20, marginTop: 10 },
     deleteSessionBtnFull: { backgroundColor: '#ff6961', padding: 12, borderRadius: 8, alignItems: 'center', flexDirection:'row', justifyContent:'center' },
-    deleteSessionText: { color:'white', fontWeight:'900' },
-    visualCard: { backgroundColor: '#2c3e50', padding: 10, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: '#34495e' },
+    deleteSessionText: { color: c.text, fontFamily: FONT_DISPLAY_EXTRABOLD },
+    visualCard: { backgroundColor: c.card, padding: 10, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: c.border },
     visualHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    visualLabel: { color: '#bbb', fontWeight: 'bold', fontSize: 12 },
+    visualLabel: { color: c.textSoft, fontFamily: FONT_BODY_BOLD, fontSize: 12 },
     teamBlock: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 8, marginBottom: 4 },
     teamBlockBlue: { backgroundColor: 'rgba(52, 152, 219, 0.15)', borderLeftWidth: 4, borderLeftColor: '#3498db' },
     teamBlockRed: { backgroundColor: 'rgba(231, 76, 60, 0.15)', borderLeftWidth: 4, borderLeftColor: '#e74c3c' },
     teamNames: { flex: 1 },
-    teamText: { color: '#eee', fontWeight: 'bold', fontSize: 14, marginBottom: 2 },
-    teamScore: { fontSize: 24, fontWeight: '900' },
-    scoreWin: { color: '#87ca37' },
-    scoreLose: { color: '#999', opacity: 0.7 },
-    editInput: { backgroundColor: 'white', width: 50, height: 40, borderRadius: 5, textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: '#1b3358' },
-    editNameInput: { backgroundColor: 'white', color:'#1b3358', fontWeight:'bold', fontSize:14, padding:4, borderRadius: 4, minWidth:100, marginBottom:4 },
-    empty: { color: 'white', textAlign: 'center', marginTop: 50, opacity: 0.5 }
+    teamText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 14, marginBottom: 2 },
+    teamScore: { fontSize: 24, fontFamily: FONT_DISPLAY_EXTRABOLD },
+    scoreWin: { color: c.accent },
+    scoreLose: { color: c.textSoft, opacity: 0.7 },
+    editInput: { backgroundColor: c.inputBg, width: 50, height: 40, borderRadius: 5, textAlign: 'center', fontSize: 20, fontFamily: FONT_BODY_BOLD, color: c.inputText },
+    editNameInput: { backgroundColor: c.inputBg, color: c.inputText, fontFamily: FONT_BODY_BOLD, fontSize: 14, padding: 4, borderRadius: 4, minWidth: 100, marginBottom: 4 },
+    empty: { color: c.text, textAlign: 'center', marginTop: 50, opacity: 0.5, fontFamily: FONT_BODY_REGULAR }
 });

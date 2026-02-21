@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
     Image,
     Modal,
@@ -9,6 +9,8 @@ import {
     View,
 } from 'react-native';
 import { useSubscription } from '../context/SubscriptionContext';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 const BENEFITS = [
     { icon: 'document-text' as const, title: 'Clean HD Match Reports', desc: 'No watermark on your professional reports' },
@@ -20,6 +22,8 @@ const BENEFITS = [
 
 export const PaywallModal: React.FC = () => {
     const { paywallVisible, paywallMessage, hidePaywall, isTrial, trialDaysRemaining } = useSubscription();
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     return (
         <Modal visible={paywallVisible} transparent animationType="slide" onRequestClose={hidePaywall}>
@@ -27,7 +31,7 @@ export const PaywallModal: React.FC = () => {
                 <View style={styles.container}>
                     {/* Close Button */}
                     <TouchableOpacity style={styles.closeBtn} onPress={hidePaywall}>
-                        <Ionicons name="close" size={24} color="#666" />
+                        <Ionicons name="close" size={24} color={colors.textMuted} />
                     </TouchableOpacity>
 
                     {/* Header */}
@@ -50,7 +54,7 @@ export const PaywallModal: React.FC = () => {
                         {BENEFITS.map((b, i) => (
                             <View key={i} style={styles.benefitRow}>
                                 <View style={styles.checkCircle}>
-                                    <Ionicons name="checkmark" size={14} color="white" />
+                                    <Ionicons name="checkmark" size={14} color={colors.text} />
                                 </View>
                                 <View style={styles.benefitText}>
                                     <Text style={styles.benefitTitle}>{b.title}</Text>
@@ -64,14 +68,14 @@ export const PaywallModal: React.FC = () => {
                     <View style={styles.infoBox}>
                         {isTrial && trialDaysRemaining > 0 ? (
                             <>
-                                <Ionicons name="star" size={20} color="#87ca37" />
+                                <Ionicons name="star" size={20} color={colors.accent} />
                                 <Text style={styles.infoText}>
                                     You're enjoying a free <Text style={styles.infoBold}>{trialDaysRemaining}-day Pro trial</Text>! All features are unlocked.
                                 </Text>
                             </>
                         ) : (
                             <>
-                                <Ionicons name="rocket" size={20} color="#87ca37" />
+                                <Ionicons name="rocket" size={20} color={colors.accent} />
                                 <Text style={styles.infoText}>
                                     Pro subscriptions coming soon! Stay tuned for premium features.
                                 </Text>
@@ -89,15 +93,15 @@ export const PaywallModal: React.FC = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.85)',
+        backgroundColor: c.modalOverlay,
         justifyContent: 'center',
         padding: 20,
     },
     container: {
-        backgroundColor: 'white',
+        backgroundColor: c.modalBg,
         borderRadius: 24,
         padding: 25,
         maxHeight: '90%',
@@ -121,9 +125,9 @@ const styles = StyleSheet.create({
         width: 140,
     },
     proLabel: {
-        backgroundColor: '#87ca37',
-        color: 'white',
-        fontWeight: '900',
+        backgroundColor: c.accent,
+        color: c.text,
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
         fontSize: 14,
         paddingHorizontal: 10,
         paddingVertical: 4,
@@ -133,10 +137,11 @@ const styles = StyleSheet.create({
     },
     message: {
         textAlign: 'center',
-        color: '#666',
+        color: c.textMuted,
         fontSize: 14,
         marginBottom: 15,
         lineHeight: 20,
+        fontFamily: FONT_BODY_REGULAR,
     },
     benefits: {
         marginBottom: 20,
@@ -151,7 +156,7 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         borderRadius: 12,
-        backgroundColor: '#87ca37',
+        backgroundColor: c.accent,
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 2,
@@ -160,50 +165,52 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     benefitTitle: {
-        fontWeight: '800',
-        color: '#1b3358',
+        fontFamily: FONT_BODY_BOLD,
+        color: c.text,
         fontSize: 14,
     },
     benefitDesc: {
-        color: '#888',
+        color: c.textMuted,
         fontSize: 12,
         marginTop: 1,
+        fontFamily: FONT_BODY_REGULAR,
     },
     infoBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f0fae5',
+        backgroundColor: c.accentSoft,
         borderRadius: 12,
         padding: 16,
         marginBottom: 15,
         gap: 12,
         borderWidth: 1,
-        borderColor: 'rgba(135, 202, 55, 0.3)',
+        borderColor: c.accentGlow,
     },
     infoText: {
         flex: 1,
-        color: '#555',
+        color: c.textSoft,
         fontSize: 14,
         lineHeight: 20,
+        fontFamily: FONT_BODY_REGULAR,
     },
     infoBold: {
-        fontWeight: '800',
-        color: '#1b3358',
+        fontFamily: FONT_BODY_BOLD,
+        color: c.text,
     },
     gotItBtn: {
-        backgroundColor: '#87ca37',
+        backgroundColor: c.accent,
         padding: 18,
         borderRadius: 15,
         alignItems: 'center',
         elevation: 4,
-        shadowColor: '#87ca37',
+        shadowColor: c.accent,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.3,
         shadowRadius: 5,
     },
     gotItBtnText: {
-        color: 'white',
-        fontWeight: '900',
+        color: c.text,
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
         fontSize: 16,
         letterSpacing: 0.5,
     },

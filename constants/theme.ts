@@ -1,41 +1,97 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
 export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    bg: '#0a0e1a',
+    surface: '#131829',
+    surfaceLight: '#1a2038',
+    card: '#1e2540',
+    cardHover: '#252d4a',
+    accent: '#00e87b',
+    accentGlow: 'rgba(0, 232, 123, 0.15)',
+    accentSoft: 'rgba(0, 232, 123, 0.08)',
+    secondary: '#6c5ce7',
+    gold: '#ffd23f',
+    silver: '#c0c7d6',
+    bronze: '#e8985a',
+    text: '#ffffff',
+    textMuted: '#6b7394',
+    textSoft: '#9ba3c2',
+    danger: '#ff4757',
+    male: '#4facfe',
+    female: '#f78ca2',
+    border: 'rgba(255,255,255,0.06)',
+    glassBg: 'rgba(255,255,255,0.03)',
+    glassStroke: 'rgba(255,255,255,0.08)',
+    modalOverlay: 'rgba(0,0,0,0.85)',
+    modalBg: '#1e2540',
+    inputBg: '#131829',
+    inputBorder: 'rgba(255,255,255,0.1)',
+    inputText: '#ffffff',
+    inputPlaceholder: '#6b7394',
+    // backward-compat keys
+    background: '#0a0e1a',
+    tint: '#00e87b',
+    icon: '#6b7394',
+    tabIconDefault: '#6b7394',
+    tabIconSelected: '#00e87b',
+  },
+  light: {
+    bg: '#f5f7fa',
+    surface: '#ffffff',
+    surfaceLight: '#f0f2f5',
+    card: '#ffffff',
+    cardHover: '#f8f9fb',
+    accent: '#00c968',
+    accentGlow: 'rgba(0, 201, 104, 0.12)',
+    accentSoft: 'rgba(0, 201, 104, 0.06)',
+    secondary: '#6c5ce7',
+    gold: '#f5a623',
+    silver: '#8e99a4',
+    bronze: '#cd7f32',
+    text: '#1a1d26',
+    textMuted: '#6b7394',
+    textSoft: '#8892b0',
+    danger: '#ff4757',
+    male: '#4facfe',
+    female: '#f78ca2',
+    border: 'rgba(0,0,0,0.08)',
+    glassBg: 'rgba(0,0,0,0.02)',
+    glassStroke: 'rgba(0,0,0,0.06)',
+    modalOverlay: 'rgba(0,0,0,0.5)',
+    modalBg: '#ffffff',
+    inputBg: '#f0f2f5',
+    inputBorder: '#e0e3ea',
+    inputText: '#1a1d26',
+    inputPlaceholder: '#999999',
+    // backward-compat keys
+    background: '#f5f7fa',
+    tint: '#00c968',
+    icon: '#6b7394',
+    tabIconDefault: '#6b7394',
+    tabIconSelected: '#00c968',
   },
 };
 
+export type ThemeColors = typeof Colors.dark;
+
+// Font family constants
+export const FONT_DISPLAY_BLACK = 'Outfit_900Black';
+export const FONT_DISPLAY_EXTRABOLD = 'Outfit_800ExtraBold';
+export const FONT_DISPLAY_BOLD = 'Outfit_700Bold';
+export const FONT_DISPLAY_SEMIBOLD = 'Outfit_600SemiBold';
+export const FONT_DISPLAY_MEDIUM = 'Outfit_500Medium';
+export const FONT_DISPLAY_REGULAR = 'Outfit_400Regular';
+export const FONT_BODY_BOLD = 'DMSans_700Bold';
+export const FONT_BODY_SEMIBOLD = 'DMSans_600SemiBold';
+export const FONT_BODY_MEDIUM = 'DMSans_500Medium';
+export const FONT_BODY_REGULAR = 'DMSans_400Regular';
+
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

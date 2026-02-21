@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,7 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -21,6 +22,17 @@ import {
 import { JoinMatchModal } from '../../components/JoinMatchModal';
 import { TrialBanner } from '../../components/TrialBanner';
 import { useSubscription } from '../../context/SubscriptionContext';
+import { useTheme } from '../../context/ThemeContext';
+import {
+  ThemeColors,
+  FONT_DISPLAY_BOLD,
+  FONT_DISPLAY_EXTRABOLD,
+  FONT_DISPLAY_BLACK,
+  FONT_BODY_REGULAR,
+  FONT_BODY_MEDIUM,
+  FONT_BODY_BOLD,
+  FONT_BODY_SEMIBOLD,
+} from '../../constants/theme';
 
 interface Court {
   id: number;
@@ -45,6 +57,8 @@ const API_URL = 'https://peoplestar.com/Chipleball/api';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { colors, isDark, toggleTheme } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { isPro, isFree, isTrial, trialDaysRemaining, showPaywall, features, subscription, refreshSubscription } = useSubscription();
   const [groups, setGroups] = useState<Group[]>([]);
   const [joinModalVisible, setJoinModalVisible] = useState(false);
@@ -52,21 +66,17 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
 
-  // Single modal with view states
   const [modalVisible, setModalVisible] = useState(false);
   type ModalView = 'form' | 'courtPicker' | 'addCourt';
   const [modalView, setModalView] = useState<ModalView>('form');
 
-  // Group form
   const [newGroupName, setNewGroupName] = useState('');
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
 
-  // Court selection
   const [courts, setCourts] = useState<Court[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState<number | null>(null);
   const [loadingCourts, setLoadingCourts] = useState(false);
 
-  // Add court form
   const [newCourtName, setNewCourtName] = useState('');
   const [newCourtCity, setNewCourtCity] = useState('');
   const [newCourtState, setNewCourtState] = useState('');
@@ -80,9 +90,9 @@ export default function HomeScreen() {
 
   const initializeAndLoad = async () => {
     const uid = await AsyncStorage.getItem('user_id');
-    if (!uid) { 
-      router.replace('/login'); 
-      return; 
+    if (!uid) {
+      router.replace('/login');
+      return;
     }
     setUserId(uid);
     await loadGroups(uid);
@@ -121,7 +131,6 @@ export default function HomeScreen() {
     return court?.city || null;
   };
 
-  // --- MODAL MANAGEMENT ---
   const openCreateModal = () => {
     if (isFree && groups.length >= features.maxGroups) {
       showPaywall(`You've reached the free limit of ${features.maxGroups} groups. Upgrade to Pro for unlimited groups!`);
@@ -150,7 +159,6 @@ export default function HomeScreen() {
     setModalView('form');
   };
 
-  // --- SAVE GROUP ---
   const saveGroup = async () => {
     if (!newGroupName.trim()) { Alert.alert('Error', 'Please enter a group name.'); return; }
     if (!selectedCourtId && !editingGroup) { Alert.alert('Select Location', 'Please select a match location for this group.'); return; }
@@ -187,7 +195,6 @@ export default function HomeScreen() {
     finally { setLoading(false); }
   };
 
-  // --- ADD NEW COURT ---
   const handleAddCourt = async () => {
     if (!newCourtName.trim()) { Alert.alert('Error', 'Court name is required.'); return; }
     if (!newCourtCity.trim()) { Alert.alert('Error', 'City is required.'); return; }
@@ -211,17 +218,17 @@ export default function HomeScreen() {
         setNewCourtName('');
         setNewCourtCity('');
         setNewCourtState('');
-        setModalView('form'); // Go back to group form
+        setModalView('form');
       } else { Alert.alert('Error', data.message); }
     } catch (e) { Alert.alert('Error', 'Failed to create court'); }
     finally { setSavingCourt(false); }
   };
 
-  // --- DELETE GROUP ---
   const deleteGroup = (group: Group) => {
     Alert.alert("Delete Group", `Delete "${group.name}" and all its data?`, [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => {
+      {
+        text: "Delete", style: "destructive", onPress: async () => {
           setLoading(true);
           try {
             const res = await fetch(`${API_URL}/delete_group.php`, {
@@ -233,7 +240,8 @@ export default function HomeScreen() {
             else Alert.alert('Error', data.message);
           } catch (e) { Alert.alert('Error', 'Failed to delete group'); }
           finally { setLoading(false); }
-      }}
+        }
+      }
     ]);
   };
 
@@ -260,56 +268,70 @@ export default function HomeScreen() {
   };
 
   const tierLabel = isPro ? 'PRO' : isTrial ? 'TRIAL' : 'FREE';
-  const tierColor = isPro ? '#87ca37' : isTrial ? '#4a90e2' : '#ff6b35';
+  const tierColor = isPro ? colors.accent : isTrial ? colors.secondary : '#ff6b35';
 
   const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
 
-  // --- RENDER ---
+  const totalPlayers = groups.reduce((sum, g) => sum + (g.count || 0), 0);
+
   const renderGroupItem = ({ item }: { item: Group }) => (
-    <View style={styles.cardWrapper}>
-      <TouchableOpacity style={styles.card} onPress={() => handleGroupSelect(item)} activeOpacity={0.7}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardText}>{item.name}</Text>
-          {item.court_name ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-              <Ionicons name="location" size={12} color="#87ca37" />
-              <Text style={styles.courtLabel}>{item.court_name}{item.court_city ? ` — ${item.court_city}` : ''}</Text>
+    <TouchableOpacity style={styles.card} onPress={() => handleGroupSelect(item)} activeOpacity={0.7}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.cardText}>{item.name}</Text>
+        {item.court_name ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+            <Ionicons name="location" size={12} color={colors.accent} />
+            <Text style={styles.courtLabel}>{item.court_name}</Text>
+            {item.court_city ? <Text style={styles.courtCityLabel}>{item.court_city}</Text> : null}
+          </View>
+        ) : null}
+      </View>
+      <View style={styles.playerBadge}>
+        <Ionicons name="people" size={14} color={colors.accent} />
+        <Text style={styles.playerBadgeText}>{item.count || 0}</Text>
+      </View>
+      {/* Gender + actions row */}
+      <View style={styles.cardFooter}>
+        <View style={styles.genderRow}>
+          {item.maleCount !== undefined && item.maleCount > 0 ? (
+            <View style={styles.genderDot}>
+              <View style={[styles.dot, { backgroundColor: colors.male }]} />
+              <Text style={styles.genderText}>{item.maleCount} Male</Text>
             </View>
           ) : null}
-          <Text style={styles.countText}>
-            {item.count || 0} PLAYERS
-            {item.femaleCount !== undefined && item.maleCount !== undefined
-              ? `: ${item.femaleCount} F & ${item.maleCount} M` : ''}
-          </Text>
+          {item.femaleCount !== undefined && item.femaleCount > 0 ? (
+            <View style={styles.genderDot}>
+              <View style={[styles.dot, { backgroundColor: colors.female }]} />
+              <Text style={styles.genderText}>{item.femaleCount} Female</Text>
+            </View>
+          ) : null}
         </View>
-        <Ionicons name="arrow-forward" size={24} color="#87ca37" />
-      </TouchableOpacity>
-      <View style={styles.actionRow}>
-        <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
-          <Ionicons name="pencil" size={20} color="#ccc" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => deleteGroup(item)} style={styles.iconBtn}>
-          <Ionicons name="trash" size={20} color="#ff4444" />
-        </TouchableOpacity>
+        <View style={styles.actionRow}>
+          <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
+            <Ionicons name="pencil" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => deleteGroup(item)} style={styles.iconBtn}>
+            <Ionicons name="trash" size={16} color={colors.danger} />
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
-  // --- MODAL CONTENT BY VIEW ---
   const renderModalContent = () => {
     if (modalView === 'courtPicker') {
       return (
         <>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setModalView('form')} style={{ padding: 5 }}>
-              <Ionicons name="arrow-back" size={24} color="#1b3358" />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.modalTitleInline}>SELECT LOCATION</Text>
             <View style={{ width: 34 }} />
           </View>
 
           {loadingCourts ? (
-            <ActivityIndicator size="large" color="#1b3358" style={{ marginVertical: 30 }} />
+            <ActivityIndicator size="large" color={colors.accent} style={{ marginVertical: 30 }} />
           ) : (
             <ScrollView style={{ maxHeight: 400 }}>
               {courts.map((court, idx) => (
@@ -318,23 +340,22 @@ export default function HomeScreen() {
                   onPress={() => { setSelectedCourtId(court.id); setModalView('form'); }}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.courtNameText, selectedCourtId === court.id ? { color: '#1b3358', fontWeight: '900' as const } : null]}>
+                    <Text style={[styles.courtNameText, selectedCourtId === court.id ? { color: colors.accent, fontFamily: FONT_DISPLAY_EXTRABOLD } : null]}>
                       {court.name}
                     </Text>
                     {court.city ? <Text style={styles.courtCity}>{court.city}{court.state ? `, ${court.state}` : ''}</Text> : null}
                   </View>
-                  {selectedCourtId === court.id ? <Ionicons name="checkmark-circle" size={24} color="#87ca37" /> : null}
+                  {selectedCourtId === court.id ? <Ionicons name="checkmark-circle" size={24} color={colors.accent} /> : null}
                 </TouchableOpacity>
               ))}
             </ScrollView>
           )}
 
-          {/* ADD NEW COURT BUTTON */}
           <TouchableOpacity style={styles.addCourtBtn} onPress={() => {
             setNewCourtName(''); setNewCourtCity(''); setNewCourtState('');
             setModalView('addCourt');
           }}>
-            <Ionicons name="add-circle-outline" size={20} color="#4a90e2" />
+            <Ionicons name="add-circle-outline" size={20} color={colors.secondary} />
             <Text style={styles.addCourtBtnText}>Add New Location</Text>
           </TouchableOpacity>
 
@@ -350,28 +371,28 @@ export default function HomeScreen() {
         <>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setModalView('courtPicker')} style={{ padding: 5 }}>
-              <Ionicons name="arrow-back" size={24} color="#1b3358" />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.modalTitleInline}>ADD NEW LOCATION</Text>
             <View style={{ width: 34 }} />
           </View>
 
           <Text style={styles.fieldLabel}>Court / Venue Name *</Text>
-          <TextInput style={styles.input} placeholder="e.g. Sun and Sail" value={newCourtName}
-            onChangeText={setNewCourtName} autoFocus />
+          <TextInput style={styles.input} placeholder="e.g. Sun and Sail" placeholderTextColor={colors.inputPlaceholder}
+            value={newCourtName} onChangeText={setNewCourtName} autoFocus />
 
           <Text style={styles.fieldLabel}>City *</Text>
-          <TextInput style={styles.input} placeholder="e.g. Lake Forest" value={newCourtCity}
-            onChangeText={setNewCourtCity} />
+          <TextInput style={styles.input} placeholder="e.g. Lake Forest" placeholderTextColor={colors.inputPlaceholder}
+            value={newCourtCity} onChangeText={setNewCourtCity} />
 
           <Text style={styles.fieldLabel}>State (optional)</Text>
-          <TextInput style={styles.input} placeholder="e.g. CA" value={newCourtState}
-            onChangeText={setNewCourtState} autoCapitalize="characters" maxLength={2} />
+          <TextInput style={styles.input} placeholder="e.g. CA" placeholderTextColor={colors.inputPlaceholder}
+            value={newCourtState} onChangeText={setNewCourtState} autoCapitalize="characters" maxLength={2} />
 
           <TouchableOpacity style={styles.saveCourtBtn} onPress={handleAddCourt} disabled={savingCourt}>
-            {savingCourt ? <ActivityIndicator color="white" /> : (
+            {savingCourt ? <ActivityIndicator color={colors.bg} /> : (
               <>
-                <Ionicons name="checkmark" size={22} color="white" />
+                <Ionicons name="checkmark" size={22} color={colors.bg} />
                 <Text style={styles.saveCourtBtnText}>SAVE LOCATION</Text>
               </>
             )}
@@ -384,12 +405,10 @@ export default function HomeScreen() {
       );
     }
 
-    // DEFAULT: form view
     return (
       <>
         <Text style={styles.modalTitle}>{editingGroup ? 'EDIT GROUP' : 'NEW GROUP'}</Text>
 
-        {/* STEP 1: Match Location */}
         {!editingGroup && (
           <View style={styles.stepSection}>
             <Text style={styles.stepLabel}>STEP 1: MATCH LOCATION</Text>
@@ -397,35 +416,34 @@ export default function HomeScreen() {
               style={[styles.courtSelector, selectedCourtId ? styles.courtSelectorSelected : null]}
               onPress={() => setModalView('courtPicker')}
             >
-              <Ionicons name="location" size={20} color={selectedCourtId ? '#87ca37' : '#999'} />
+              <Ionicons name="location" size={20} color={selectedCourtId ? colors.accent : colors.textMuted} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.courtSelectorText, selectedCourtId ? { color: '#1b3358', fontWeight: '900' as const } : null]}>
+                <Text style={[styles.courtSelectorText, selectedCourtId ? { color: colors.accent, fontFamily: FONT_DISPLAY_EXTRABOLD } : null]}>
                   {getSelectedCourtName() || 'Tap to select location'}
                 </Text>
                 {getSelectedCourtCity() ? (
-                  <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{getSelectedCourtCity()}</Text>
+                  <Text style={{ fontSize: 12, fontFamily: FONT_BODY_REGULAR, color: colors.textMuted, marginTop: 2 }}>{getSelectedCourtCity()}</Text>
                 ) : null}
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
         )}
 
-        {/* STEP 2: Group Name */}
         <View style={styles.stepSection}>
           <Text style={styles.stepLabel}>{editingGroup ? 'GROUP NAME' : 'STEP 2: GROUP NAME'}</Text>
-          <TextInput style={styles.input} placeholder="e.g. Friday Crew"
+          <TextInput style={styles.input} placeholder="e.g. Friday Crew" placeholderTextColor={colors.inputPlaceholder}
             value={newGroupName} onChangeText={setNewGroupName}
             autoFocus={!!editingGroup} editable={!loading} />
         </View>
 
         <View style={styles.modalButtons}>
           <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={closeModal} disabled={loading}>
-            <Text style={styles.modalBtnText}>CANCEL</Text>
+            <Text style={styles.cancelBtnText}>CANCEL</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={saveGroup} disabled={loading}>
-            {loading ? <ActivityIndicator color="white" /> : (
-              <Text style={[styles.modalBtnText, { color: 'white' }]}>
+            {loading ? <ActivityIndicator color={colors.bg} /> : (
+              <Text style={styles.saveBtnText}>
                 {editingGroup ? 'UPDATE' : 'CREATE'}
               </Text>
             )}
@@ -438,22 +456,21 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={{ flex: 1, alignItems: 'flex-start' }}>
-          <Image source={require('../../assets/images/PlayPBNow-Logo-SMALL.png')} style={styles.logoImage} resizeMode="contain" />
-          <Text style={styles.logoSub}>LOAD A SAVED GROUP</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Your Groups</Text>
+          <Text style={styles.headerSub}>{groups.length} groups · {totalPlayers} players</Text>
         </View>
-        <TouchableOpacity onPress={() => setJoinModalVisible(true)} style={styles.joinBtn}>
-          <Ionicons name="flash" size={20} color="white" />
+        <TouchableOpacity onPress={() => setJoinModalVisible(true)} style={styles.headerBtn}>
+          <Ionicons name="flash" size={18} color={colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setSettingsVisible(true)} style={styles.settingsBtn}>
-          <Ionicons name="settings-outline" size={22} color="white" />
+        <TouchableOpacity onPress={() => setSettingsVisible(true)} style={styles.headerBtn}>
+          <Ionicons name="settings-outline" size={18} color={colors.text} />
         </TouchableOpacity>
       </View>
 
-      {loading && (
+      {loading && groups.length === 0 && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#87ca37" />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <ActivityIndicator size="large" color={colors.accent} />
         </View>
       )}
 
@@ -470,7 +487,7 @@ export default function HomeScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={!loading ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No groups found.</Text>
+            <Text style={styles.emptyText}>No groups yet</Text>
             <Text style={styles.emptySub}>Create a group to get started!</Text>
           </View>
         ) : null}
@@ -478,12 +495,12 @@ export default function HomeScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.createBtn} onPress={openCreateModal} disabled={loading}>
-          <Ionicons name="add-circle" size={24} color="white" style={{ marginRight: 10 }} />
-          <Text style={styles.createBtnText}>CREATE NEW GROUP</Text>
+          <Text style={styles.createBtnPlus}>+</Text>
+          <Text style={styles.createBtnText}>NEW GROUP</Text>
         </TouchableOpacity>
       </View>
 
-      {/* SINGLE MODAL — view switches between form / courtPicker / addCourt */}
+      {/* GROUP MODAL */}
       <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -500,8 +517,24 @@ export default function HomeScreen() {
               <View style={{ width: 34 }} />
               <Text style={styles.modalTitleInline}>SETTINGS</Text>
               <TouchableOpacity onPress={() => setSettingsVisible(false)} style={{ padding: 5 }}>
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color={colors.textMuted} />
               </TouchableOpacity>
+            </View>
+
+            {/* Appearance */}
+            <View style={styles.settingsSection}>
+              <Text style={styles.settingsSectionTitle}>APPEARANCE</Text>
+              <View style={styles.settingsActionRow}>
+                <Ionicons name={isDark ? 'moon' : 'sunny'} size={20} color={colors.textMuted} />
+                <Text style={styles.settingsActionText}>Dark Mode</Text>
+                <View style={{ flex: 1 }} />
+                <Switch
+                  value={isDark}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: colors.border, true: colors.accent }}
+                  thumbColor="white"
+                />
+              </View>
             </View>
 
             {/* Subscription */}
@@ -509,17 +542,18 @@ export default function HomeScreen() {
               <Text style={styles.settingsSectionTitle}>SUBSCRIPTION</Text>
               <View style={styles.settingsActionRow}>
                 <Text style={styles.settingsActionText}>Current Plan</Text>
+                <View style={{ flex: 1 }} />
                 <View style={[styles.tierBadge, { backgroundColor: tierColor }]}>
                   <Text style={styles.tierBadgeText}>{tierLabel}</Text>
                 </View>
               </View>
               {isTrial && trialDaysRemaining !== null && (
-                <Text style={{ color: '#4a90e2', fontSize: 13, marginBottom: 8 }}>
+                <Text style={{ color: colors.secondary, fontSize: 13, fontFamily: FONT_BODY_MEDIUM, marginBottom: 8 }}>
                   Trial Ends In {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''}
                 </Text>
               )}
               {subscription?.expires_at && (
-                <Text style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
+                <Text style={{ color: colors.textMuted, fontSize: 12, fontFamily: FONT_BODY_REGULAR, marginBottom: 8 }}>
                   Expires: {new Date(subscription.expires_at).toLocaleDateString()}
                 </Text>
               )}
@@ -534,8 +568,8 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.settingsActionRow} onPress={refreshSubscription}>
-                <Ionicons name="refresh" size={18} color="#4a90e2" />
-                <Text style={[styles.settingsActionText, { color: '#4a90e2' }]}>Restore Purchases</Text>
+                <Ionicons name="refresh" size={18} color={colors.secondary} />
+                <Text style={[styles.settingsActionText, { color: colors.secondary }]}>Restore Purchases</Text>
               </TouchableOpacity>
             </View>
 
@@ -543,12 +577,11 @@ export default function HomeScreen() {
             <View style={styles.settingsSection}>
               <Text style={styles.settingsSectionTitle}>ACCOUNT</Text>
               <TouchableOpacity style={styles.settingsActionRow} onPress={handleLogout}>
-                <Ionicons name="log-out-outline" size={20} color="#e74c3c" />
-                <Text style={[styles.settingsActionText, { color: '#e74c3c' }]}>Log Out</Text>
+                <Ionicons name="log-out-outline" size={20} color={colors.danger} />
+                <Text style={[styles.settingsActionText, { color: colors.danger }]}>Log Out</Text>
               </TouchableOpacity>
             </View>
 
-            {/* App Info */}
             <Text style={styles.appVersion}>PlayPBNow v1.3.0</Text>
           </View>
         </View>
@@ -559,84 +592,251 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1b3358' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 30, paddingTop: 60 },
-  logoImage: { height: 100, width: 200 },
-  logoSub: { color: '#87ca37', fontWeight: 'bold', fontSize: 12, letterSpacing: 1.5, marginTop: 5 },
-  joinBtn: { padding: 8, marginRight: 10 },
-  settingsBtn: { padding: 8 },
+const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.bg },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    paddingTop: 16,
+  },
+  headerTitle: {
+    fontFamily: FONT_DISPLAY_EXTRABOLD,
+    fontSize: 28,
+    color: c.text,
+    letterSpacing: -0.5,
+  },
+  headerSub: {
+    fontFamily: FONT_BODY_REGULAR,
+    fontSize: 12,
+    color: c.textMuted,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginTop: 4,
+  },
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.glassStroke,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
   loadingContainer: { alignItems: 'center', marginTop: 40 },
-  loadingText: { color: 'white', marginTop: 10, fontSize: 16 },
   listContent: { paddingHorizontal: 20, paddingBottom: 150 },
-  
-  cardWrapper: { marginBottom: 15 },
-  card: { backgroundColor: 'white', borderRadius: 15, padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
-  cardText: { fontSize: 20, fontWeight: '900', color: '#1b3358', fontStyle: 'italic' },
-  courtLabel: { fontSize: 11, fontWeight: '700', color: '#87ca37' },
-  countText: { fontSize: 10, fontWeight: 'bold', color: '#666', marginTop: 4, textTransform: 'uppercase' },
-  actionRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 5, paddingRight: 10, gap: 15 },
-  iconBtn: { padding: 5 },
-  
-  emptyState: { alignItems: 'center', marginTop: 50 },
-  emptyText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-  emptySub: { color: '#ccc', fontSize: 14, marginTop: 5 },
-  
-  footer: { position: 'absolute', bottom: 40, width: '100%', alignItems: 'center' },
-  createBtn: { backgroundColor: '#87ca37', flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 30, borderRadius: 30, elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowOffset: { width: 0, height: 3 } },
-  createBtnText: { color: 'white', fontWeight: '900', fontSize: 18 },
-  
+
+  card: {
+    backgroundColor: c.card,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: c.border,
+  },
+  cardText: {
+    fontFamily: FONT_DISPLAY_BOLD,
+    fontSize: 20,
+    color: c.text,
+  },
+  courtLabel: {
+    fontFamily: FONT_BODY_MEDIUM,
+    fontSize: 13,
+    color: c.accent,
+  },
+  courtCityLabel: {
+    fontFamily: FONT_BODY_REGULAR,
+    fontSize: 12,
+    color: c.textMuted,
+    marginLeft: 4,
+  },
+  playerBadge: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: c.accentSoft,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  playerBadgeText: {
+    fontFamily: FONT_DISPLAY_BOLD,
+    fontSize: 16,
+    color: c.accent,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: c.border,
+  },
+  genderRow: { flexDirection: 'row', gap: 16 },
+  genderDot: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  genderText: { fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: c.textSoft },
+  actionRow: { flexDirection: 'row', gap: 12 },
+  iconBtn: { padding: 4 },
+
+  emptyState: { alignItems: 'center', marginTop: 60 },
+  emptyText: { color: c.text, fontSize: 18, fontFamily: FONT_DISPLAY_BOLD },
+  emptySub: { color: c.textMuted, fontSize: 14, fontFamily: FONT_BODY_REGULAR, marginTop: 6 },
+
+  footer: { position: 'absolute', bottom: 32, width: '100%', alignItems: 'center' },
+  createBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 50,
+    backgroundColor: c.accent,
+    gap: 10,
+  },
+  createBtnPlus: {
+    fontSize: 20,
+    fontFamily: FONT_DISPLAY_EXTRABOLD,
+    color: c.bg,
+  },
+  createBtnText: {
+    fontFamily: FONT_DISPLAY_EXTRABOLD,
+    fontSize: 15,
+    color: c.bg,
+    letterSpacing: 0.5,
+  },
+
+  groupCountLabel: {
+    color: c.accent,
+    fontSize: 12,
+    fontFamily: FONT_BODY_BOLD,
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: 'white', borderRadius: 20, padding: 25, maxHeight: '85%' },
-  modalTitle: { fontSize: 24, fontWeight: '900', color: '#1b3358', textAlign: 'center', marginBottom: 20 },
+  modalOverlay: { flex: 1, backgroundColor: c.modalOverlay, justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: c.modalBg, borderRadius: 20, padding: 25, maxHeight: '85%' },
+  modalTitle: {
+    fontFamily: FONT_DISPLAY_EXTRABOLD,
+    fontSize: 24,
+    color: c.text,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  modalTitleInline: { fontSize: 20, fontWeight: '900', color: '#1b3358' },
-  
+  modalTitleInline: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 20, color: c.text },
+
   stepSection: { marginBottom: 20 },
-  stepLabel: { fontSize: 11, fontWeight: '900', color: '#999', letterSpacing: 1, marginBottom: 8 },
-  
-  courtSelector: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f0f2f5', padding: 15, borderRadius: 12, borderWidth: 2, borderColor: '#eee' },
-  courtSelectorSelected: { borderColor: '#87ca37', backgroundColor: '#f0fff0' },
-  courtSelectorText: { fontSize: 16, color: '#999' },
-  
-  input: { backgroundColor: '#f0f2f5', padding: 15, borderRadius: 10, fontSize: 18, borderWidth: 1, borderColor: '#eee', marginBottom: 12 },
-  fieldLabel: { fontSize: 12, fontWeight: '700', color: '#666', marginBottom: 6 },
-  
+  stepLabel: {
+    fontSize: 11,
+    fontFamily: FONT_BODY_BOLD,
+    color: c.textMuted,
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+
+  courtSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: c.inputBg,
+    padding: 15,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: c.inputBorder,
+  },
+  courtSelectorSelected: { borderColor: c.accent, backgroundColor: c.accentSoft },
+  courtSelectorText: { fontSize: 16, fontFamily: FONT_BODY_REGULAR, color: c.textMuted },
+
+  input: {
+    backgroundColor: c.inputBg,
+    padding: 15,
+    borderRadius: 14,
+    fontSize: 18,
+    fontFamily: FONT_BODY_MEDIUM,
+    color: c.inputText,
+    borderWidth: 1,
+    borderColor: c.inputBorder,
+    marginBottom: 12,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontFamily: FONT_BODY_BOLD,
+    color: c.textMuted,
+    marginBottom: 6,
+  },
+
   modalButtons: { flexDirection: 'row', gap: 15, marginTop: 10 },
-  modalBtn: { flex: 1, padding: 15, borderRadius: 10, alignItems: 'center' },
-  cancelBtn: { backgroundColor: '#ddd' },
-  saveBtn: { backgroundColor: '#1b3358' },
-  modalBtnText: { fontWeight: '900', fontSize: 16 },
-  
+  modalBtn: { flex: 1, padding: 15, borderRadius: 14, alignItems: 'center' },
+  cancelBtn: { backgroundColor: c.surfaceLight },
+  cancelBtnText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.textSoft },
+  saveBtn: { backgroundColor: c.accent },
+  saveBtnText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.bg },
+
   // Court picker
-  courtOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 10, borderBottomWidth: 1, borderColor: '#f0f0f0' },
-  courtOptionSelected: { backgroundColor: '#f0fff0', borderRadius: 10 },
-  courtNameText: { fontSize: 16, fontWeight: '600', color: '#333' },
-  courtCity: { fontSize: 12, color: '#888', marginTop: 2 },
-  
-  addCourtBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, marginTop: 10, borderTopWidth: 1, borderColor: '#eee' },
-  addCourtBtnText: { color: '#4a90e2', fontWeight: '700', fontSize: 15 },
-  
-  saveCourtBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#87ca37', padding: 15, borderRadius: 12, marginTop: 10 },
-  saveCourtBtnText: { color: 'white', fontWeight: '900', fontSize: 16 },
-  
+  courtOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderColor: c.border,
+  },
+  courtOptionSelected: { backgroundColor: c.accentSoft, borderRadius: 10 },
+  courtNameText: { fontSize: 16, fontFamily: FONT_BODY_SEMIBOLD, color: c.text },
+  courtCity: { fontSize: 12, fontFamily: FONT_BODY_REGULAR, color: c.textMuted, marginTop: 2 },
+
+  addCourtBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 15,
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderColor: c.border,
+  },
+  addCourtBtnText: { color: c.secondary, fontFamily: FONT_BODY_BOLD, fontSize: 15 },
+
+  saveCourtBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: c.accent,
+    padding: 15,
+    borderRadius: 14,
+    marginTop: 10,
+  },
+  saveCourtBtnText: { color: c.bg, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16 },
+
   closeBtn: { marginTop: 15, alignItems: 'center', padding: 10 },
-  closeBtnText: { color: '#999', fontWeight: 'bold' },
+  closeBtnText: { color: c.textMuted, fontFamily: FONT_BODY_BOLD },
 
-  // Group count label
-  groupCountLabel: { color: '#87ca37', fontSize: 12, fontWeight: '700', textAlign: 'center', marginBottom: 8, letterSpacing: 1 },
-
-  // Settings Modal
+  // Settings
   settingsSection: { marginBottom: 20 },
-  settingsSectionTitle: { fontSize: 11, fontWeight: '900', color: '#999', letterSpacing: 1.5, marginBottom: 10 },
+  settingsSectionTitle: {
+    fontSize: 11,
+    fontFamily: FONT_BODY_BOLD,
+    color: c.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 10,
+  },
   settingsActionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
-  settingsActionText: { color: '#1b3358', fontSize: 15, fontWeight: '600' },
+  settingsActionText: { color: c.text, fontSize: 15, fontFamily: FONT_BODY_SEMIBOLD },
   tierBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  tierBadgeText: { color: 'white', fontWeight: '900', fontSize: 11, letterSpacing: 1 },
-  upgradeBtn: { backgroundColor: '#ff6b35', padding: 12, borderRadius: 10, alignItems: 'center', marginVertical: 8 },
-  upgradeBtnText: { color: 'white', fontWeight: '900', fontSize: 14 },
-  manageBtn: { backgroundColor: '#f0f2f5', padding: 12, borderRadius: 10, alignItems: 'center', marginVertical: 8 },
-  manageBtnText: { color: '#1b3358', fontWeight: '700', fontSize: 14 },
-  appVersion: { textAlign: 'center', color: '#ccc', fontSize: 12, marginTop: 10 },
+  tierBadgeText: { color: 'white', fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 11, letterSpacing: 1 },
+  upgradeBtn: { backgroundColor: '#ff6b35', padding: 12, borderRadius: 12, alignItems: 'center', marginVertical: 8 },
+  upgradeBtnText: { color: 'white', fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14 },
+  manageBtn: { backgroundColor: c.surfaceLight, padding: 12, borderRadius: 12, alignItems: 'center', marginVertical: 8 },
+  manageBtnText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 14 },
+  appVersion: { textAlign: 'center', color: c.textMuted, fontFamily: FONT_BODY_REGULAR, fontSize: 12, marginTop: 10 },
 });

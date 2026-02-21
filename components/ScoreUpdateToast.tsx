@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
     Animated,
     StyleSheet,
     Text,
     View
 } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 interface ScoreUpdateToastProps {
     visible: boolean;
@@ -16,6 +18,8 @@ interface ScoreUpdateToastProps {
 export function ScoreUpdateToast({ visible, message, onHide }: ScoreUpdateToastProps) {
     const slideAnim = useRef(new Animated.Value(-100)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
+    const { colors } = useTheme();
+    const styles = useMemo(() => createStyles(colors), [colors]);
 
     useEffect(() => {
         if (visible) {
@@ -84,7 +88,7 @@ export function ScoreUpdateToast({ visible, message, onHide }: ScoreUpdateToastP
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         position: 'absolute',
         top: 100,
@@ -93,7 +97,7 @@ const styles = StyleSheet.create({
         zIndex: 1000,
     },
     content: {
-        backgroundColor: '#87ca37',
+        backgroundColor: c.accent,
         borderRadius: 12,
         padding: 16,
         flexDirection: 'row',
@@ -110,7 +114,7 @@ const styles = StyleSheet.create({
     message: {
         color: 'white',
         fontSize: 14,
-        fontWeight: '700',
+        fontFamily: FONT_BODY_BOLD,
         flex: 1,
     },
 });
