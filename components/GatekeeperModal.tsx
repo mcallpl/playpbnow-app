@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BrandedIcon } from './BrandedIcon';
 import { BlurView } from 'expo-blur';
 import React, { useMemo, useState } from 'react';
 import {
@@ -57,7 +57,7 @@ export function GatekeeperModal({ visible, onClose, onSuccess }: GatekeeperModal
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
                     <View style={styles.content}>
                         <TouchableOpacity onPress={onClose} style={styles.closeIcon}>
-                            <Ionicons name="close" size={24} color={colors.textMuted} />
+                            <BrandedIcon name="close" size={24} color={colors.textMuted} />
                         </TouchableOpacity>
 
                         <Text style={styles.title}>Unlock Features</Text>
@@ -69,7 +69,9 @@ export function GatekeeperModal({ visible, onClose, onSuccess }: GatekeeperModal
                         </Text>
 
                         <View style={styles.inputContainer}>
-                            <Ionicons name="call-outline" size={20} color={colors.textMuted} style={{marginRight: 10}} />
+                            <View style={{marginRight: 10}}>
+                                <BrandedIcon name="phone" size={20} color={colors.textMuted} />
+                            </View>
                             <TextInput
                                 style={styles.input}
                                 placeholder="(555) 123-4567"

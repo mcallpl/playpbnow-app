@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BrandedIcon } from '../../components/BrandedIcon';
 import { RoundConfig } from '../../hooks/useSetupState';
 
 interface RoundsConfigModalProps {
@@ -27,7 +27,7 @@ export function RoundsConfigModal({
             <View style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                        <Ionicons name="close" size={28} color="white" />
+                        <BrandedIcon name="close" size={28} color="white" />
                     </TouchableOpacity>
                     <Text style={styles.title}>CONFIGURE ROUNDS</Text>
                     <View style={{ width: 40 }} />
@@ -74,7 +74,7 @@ export function RoundsConfigModal({
 
                     <View style={styles.roundControls}>
                         <TouchableOpacity style={styles.roundBtn} onPress={onAddRound}>
-                            <Ionicons name="add-circle-outline" size={24} color="#87ca37" />
+                            <BrandedIcon name="add" size={24} color="#87ca37" />
                             <Text style={styles.roundBtnText}>Add Round</Text>
                         </TouchableOpacity>
                         
@@ -83,7 +83,7 @@ export function RoundsConfigModal({
                             onPress={onRemoveRound}
                             disabled={roundsConfig.length <= 1}
                         >
-                            <Ionicons name="remove-circle-outline" size={24} color="#d32f2f" />
+                            <BrandedIcon name="minus" size={24} color="#d32f2f" />
                             <Text style={styles.roundBtnText}>Remove Round</Text>
                         </TouchableOpacity>
                     </View>

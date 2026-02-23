@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
     ActivityIndicator,
@@ -9,6 +8,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { BrandedIcon } from '../../components/BrandedIcon';
 
 interface GameHeaderProps {
     groupName: string;
@@ -38,7 +38,7 @@ export function GameHeader({
             <View style={styles.header}>
                 <View style={styles.titleRow}>
                     <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="white" />
+                        <BrandedIcon name="back" size={24} color="white" />
                     </TouchableOpacity>
                     
                     <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
@@ -65,7 +65,7 @@ export function GameHeader({
                             {loading ? (
                                 <ActivityIndicator size="small" color="#fff" />
                             ) : (
-                                <Ionicons name="shuffle" size={24} color="#fff" />
+                                <BrandedIcon name="shuffle" size={24} color="#fff" />
                             )}
                         </TouchableOpacity>
                         
@@ -82,7 +82,7 @@ export function GameHeader({
 
             <View style={styles.subHeaderAction}>
                 <TouchableOpacity onPress={onAddPlayer} style={styles.addPlayerBtn}>
-                    <Ionicons name="person-add" size={16} color="white" />
+                    <BrandedIcon name="person-add" size={16} color="white" />
                     <Text style={styles.addPlayerText}>ADD PLAYER</Text>
                 </TouchableOpacity>
             </View>

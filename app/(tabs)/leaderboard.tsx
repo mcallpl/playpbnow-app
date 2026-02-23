@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -194,7 +194,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   const handleSessionSelectPodium = async (session: UniversalSession | 'all') => {
       setFilterModalVisible(false);
       setLoading(true);
-      console.log('🎯 handleSessionSelectPodium - isGlobal:', isGlobal);
+      console.log('handleSessionSelectPodium - isGlobal:', isGlobal);
       if (session === 'all') {
           setSelectedBatchId('all');
           fetchLeaderboard(groupName, deviceId, isGlobal, 'all');
@@ -212,7 +212,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   const handleSessionSelectHistory = async (session: UniversalSession) => {
       setFilterModalVisible(false);
       setLoading(true);
-      console.log('📜 handleSessionSelectHistory - isGlobal:', isGlobal);
+      console.log('handleSessionSelectHistory - isGlobal:', isGlobal);
       setGroupName(session.group);
       setSelectedBatchId(session.id);
       // Save group name specific to mode (MINE or GLOBAL)
@@ -292,7 +292,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
                   <View style={[styles.podiumBar, styles.barSilver]}><Text style={styles.placeText}>2</Text></View>
               </View>
               <View style={[styles.podiumCol, {zIndex: 10}]}>
-                  <Text style={styles.crown}>👑</Text>
+                  <BrandedIcon name="leaderboard" size={30} color={colors.gold} />
                   <View style={[styles.avatarCircle, styles.avatarGold]}><Text style={styles.avatarText}>{gInitial}</Text></View>
                   {renderPodiumStats(gold, 'gold')}
                   <View style={[styles.podiumBar, styles.barGold]}><Text style={styles.placeText}>1</Text></View>
@@ -306,13 +306,13 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       );
   };
 
-  console.log('📋 Roster data:', roster);
+  console.log('Roster data:', roster);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.replace('/')} style={styles.backBtn}>
-            <Ionicons name="home" size={24} color={colors.text} />
+            <BrandedIcon name="home" size={24} color={colors.text} />
         </TouchableOpacity>
 
         <View style={{alignItems:'center', gap: 5}}>
@@ -345,7 +345,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
 
         <View style={{flexDirection:'row', gap: 10}}>
             <TouchableOpacity onPress={() => setCompareModalVisible(true)} style={styles.backBtn}>
-                <Ionicons name="people" size={24} color={colors.text} />
+                <BrandedIcon name="players" size={24} color={colors.text} />
             </TouchableOpacity>
         </View>
       </View>

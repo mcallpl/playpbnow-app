@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -191,7 +191,7 @@ export default function LiveMatchScreen() {
 
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                    <BrandedIcon name="back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.title}>{matchTitle || groupName}</Text>
@@ -205,7 +205,7 @@ export default function LiveMatchScreen() {
 
             <View style={styles.infoBar}>
                 <View style={styles.shareCodeContainer}>
-                    <Ionicons name="link" size={16} color={colors.accent} />
+                    <BrandedIcon name="link" size={16} color={colors.accent} />
                     <Text style={styles.shareCodeText}>{shareCode}</Text>
                 </View>
                 <Text style={styles.lastUpdateText}>
@@ -226,7 +226,7 @@ export default function LiveMatchScreen() {
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="tennisball-outline" size={64} color={colors.textMuted} />
+                            <BrandedIcon name="tennisball" size={64} color={colors.textMuted} />
                             <Text style={styles.emptyText}>No scores yet</Text>
                             <Text style={styles.emptySubtext}>
                                 Scores will appear here as they're entered
@@ -247,7 +247,7 @@ export default function LiveMatchScreen() {
                             });
                         }}
                     >
-                        <Ionicons name="pencil" size={20} color="white" />
+                        <BrandedIcon name="edit" size={20} color="white" />
                         <Text style={styles.editBtnText}>EDIT SCORES</Text>
                     </TouchableOpacity>
                 </View>

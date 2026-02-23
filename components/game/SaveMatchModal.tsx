@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { BrandedIcon } from '../../components/BrandedIcon';
 
 interface SaveMatchModalProps {
     visible: boolean;
@@ -46,21 +46,21 @@ export function SaveMatchModal({
                     <View style={styles.datePickerContainer}>
                         <View style={styles.dateRow}>
                             <TouchableOpacity onPress={() => adjustDate(-1)} style={styles.arrowBtn}>
-                                <Ionicons name="chevron-back" size={24} color="white" />
+                                <BrandedIcon name="chevron-left" size={24} color="white" />
                             </TouchableOpacity>
                             <Text style={styles.dateValue}>DAY</Text>
                             <TouchableOpacity onPress={() => adjustDate(1)} style={styles.arrowBtn}>
-                                <Ionicons name="chevron-forward" size={24} color="white" />
+                                <BrandedIcon name="chevron-right" size={24} color="white" />
                             </TouchableOpacity>
                         </View>
                         
                         <View style={styles.dateRow}>
                             <TouchableOpacity onPress={() => adjustTime(-1)} style={styles.arrowBtn}>
-                                <Ionicons name="chevron-back" size={24} color="white" />
+                                <BrandedIcon name="chevron-left" size={24} color="white" />
                             </TouchableOpacity>
                             <Text style={styles.dateValue}>TIME</Text>
                             <TouchableOpacity onPress={() => adjustTime(1)} style={styles.arrowBtn}>
-                                <Ionicons name="chevron-forward" size={24} color="white" />
+                                <BrandedIcon name="chevron-right" size={24} color="white" />
                             </TouchableOpacity>
                         </View>
                     </View>

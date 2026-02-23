@@ -1,6 +1,6 @@
 import { FilteredGamesModal } from '@/components/FilteredGamesModal';
 import { MatchRecord, RosterItem, useHeadToHead } from '@/hooks/useHeadToHead';
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import React, { useMemo, useState } from 'react';
 import {
     FlatList,
@@ -79,11 +79,11 @@ export default function HeadToHeadModal({
 
                 <View style={styles.header}>
                     <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-                        <Ionicons name="close" size={32} color={colors.text} />
+                        <BrandedIcon name="close" size={32} color={colors.text} />
                     </TouchableOpacity>
                     <Text style={styles.title}>HEAD TO HEAD</Text>
                     <TouchableOpacity onPress={handleReset} style={styles.headerBtn}>
-                        <Ionicons name="refresh" size={28} color={colors.text} />
+                        <BrandedIcon name="refresh" size={28} color={colors.text} />
                     </TouchableOpacity>
                 </View>
 
@@ -139,7 +139,7 @@ export default function HeadToHeadModal({
                                 </Text>
                             </View>
                             <TouchableOpacity onPress={() => setPickingFor(null)} style={styles.closeOverlayBtn}>
-                                <Ionicons name="close" size={30} color={colors.text} />
+                                <BrandedIcon name="close" size={30} color={colors.text} />
                             </TouchableOpacity>
                         </View>
 
@@ -154,7 +154,7 @@ export default function HeadToHeadModal({
                             />
                             {rosterSearch.length > 0 && (
                                 <TouchableOpacity onPress={() => setRosterSearch('')} style={styles.clearSearch}>
-                                    <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                                    <BrandedIcon name="close" size={20} color={colors.textMuted} />
                                 </TouchableOpacity>
                             )}
                         </View>

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import React, { useMemo } from 'react';
 import {
     Alert,
@@ -53,7 +53,7 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
                     <View style={styles.header}>
                         <Text style={styles.title}>SHARE LIVE MATCH</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                            <Ionicons name="close" size={28} color={colors.textMuted} />
+                            <BrandedIcon name="close" size={28} color={colors.textMuted} />
                         </TouchableOpacity>
                     </View>
 
@@ -70,27 +70,27 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
 
                     <View style={styles.buttons}>
                         <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-                            <Ionicons name="share-social" size={24} color="white" style={{ marginRight: 8 }} />
+                            <BrandedIcon name="share" size={24} color="white" style={{ marginRight: 8 }} />
                             <Text style={styles.shareBtnText}>SHARE CODE</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.copyBtn} onPress={copyToClipboard}>
-                            <Ionicons name="copy" size={20} color={colors.surface} style={{ marginRight: 8 }} />
+                            <BrandedIcon name="copy" size={20} color={colors.surface} style={{ marginRight: 8 }} />
                             <Text style={styles.copyBtnText}>COPY</Text>
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.features}>
                         <View style={styles.feature}>
-                            <Ionicons name="eye" size={20} color={colors.accent} />
+                            <BrandedIcon name="eye" size={20} color={colors.accent} />
                             <Text style={styles.featureText}>Live score updates</Text>
                         </View>
                         <View style={styles.feature}>
-                            <Ionicons name="pencil" size={20} color={colors.accent} />
+                            <BrandedIcon name="edit" size={20} color={colors.accent} />
                             <Text style={styles.featureText}>Collaborative scoring</Text>
                         </View>
                         <View style={styles.feature}>
-                            <Ionicons name="people" size={20} color={colors.accent} />
+                            <BrandedIcon name="groups" size={20} color={colors.accent} />
                             <Text style={styles.featureText}>View who's connected</Text>
                         </View>
                     </View>

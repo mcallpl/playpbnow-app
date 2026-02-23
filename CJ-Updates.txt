@@ -1,0 +1,472 @@
+You are working on a production React Native (Expo Router) + TypeScript app called Play PB Now, backed by PHP + MariaDB at:
+https://peoplestar.com/Chipleball/api/
+
+This is a precision implementation pass — not a rewrite.
+Do NOT refactor working architecture unless explicitly instructed.
+Preserve:
+- Universal player architecture (players global across groups; memberships table)
+- Collaborative scoring: Unit A is boss; server collab_score_updates is source of truth; Unit B full-pulls and replaces state; polling model stays
+- Session saving with scores_hash duplicate detection + force_update option
+- Existing endpoints and data contracts unless we add new endpoints
+
+PRIMARY OBJECTIVE
+Upgrade the UI/UX to feel like a $100k product and implement the Live Beacon feature set previously specified.
+We will stick with the current app colors and brand direction.
+
+LOCKED COLOR PALETTE (USE ONLY THESE)
+- Navy base: #1b3358 (primary brand navy) + existing dark/navy surfaces already in app
+- Green accent: #87ca37 (primary brand green)
+- Text on dark: white with 85–95% opacity
+- Muted text: white with 55–70% opacity
+- Borders: white with 6–10% opacity
+No new accent colors. No random gradients. Keep it restrained.
+
+ABSOLUTE BRANDING DIRECTIVES
+1) REMOVE ALL EMOJIS everywhere (UI text, badges, labels, toasts).
+2) NO generic icon packs (no Ionicons/FontAwesome/Material icons in UI).
+3) All icons must be branded and custom:
+- Create a BrandedIcon component backed by local SVG assets (react-native-svg).
+- Use only icons from /assets/icons/*.svg.
+- If an icon does not exist yet, do NOT use a placeholder icon. Create it first.
+4) No cartoon illustrations. No crowd graphics. No clip-art.
+
+OPTION 2 — ABSTRACT ATHLETIC ENERGY (LANDING + TOP-OF-SCREEN STYLE)
+Replace the current landing illustration with an abstract athletic system:
+- Background: deep navy surface (current navy).
+- Add a subtle noise/grain overlay across the entire screen (2–4% opacity).
+- Add an abstract “court geometry” motif in the top 40%:
+- thin court lines, rounded corners, partial arcs, and subtle grid segments
+- opacity 3–6% max
+- must not reduce readability
+- avoid obvious paddle/ball drawings; keep it abstract and premium
+- Add a subtle “light sweep” sheen (very soft) across the hero area only.
+- Center the real logo image (no glow effects, no cartoon style).
+- Below logo: concise premium subheading (1 line max):
+Example: “Structured Instant Matches”
+- Primary CTA: “Enter App” button in brand green with calm rounded shape.
+- Under CTA: a small “system status” row (lightweight):
+- “System Stable”
+- “Last Sync: Xs”
+- optional: “Active Players: N” if data exists; otherwise omit
+- Keep the bottom “Powered by PeopleStar” as subtle text (low contrast), or remove if it reduces premium feel.
+
+TEXTURE RULES (IMPORTANT)
+Texture is allowed only as whisper layers:
+- Noise overlay: global background (2–4% opacity)
+- Court geometry motif: hero area only (3–6% opacity)
+- Card sheen: subtle gradient highlight inside cards (dark mode) only
+Never place texture behind body text blocks or scoring numbers.
+Never use repetitive wallpaper patterns.
+If texture reduces readability, remove it.
+
+PREMIUM UI RULES (COGNITIVE SOUNDNESS)
+- One primary CTA per screen.
+- Strict hierarchy: one dominant element, one secondary, supporting metadata.
+- Generous spacing: consistent 20px screen padding, 16px card padding, 24px section spacing.
+- Calm motion only: fades 150–250ms, slides 180–220ms ease-out. No bouncy animations.
+- Subtle haptics on key actions: confirm, lock, start, save.
+- Typography discipline: consistent weights and sizes. No random font usage.
+
+INFO BOX SYSTEM (BRANDED, SUBTLE)
+Create 3 reusable components with branded styling (no emojis):
+1) InfoBox: guidance / explanation (1–2 lines)
+2) StatusBox: connectivity/sync/live indicators
+3) WarningBox: rare caution (force update, leaving lobby, etc.)
+Use these to reduce user confusion. Keep them short.
+
+LIVE BEACON FEATURE (BUILD-READY REQUIREMENTS)
+Implement the Live Beacon flow previously architected:
+- beacons table
+- beacon_lobbies table
+- beacon_lobby_members table
+- PHP endpoints:
+beacon_upsert.php
+beacon_feed.php
+beacon_create_lobby.php
+beacon_join_lobby.php
+beacon_confirm.php
+beacon_lobby_poll.php
+beacon_lock_lobby.php
+beacon_start_match.php
+- Polling approach only (no websockets).
+- Court-based v1 is acceptable; geo can remain optional.
+- Lock generates schedule_json with:
+teams, court assignments, match_quality_percent
+- Start creates collab_session and returns session_code.
+- Auto-navigate all members into the scoring screen when lobby starts (same polling-driven navigation pattern you already use).
+- Auto-navigate collaborators to leaderboard when host finishes and saves (same status-driven approach).
+
+MATCH QUALITY DISPLAY (PREMIUM SIGNAL)
+Every recommended match / locked preview must show “Match Quality %”.
+It can be heuristic. Must be calm and credible.
+No badges using emojis.
+
+RELIABILITY SCORE (LIGHTWEIGHT v1)
+Return reliability percent in beacon feed:
+completed_sessions / joined_sessions (or completed / total participated)
+Display as a small secondary metric (no heavy UI).
+
+SCREENS TO UPDATE / ADD
+- Landing/Entry screen (replace cartoon illustration with abstract athletic energy)
+- Add Play Now tab (/playnow) with:
+CreateBeaconScreen
+LiveFeedScreen
+LobbyScreen
+LockedPreviewScreen
+- Update tab bar icons to BrandedIcon.
+- Ensure existing screens (groups, setup, game, players, leaderboard) adopt the premium design system and remove emojis/generic icons.
+
+OUTPUT REQUIREMENTS
+Return:
+1) SQL migrations for new tables (safe, additive).
+2) Full PHP files for every new endpoint (complete production-ready).
+3) Full React Native files for each new screen + any modified existing screens.
+4) BrandedIcon component + icon asset list with filenames used.
+5) A short “Integration Steps” checklist (deploy order, migrations, file paths).
+No pseudocode. No placeholders. No missing logic.
+
+CONSTRAINTS
+- Do NOT break collaborative scoring.
+- Do NOT change session save logic other than adding necessary “completed” status propagation.
+- Maintain backward compatibility for existing app flows.
+
+If any requirement is ambiguous, ask ONE clarifying question before implementing.
+Otherwise, proceed and build.
+GLOBAL ICON STYLE RULES (NON-NEGOTIABLE)
+
+Format
+•SVG only
+•No PNG
+•No icon fonts
+•Stored in /assets/icons/
+
+Style
+•Outline style only (no filled icons)
+•Stroke width: 2px (consistent everywhere)
+•Stroke linecap: round
+•Stroke linejoin: round
+•No sharp corners
+•No gradients
+•No drop shadows
+•No decorative inner lines
+
+Corner Radius Language
+All geometry should use:
+•4px rounded corners minimum
+•Circular shapes preferred over sharp angles
+
+Grid System
+•Designed on 24x24 grid
+•2px safe margin
+•Centered optically, not mathematically
+
+Color Behavior
+Icons must inherit color from parent component.
+Do NOT hardcode colors in SVG.
+
+⸻
+
+CORE NAVIGATION ICONS
+
+These are the only icons allowed in tab navigation.
+
+⸻
+
+1️⃣ groups.svg
+
+Concept: Structured collection
+
+Shape:
+•3 rounded rectangles stacked in slight vertical offset
+•Top rectangle centered
+•Two slightly offset behind it
+•No people silhouettes
+
+Why:
+Signals organization, not social.
+
+⸻
+
+2️⃣ playnow.svg
+
+Concept: Live beacon / signal
+
+Shape:
+•Solid circle center (outline circle, not filled)
+•2 outward radiating curved arcs on each side (like WiFi but symmetrical)
+•No lightning bolts
+
+Why:
+Signals live broadcast, not speed gimmick.
+
+⸻
+
+3️⃣ players.svg
+
+Concept: Roster
+
+Shape:
+•Two minimal abstract head-and-shoulder outlines
+•Rounded heads
+•No facial detail
+•Overlapping slightly
+
+Why:
+Human without cartoon.
+
+⸻
+
+4️⃣ leaderboard.svg
+
+Concept: Structured ranking
+
+Shape:
+•3 vertical bars ascending left to right
+•Rounded tops
+•Equal spacing
+•No trophy
+
+Why:
+Data authority, not celebration.
+
+⸻
+
+ACTION ICONS
+
+⸻
+
+5️⃣ confirm.svg
+
+Concept: Approval
+
+Shape:
+•Rounded checkmark inside thin circle
+•Circle stroke same weight as check
+
+No bold check.
+No badge shape.
+
+⸻
+
+6️⃣ lock.svg
+
+Concept: Lock match
+
+Shape:
+•Rounded rectangle body
+•Semi-circle shackle
+•Minimal internal keyhole dot
+
+⸻
+
+7️⃣ start.svg
+
+Concept: Begin match
+
+Shape:
+•Right-pointing triangle
+•Enclosed in rounded circle
+•Balanced proportions
+
+Not oversized triangle.
+
+⸻
+
+8️⃣ save.svg
+
+Concept: Save session
+
+Shape:
+•Minimal floppy outline
+•Simplified
+•Rounded rectangle top cut
+•No internal detail clutter
+
+⸻
+
+9️⃣ sync.svg
+
+Concept: Sync / polling
+
+Shape:
+•Two curved arrows forming circle
+•Not sharp arrows
+•Rounded arrowheads
+
+⸻
+
+🔟 warning.svg
+
+Concept: Caution
+
+Shape:
+•Rounded triangle outline
+•Center dot + short vertical line
+•Stroke only
+
+No red fills.
+
+⸻
+
+PICKLEBALL-SPECIFIC ICONS (ABSTRACTED)
+
+These must avoid cartoon paddles.
+
+⸻
+
+11️⃣ court.svg
+
+Concept: Court geometry
+
+Shape:
+•Rounded rectangle outer boundary
+•Center net line
+•Two minimal kitchen line segments
+•Keep it abstract, not detailed
+
+⸻
+
+12️⃣ matchquality.svg
+
+Concept: Balance / fairness
+
+Shape:
+•Minimal balance scale
+•Rounded beam
+•Two identical circular pans
+•No decorative base
+
+⸻
+
+13️⃣ reliability.svg
+
+Concept: Trust
+
+Shape:
+•Shield outline
+•Rounded bottom
+•No inner decoration
+•Optionally small check inside (same stroke weight)
+
+⸻
+
+14️⃣ filter.svg
+
+Concept: Filter options
+
+Shape:
+•Minimal funnel
+•Wide top tapering down
+•Rounded edges
+
+⸻
+
+15️⃣ search.svg
+
+Concept: Search
+
+Shape:
+•Circle
+•Short handle
+•Balanced proportions
+
+⸻
+
+STATUS INDICATORS
+
+⸻
+
+16️⃣ live.svg
+
+Concept: Active
+
+Shape:
+•Small circle
+•Two subtle outer rings (thin)
+•Designed for green accent usage
+
+No blinking animation by default.
+
+⸻
+
+17️⃣ connection.svg
+
+Concept: Connected state
+
+Shape:
+•Small dot
+•Two small symmetrical arc lines above
+
+Subtle, minimal.
+
+⸻
+
+MICRO UTILITY ICONS
+
+⸻
+
+18️⃣ add.svg
+
+Rounded plus sign inside thin circle.
+
+⸻
+
+19️⃣ close.svg
+
+Rounded X inside circle.
+
+⸻
+
+20️⃣ menu.svg
+
+Three horizontal rounded bars. Equal length.
+
+⸻
+
+WHAT IS NOT ALLOWED
+
+❌ No trophy icon
+❌ No fire icon
+❌ No diamond icon
+❌ No star icon
+❌ No emoji fallback
+❌ No filled heavy icons
+❌ No inconsistent stroke thickness
+❌ No cartoon paddles
+/components/BrandedIcon.tsx
+Props:
+•name
+•size (default 24)
+•color (default inherit)
+•strokeWidth (default 2)
+
+Must:
+•Dynamically import correct SVG
+•Pass color via stroke prop
+•Maintain consistent viewBox
+
+⸻
+
+PSYCHOLOGICAL EFFECT OF THIS SYSTEM
+
+This icon language communicates:
+•Engineering discipline
+•Structure
+•Control
+•Fairness
+•Measured competition
+
+It avoids:
+•Gamification tone
+•Social media vibe
+•Rec league energy
+
+⸻
+
+Final Directive for Claude
+
+Add this to your build prompt:
+
+Under no circumstances may you invent new icon styles.
+All icons must conform to the Play PB Now Mini Icon Pack Spec.
+If a required icon does not exist in the spec, ask before creating it.

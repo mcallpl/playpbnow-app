@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import React, { useMemo } from 'react';
 import { FlatList, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,7 +35,7 @@ export function FilteredGamesModal({ visible, onClose, games, title }: FilteredG
                         style={styles.closeBtn}
                         hitSlop={{top:20, bottom:20, left:20, right:20}}
                     >
-                        <Ionicons name="close" size={30} color={colors.text} />
+                        <BrandedIcon name="close" size={30} color={colors.text} />
                     </TouchableOpacity>
                     <Text style={styles.title}>{title}</Text>
                     <View style={styles.placeholder} />

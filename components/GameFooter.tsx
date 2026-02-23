@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BrandedIcon } from './BrandedIcon';
 
 interface GameFooterProps {
     allScoresComplete: boolean;
@@ -28,7 +28,9 @@ export function GameFooter({
                     onPress={onInviteCollaborators}
                     activeOpacity={0.8}
                 >
-                    <Ionicons name="share-social" size={20} color="white" style={{ marginRight: 8 }} />
+                    <View style={{ marginRight: 8 }}>
+                        <BrandedIcon name="share" size={20} color="white" />
+                    </View>
                     <Text style={styles.btnText}>INVITE COLLABORATORS</Text>
                 </TouchableOpacity>
             </View>

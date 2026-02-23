@@ -134,7 +134,7 @@ export default function LoginScreen() {
             >
                 <View style={styles.header}>
                     <Image
-                        source={require('../assets/images/PlayPBNow-Logo-SMALL.png')}
+                        source={require('../assets/images/PPBN-Logo-SMALL.png')}
                         style={styles.logo}
                         resizeMode="contain"
                     />

@@ -55,9 +55,11 @@ export function useAuth() {
         try {
             console.log('🚪 Logging out...');
             await AsyncStorage.multiRemove([
-                'session_token', 
-                'user_id', 
+                'session_token',
+                'user_id',
                 'user_phone',
+                'user_first_name',
+                'user_last_name',
                 'device_id',
                 'active_group_name',
                 'active_group_name_global',

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import React, { useMemo, useState } from 'react';
 import {
     Alert,
@@ -127,8 +127,8 @@ export function HistoryModal({
                     <View style={styles.visualHeader}>
                         <Text style={styles.visualLabel}>{displayLabel}</Text>
                         <View style={{flexDirection:'row', gap:15}}>
-                            <TouchableOpacity onPress={saveEdit}><Ionicons name="checkmark-circle" size={28} color={colors.accent} /></TouchableOpacity>
-                            <TouchableOpacity onPress={() => { setEditTargetId(null); setEditOriginalMatch(null); }}><Ionicons name="close-circle" size={28} color={colors.textMuted} /></TouchableOpacity>
+                            <TouchableOpacity onPress={saveEdit}><BrandedIcon name="confirm" size={28} color={colors.accent} /></TouchableOpacity>
+                            <TouchableOpacity onPress={() => { setEditTargetId(null); setEditOriginalMatch(null); }}><BrandedIcon name="close" size={28} color={colors.textMuted} /></TouchableOpacity>
                         </View>
                     </View>
 
@@ -157,8 +157,8 @@ export function HistoryModal({
                         <View style={{flexDirection:'row', gap:15}}>
                         {canEdit && (
                             <>
-                                <TouchableOpacity onPress={() => startEditing(item)}><Ionicons name="pencil" size={18} color={colors.textSoft} /></TouchableOpacity>
-                                <TouchableOpacity onPress={() => onDeleteMatch(item)}><Ionicons name="trash" size={18} color="#ff6961" /></TouchableOpacity>
+                                <TouchableOpacity onPress={() => startEditing(item)}><BrandedIcon name="edit" size={18} color={colors.textSoft} /></TouchableOpacity>
+                                <TouchableOpacity onPress={() => onDeleteMatch(item)}><BrandedIcon name="trash" size={18} color="#ff6961" /></TouchableOpacity>
                             </>
                         )}
                         </View>
@@ -193,7 +193,7 @@ export function HistoryModal({
                         hitSlop={{top:40, bottom:40, left:40, right:40}}
                         style={styles.closeBtn}
                     >
-                        <Ionicons name="close" size={36} color={colors.text} />
+                        <BrandedIcon name="close" size={36} color={colors.text} />
                     </TouchableOpacity>
                     <Text style={styles.compTitle}>GAME HISTORY</Text>
                     <View style={{width:36}} />
@@ -202,7 +202,7 @@ export function HistoryModal({
                 <View style={styles.sessionRow}>
                     {canDeleteSession && (
                         <TouchableOpacity onPress={onDeleteSession} style={styles.deleteSessionBtnFull}>
-                            <Ionicons name="trash-bin" size={20} color={colors.text} style={{marginRight:8}} />
+                            <BrandedIcon name="trash" size={20} color={colors.text} style={{marginRight:8}} />
                             <Text style={styles.deleteSessionText}>DELETE ENTIRE MATCH</Text>
                         </TouchableOpacity>
                     )}

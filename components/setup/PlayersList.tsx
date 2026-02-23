@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BrandedIcon } from '../../components/BrandedIcon';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Player } from '../../hooks/useSetupState';
@@ -27,12 +27,14 @@ export function PlayersList({ players, setPlayers, onRemovePlayer }: PlayersList
                     ]}
                 >
                     <View style={styles.playerInfo}>
-                        <Ionicons name="menu" size={20} color="#333" style={styles.dragIcon} />
+                        <View style={styles.dragIcon}>
+                            <BrandedIcon name="menu" size={20} color="#333" />
+                        </View>
                         <Text style={styles.playerName}>{item.first_name}</Text>
                         <Text style={styles.playerGender}>({item.gender})</Text>
                     </View>
                     <TouchableOpacity onPress={() => onRemovePlayer(item.id)} style={styles.removeBtn}>
-                        <Ionicons name="trash-outline" size={20} color="#d32f2f" />
+                        <BrandedIcon name="trash" size={20} color="#d32f2f" />
                     </TouchableOpacity>
                 </TouchableOpacity>
             </ScaleDecorator>

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -9,7 +9,6 @@ import {
     Modal,
     Platform,
     Pressable,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
@@ -17,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
@@ -319,16 +319,16 @@ export default function SetupScreen() {
         <View style={[styles.playerRow, isActive && { backgroundColor: colors.cardHover, elevation: 5 }]}>
           <View style={styles.playerInfo}>
              <Pressable onPressIn={drag} hitSlop={20} style={styles.dragHandle}>
-                 <Ionicons name="menu" size={24} color={colors.textMuted} />
+                 <BrandedIcon name="menu" size={24} color={colors.textMuted} />
              </Pressable>
              <View style={[styles.genderIcon, { backgroundColor: item.gender === 'female' ? 'rgba(247,140,162,0.15)' : 'rgba(79,172,254,0.15)' }]}>
-                 <Ionicons name={item.gender === 'female' ? 'woman' : 'man'} size={16}
+                 <BrandedIcon name={item.gender === 'female' ? 'gender-female' : 'gender-male'} size={16}
                     color={item.gender === 'female' ? colors.female : colors.male} />
              </View>
              <View style={{ marginLeft: 12, flex: 1 }}>
                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                      <Text style={styles.playerName}>{item.first_name}</Text>
-                     {item.is_verified && <Ionicons name="checkmark-circle" size={14} color={colors.accent} />}
+                     {item.is_verified && <BrandedIcon name="confirm" size={14} color={colors.accent} />}
                  </View>
                  <Text style={styles.playerStats}>
                      {hasStats ? `${item.wins}W-${item.losses}L · ${(item.win_pct || 0).toFixed(0)}%` : ''}
@@ -338,7 +338,7 @@ export default function SetupScreen() {
              </View>
           </View>
           <TouchableOpacity onPress={() => removePlayer(item.id)}>
-            <Ionicons name="close-circle" size={22} color={colors.danger} style={{ opacity: 0.5 }} />
+            <BrandedIcon name="close" size={22} color={colors.danger} style={{ opacity: 0.5 }} />
           </TouchableOpacity>
         </View>
       </ScaleDecorator>
@@ -356,13 +356,13 @@ export default function SetupScreen() {
 
         <View style={styles.header}>
             <TouchableOpacity onPress={() => router.replace('/(tabs)/groups')} style={styles.backBtn}>
-                <Ionicons name="arrow-back" size={22} color={colors.text} />
+                <BrandedIcon name="back" size={22} color={colors.text} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
                 <Text style={styles.headerTitle}>{groupName ? groupName.toUpperCase() : 'NEW GROUP'}</Text>
                 {courtName ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                        <Ionicons name="location" size={10} color={colors.accent} />
+                        <BrandedIcon name="location" size={10} color={colors.accent} />
                         <Text style={styles.courtText}>{courtName}</Text>
                     </View>
                 ) : null}
@@ -388,11 +388,11 @@ export default function SetupScreen() {
         {/* ACTION BUTTONS */}
         <View style={styles.actionButtons}>
             <TouchableOpacity style={styles.createMatchBtn} onPress={handleSetupPress}>
-                <Ionicons name="game-controller" size={18} color={colors.bg} />
+                <BrandedIcon name="game-controller" size={18} color={colors.bg} />
                 <Text style={styles.createMatchBtnText}>CREATE MATCH</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.editPlayersBtn} onPress={() => router.push('/(tabs)/players')}>
-                <Ionicons name="people" size={18} color={colors.textSoft} />
+                <BrandedIcon name="groups" size={18} color={colors.textSoft} />
                 <Text style={styles.editPlayersBtnText}>ALL PLAYERS</Text>
             </TouchableOpacity>
         </View>
@@ -408,19 +408,19 @@ export default function SetupScreen() {
                 <TouchableOpacity style={[styles.genderBtn, newPlayerGender === 'male' ? styles.maleActive : styles.femaleActive]}
                     onPress={() => setNewPlayerGender(prev => prev === 'male' ? 'female' : 'male')}
                     disabled={isAdding}>
-                    <Ionicons name={newPlayerGender === 'male' ? 'man' : 'woman'} size={20} color="white" />
+                    <BrandedIcon name={newPlayerGender === 'male' ? 'gender-male' : 'gender-female'} size={20} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.addBtn, isAdding && { opacity: 0.5 }]} onPress={addNewPlayer} disabled={isAdding}>
-                    {isAdding ? <ActivityIndicator size="small" color={colors.text} /> : <Ionicons name="add" size={24} color={colors.text} />}
+                    {isAdding ? <ActivityIndicator size="small" color={colors.text} /> : <BrandedIcon name="add" size={24} color={colors.text} />}
                 </TouchableOpacity>
             </View>
 
             {!showPhoneInput ? (
                 <TouchableOpacity onPress={() => setShowPhoneInput(true)} style={styles.phoneToggle}>
-                    <Ionicons name="call-outline" size={14} color={colors.secondary} />
+                    <BrandedIcon name="phone" size={14} color={colors.secondary} />
                     <Text style={styles.phoneToggleText}>Add phone number</Text>
                     <TouchableOpacity onPress={() => setPhoneInfoVisible(true)} hitSlop={10}>
-                        <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
+                        <BrandedIcon name="info" size={16} color={colors.textMuted} />
                     </TouchableOpacity>
                 </TouchableOpacity>
             ) : (
@@ -430,7 +430,7 @@ export default function SetupScreen() {
                         value={newPlayerPhone} onChangeText={setNewPlayerPhone}
                         keyboardType="phone-pad" />
                     <TouchableOpacity onPress={() => { setShowPhoneInput(false); setNewPlayerPhone(''); }}>
-                        <Ionicons name="close" size={20} color={colors.textMuted} />
+                        <BrandedIcon name="close" size={20} color={colors.textMuted} />
                     </TouchableOpacity>
                 </View>
             )}
@@ -442,17 +442,17 @@ export default function SetupScreen() {
                         <TouchableOpacity key={result.id} style={styles.searchRow} onPress={() => addExistingPlayer(result)}>
                             <View style={{ flex: 1 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                    <Ionicons name={result.gender === 'female' ? 'woman' : 'man'} size={16}
+                                    <BrandedIcon name={result.gender === 'female' ? 'gender-female' : 'gender-male'} size={16}
                                         color={result.gender === 'female' ? colors.female : colors.male} />
                                     <Text style={styles.searchName}>{result.first_name} {result.last_name}</Text>
-                                    {result.is_verified && <Ionicons name="checkmark-circle" size={12} color={colors.accent} />}
+                                    {result.is_verified && <BrandedIcon name="confirm" size={12} color={colors.accent} />}
                                 </View>
                                 <Text style={styles.searchMeta}>
                                     {result.source}{result.groups.length > 0 ? ` · ${result.groups.join(', ')}` : ''}
                                     {result.wins + result.losses > 0 ? ` · ${result.wins}W-${result.losses}L` : ''}
                                 </Text>
                             </View>
-                            <Ionicons name="add-circle" size={24} color={colors.accent} />
+                            <BrandedIcon name="add" size={24} color={colors.accent} />
                         </TouchableOpacity>
                     ))}
                     {isSearching && <ActivityIndicator size="small" color={colors.secondary} style={{ padding: 10 }} />}
@@ -468,7 +468,7 @@ export default function SetupScreen() {
         <Modal visible={phoneInfoVisible} transparent animationType="fade">
             <View style={styles.modalOverlay}>
                 <View style={[styles.modalContent, { padding: 30 }]}>
-                    <Ionicons name="shield-checkmark" size={48} color={colors.accent} style={{ alignSelf: 'center', marginBottom: 15 }} />
+                    <BrandedIcon name="confirm" size={48} color={colors.accent} style={{ alignSelf: 'center', marginBottom: 15 }} />
                     <Text style={styles.modalTitle}>Why Add a Phone?</Text>
                     <Text style={styles.infoText}>
                         Adding a phone number creates a <Text style={{ fontFamily: FONT_BODY_BOLD }}>verified player profile</Text> that tracks stats across ALL groups and courts.
@@ -493,7 +493,7 @@ export default function SetupScreen() {
                 <TextInput style={styles.modalInput} value={saveAsName} onChangeText={setSaveAsName}
                     placeholderTextColor={colors.inputPlaceholder} />
                 <TouchableOpacity style={styles.saveOptionBtn} onPress={handleSmartSave}>
-                    <Ionicons name="save" size={24} color={colors.bg} />
+                    <BrandedIcon name="save" size={24} color={colors.bg} />
                     <Text style={styles.saveOptionText}>SAVE GROUP</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setSaveModalVisible(false)} style={styles.closeModalBtn}>
@@ -508,7 +508,7 @@ export default function SetupScreen() {
                 <Text style={styles.modalTitle}>MATCH SETUP</Text>
                 {courtName ? (
                     <View style={styles.courtDisplayBar}>
-                        <Ionicons name="location" size={16} color={colors.accent} />
+                        <BrandedIcon name="location" size={16} color={colors.accent} />
                         <Text style={styles.courtDisplayText}>{courtName}</Text>
                     </View>
                 ) : null}
@@ -520,9 +520,9 @@ export default function SetupScreen() {
                 <View style={styles.counterRow}>
                     <Text style={styles.label}>ROUNDS:</Text>
                     <View style={styles.roundControls}>
-                        <TouchableOpacity onPress={removeRound} style={styles.roundBtn}><Ionicons name="remove" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={removeRound} style={styles.roundBtn}><BrandedIcon name="minus" size={24} color={colors.text} /></TouchableOpacity>
                         <Text style={styles.roundCountText}>{roundsConfig.length}</Text>
-                        <TouchableOpacity onPress={addRound} style={styles.roundBtn}><Ionicons name="add" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={addRound} style={styles.roundBtn}><BrandedIcon name="add" size={24} color={colors.text} /></TouchableOpacity>
                     </View>
                 </View>
                 <View style={{ height: 250, marginVertical: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 12 }}>

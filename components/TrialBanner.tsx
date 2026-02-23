@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
+import { BrandedIcon } from './BrandedIcon';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useTheme } from '../context/ThemeContext';
@@ -19,7 +19,7 @@ export const TrialBanner: React.FC = () => {
         return (
             <View style={[styles.banner, isUrgent ? styles.urgentBanner : styles.trialBanner]}>
                 <View style={styles.bannerContent}>
-                    <Ionicons name={isUrgent ? 'flash' : 'star'} size={18} color={colors.text} />
+                    <BrandedIcon name={isUrgent ? 'flash' : 'star'} size={18} color={colors.text} />
                     <Text style={styles.bannerText}>
                         {isUrgent
                             ? `Trial ending in ${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'}!`
@@ -30,7 +30,7 @@ export const TrialBanner: React.FC = () => {
                     </TouchableOpacity>
                 </View>
                 <TouchableOpacity style={styles.dismissBtn} onPress={() => setDismissed(true)}>
-                    <Ionicons name="close" size={16} color="rgba(255,255,255,0.7)" />
+                    <BrandedIcon name="close" size={16} color="rgba(255,255,255,0.7)" />
                 </TouchableOpacity>
             </View>
         );
@@ -41,14 +41,14 @@ export const TrialBanner: React.FC = () => {
         return (
             <View style={[styles.banner, styles.expiredBanner]}>
                 <View style={styles.bannerContent}>
-                    <Ionicons name="lock-closed" size={16} color={colors.text} />
+                    <BrandedIcon name="lock" size={16} color={colors.text} />
                     <Text style={styles.bannerText}>Your trial has ended</Text>
                     <TouchableOpacity style={styles.subscribeBtn} onPress={() => showPaywall('Pro subscriptions are coming soon! Here is what you will get:')}>
                         <Text style={styles.subscribeBtnText}>Learn More</Text>
                     </TouchableOpacity>
                 </View>
                 <TouchableOpacity style={styles.dismissBtn} onPress={() => setDismissed(true)}>
-                    <Ionicons name="close" size={16} color="rgba(255,255,255,0.7)" />
+                    <BrandedIcon name="close" size={16} color="rgba(255,255,255,0.7)" />
                 </TouchableOpacity>
             </View>
         );

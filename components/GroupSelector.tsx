@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import { Picker } from '@react-native-picker/picker';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -28,7 +28,7 @@ export function GroupSelector({ groups, selectedGroupId, selectedCount, onSelect
     return (
         <View style={styles.selectorContainer}>
             <View style={styles.header}>
-                <Ionicons name="people" size={20} color={colors.secondary} />
+                <BrandedIcon name="groups" size={20} color={colors.secondary} />
                 <Text style={styles.headerText}>
                     {selectedCount} player{selectedCount > 1 ? 's' : ''} selected
                 </Text>

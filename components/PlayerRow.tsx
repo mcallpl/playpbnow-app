@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -38,8 +38,8 @@ export function PlayerRow({ player, selectionMode, isSelected, onToggleSelect, o
         >
             {selectionMode && (
                 <View style={styles.checkboxContainer}>
-                    <Ionicons
-                        name={isSelected ? 'checkbox' : 'square-outline'}
+                    <BrandedIcon
+                        name={isSelected ? 'checkbox' : 'checkbox-empty'}
                         size={24}
                         color={isSelected ? colors.secondary : colors.textMuted}
                     />
@@ -73,10 +73,10 @@ export function PlayerRow({ player, selectionMode, isSelected, onToggleSelect, o
             {!selectionMode && (
                 <View style={styles.actions}>
                     <TouchableOpacity onPress={onEdit} style={styles.actionBtn}>
-                        <Ionicons name="pencil" size={20} color={colors.secondary} />
+                        <BrandedIcon name="edit" size={20} color={colors.secondary} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={onDelete} style={styles.actionBtn}>
-                        <Ionicons name="trash" size={20} color={colors.danger} />
+                        <BrandedIcon name="trash" size={20} color={colors.danger} />
                     </TouchableOpacity>
                 </View>
             )}

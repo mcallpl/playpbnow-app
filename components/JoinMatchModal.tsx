@@ -11,7 +11,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
@@ -87,7 +87,7 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                     <View style={styles.header}>
                         <Text style={styles.title}>JOIN LIVE MATCH</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                            <Ionicons name="close" size={28} color={colors.textMuted} />
+                            <BrandedIcon name="close" size={28} color={colors.textMuted} />
                         </TouchableOpacity>
                     </View>
 
@@ -117,7 +117,7 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                             <ActivityIndicator color="white" />
                         ) : (
                             <>
-                                <Ionicons name="enter" size={24} color="white" style={{ marginRight: 8 }} />
+                                <BrandedIcon name="enter" size={24} color="white" style={{ marginRight: 8 }} />
                                 <Text style={styles.joinBtnText}>JOIN MATCH</Text>
                             </>
                         )}
@@ -125,15 +125,15 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
 
                     <View style={styles.features}>
                         <View style={styles.feature}>
-                            <Ionicons name="eye" size={18} color={colors.accent} />
+                            <BrandedIcon name="eye" size={18} color={colors.accent} />
                             <Text style={styles.featureText}>See live score updates</Text>
                         </View>
                         <View style={styles.feature}>
-                            <Ionicons name="pencil" size={18} color={colors.accent} />
+                            <BrandedIcon name="edit" size={18} color={colors.accent} />
                             <Text style={styles.featureText}>Help keep score</Text>
                         </View>
                         <View style={styles.feature}>
-                            <Ionicons name="people" size={18} color={colors.accent} />
+                            <BrandedIcon name="groups" size={18} color={colors.accent} />
                             <Text style={styles.featureText}>See who's connected</Text>
                         </View>
                     </View>

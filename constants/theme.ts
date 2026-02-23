@@ -2,39 +2,39 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   dark: {
-    bg: '#0a0e1a',
-    surface: '#131829',
-    surfaceLight: '#1a2038',
-    card: '#1e2540',
-    cardHover: '#252d4a',
-    accent: '#00e87b',
-    accentGlow: 'rgba(0, 232, 123, 0.15)',
-    accentSoft: 'rgba(0, 232, 123, 0.08)',
+    bg: '#0f1b2d',
+    surface: '#152945',
+    surfaceLight: '#1b3358',
+    card: '#1e3a5f',
+    cardHover: '#254570',
+    accent: '#87ca37',
+    accentGlow: 'rgba(135, 202, 55, 0.15)',
+    accentSoft: 'rgba(135, 202, 55, 0.08)',
     secondary: '#6c5ce7',
     gold: '#ffd23f',
     silver: '#c0c7d6',
     bronze: '#e8985a',
     text: '#ffffff',
-    textMuted: '#6b7394',
-    textSoft: '#9ba3c2',
+    textMuted: 'rgba(255,255,255,0.60)',
+    textSoft: 'rgba(255,255,255,0.70)',
     danger: '#ff4757',
     male: '#4facfe',
     female: '#f78ca2',
-    border: 'rgba(255,255,255,0.06)',
-    glassBg: 'rgba(255,255,255,0.03)',
-    glassStroke: 'rgba(255,255,255,0.08)',
+    border: 'rgba(255,255,255,0.08)',
+    glassBg: 'rgba(255,255,255,0.04)',
+    glassStroke: 'rgba(255,255,255,0.10)',
     modalOverlay: 'rgba(0,0,0,0.85)',
-    modalBg: '#1e2540',
-    inputBg: '#131829',
-    inputBorder: 'rgba(255,255,255,0.1)',
+    modalBg: '#1e3a5f',
+    inputBg: '#152945',
+    inputBorder: 'rgba(255,255,255,0.10)',
     inputText: '#ffffff',
-    inputPlaceholder: '#6b7394',
+    inputPlaceholder: 'rgba(255,255,255,0.45)',
     // backward-compat keys
-    background: '#0a0e1a',
-    tint: '#00e87b',
-    icon: '#6b7394',
-    tabIconDefault: '#6b7394',
-    tabIconSelected: '#00e87b',
+    background: '#0f1b2d',
+    tint: '#87ca37',
+    icon: 'rgba(255,255,255,0.60)',
+    tabIconDefault: 'rgba(255,255,255,0.60)',
+    tabIconSelected: '#87ca37',
   },
   light: {
     bg: '#f5f7fa',
@@ -42,9 +42,9 @@ export const Colors = {
     surfaceLight: '#f0f2f5',
     card: '#ffffff',
     cardHover: '#f8f9fb',
-    accent: '#00c968',
-    accentGlow: 'rgba(0, 201, 104, 0.12)',
-    accentSoft: 'rgba(0, 201, 104, 0.06)',
+    accent: '#6db82c',
+    accentGlow: 'rgba(109, 184, 44, 0.12)',
+    accentSoft: 'rgba(109, 184, 44, 0.06)',
     secondary: '#6c5ce7',
     gold: '#f5a623',
     silver: '#8e99a4',
@@ -66,10 +66,10 @@ export const Colors = {
     inputPlaceholder: '#999999',
     // backward-compat keys
     background: '#f5f7fa',
-    tint: '#00c968',
+    tint: '#6db82c',
     icon: '#6b7394',
     tabIconDefault: '#6b7394',
-    tabIconSelected: '#00c968',
+    tabIconSelected: '#6db82c',
   },
 };
 
@@ -86,6 +86,19 @@ export const FONT_BODY_BOLD = 'DMSans_700Bold';
 export const FONT_BODY_SEMIBOLD = 'DMSans_600SemiBold';
 export const FONT_BODY_MEDIUM = 'DMSans_500Medium';
 export const FONT_BODY_REGULAR = 'DMSans_400Regular';
+
+// Premium UI spacing
+export const SPACING = {
+  screenPadding: 20,
+  cardPadding: 16,
+  sectionSpacing: 24,
+} as const;
+
+// Animation timing
+export const ANIMATION = {
+  fadeDuration: 200,
+  slideDuration: 200,
+} as const;
 
 export const Fonts = Platform.select({
   ios: {

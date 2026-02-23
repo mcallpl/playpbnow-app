@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import React, { useMemo, useRef, useState } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -43,16 +43,16 @@ export function PlayerInput({ onAddPlayer }: PlayerInputProps) {
                     style={[styles.genderBtn, gender === 'male' && styles.genderMale]}
                     onPress={() => setGender('male')}
                 >
-                    <Ionicons name="man" size={20} color={colors.text} />
+                    <BrandedIcon name="gender-male" size={20} color={colors.text} />
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.genderBtn, gender === 'female' && styles.genderFemale]}
                     onPress={() => setGender('female')}
                 >
-                    <Ionicons name="woman" size={20} color={colors.text} />
+                    <BrandedIcon name="gender-female" size={20} color={colors.text} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
-                    <Ionicons name="add-circle" size={32} color={colors.accent} />
+                    <BrandedIcon name="add" size={32} color={colors.accent} />
                 </TouchableOpacity>
             </View>
         </View>

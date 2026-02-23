@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import React, { useMemo } from 'react';
 import {
     FlatList,
@@ -76,8 +76,8 @@ export function SessionSelectModal({
                         style={styles.iconBtn}
                         onPress={() => onSelectHistory(item as UniversalSession)}
                     >
-                        <Ionicons
-                            name="pencil"
+                        <BrandedIcon
+                            name="edit"
                             size={22}
                             color={isSelected ? colors.text : colors.accent}
                         />
@@ -89,7 +89,7 @@ export function SessionSelectModal({
                         style={styles.iconBtn}
                         onPress={() => onSelectHistory(item as UniversalSession)}
                     >
-                        <Ionicons
+                        <BrandedIcon
                             name="eye"
                             size={22}
                             color={colors.accent}

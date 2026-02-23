@@ -20,14 +20,17 @@ import {
 import { ActiveMatchProvider } from '../context/ActiveMatchContext';
 import { SubscriptionProvider } from '../context/SubscriptionContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
+import { BeaconProvider } from '../context/BeaconContext';
 import { PaywallModal } from '../components/PaywallModal';
 import { useAuth } from '../hooks/useAuth';
+import { useSoundPlayers } from '../utils/sounds';
 
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutInner() {
   const { isAuthenticated } = useAuth();
   const { colors } = useTheme();
+  useSoundPlayers();
 
   if (isAuthenticated === null) {
     return (
@@ -38,16 +41,18 @@ function RootLayoutInner() {
   }
 
   return (
-    <ActiveMatchProvider>
-      <SubscriptionProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="login" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="live-match" />
-        </Stack>
-        <PaywallModal />
-      </SubscriptionProvider>
-    </ActiveMatchProvider>
+    <BeaconProvider>
+      <ActiveMatchProvider>
+        <SubscriptionProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="login" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="live-match" />
+          </Stack>
+          <PaywallModal />
+        </SubscriptionProvider>
+      </ActiveMatchProvider>
+    </BeaconProvider>
   );
 }
 

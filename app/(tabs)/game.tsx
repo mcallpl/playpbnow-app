@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -40,6 +40,7 @@ import {
     FONT_BODY_BOLD,
     FONT_BODY_SEMIBOLD,
 } from '../../constants/theme';
+import { haptic } from '../../utils/haptics';
 
 const API_URL = 'https://peoplestar.com/Chipleball/api';
 
@@ -379,6 +380,7 @@ export default function GameScreen() {
         try { data = JSON.parse(responseText); } catch (parseError) { Alert.alert("Error", `Server returned invalid data`); return; }
 
         if (data.status === 'success') {
+            haptic.save();
             await clearScores(); setSaveModalVisible(false);
             clearActiveMatch();
             Alert.alert("Success!", data.message || "Match saved successfully!");
@@ -491,7 +493,7 @@ export default function GameScreen() {
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <TouchableOpacity onPress={() => router.replace('/')} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <BrandedIcon name="back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
                 {groupName ? groupName.toUpperCase() : "MATCH SETUP"}
@@ -507,13 +509,13 @@ export default function GameScreen() {
               </View>
               <View style={styles.headerRightControls}>
                   <TouchableOpacity onPress={handleInviteCollaborator} style={styles.shuffleBtn}>
-                      <Ionicons name="flash" size={24} color={shareCode ? colors.accent : colors.text} />
+                      <BrandedIcon name="flash" size={24} color={shareCode ? colors.accent : colors.text} />
                   </TouchableOpacity>
                   {shareCode && connectedUsers > 0 && (
                       <View style={styles.connectedBadge}><Text style={styles.connectedText}>{connectedUsers}</Text></View>
                   )}
                   <TouchableOpacity onPress={handleShuffle} style={styles.shuffleBtn} disabled={loading}>
-                      {loading ? <ActivityIndicator size="small" color={colors.text} /> : <Ionicons name="shuffle" size={24} color={colors.text} />}
+                      {loading ? <ActivityIndicator size="small" color={colors.text} /> : <BrandedIcon name="shuffle" size={24} color={colors.text} />}
                   </TouchableOpacity>
                   <Switch value={isMatchScored} onValueChange={setIsMatchScored}
                     trackColor={{false: colors.textMuted, true: colors.accent}} thumbColor={colors.text}
@@ -522,7 +524,7 @@ export default function GameScreen() {
           </View>
           {shareCode && (
               <View style={styles.collabStatusBar}>
-                  <Ionicons name="radio" size={14} color={colors.accent} />
+                  <BrandedIcon name="live" size={14} color={colors.accent} />
                   <Text style={styles.collabStatusText}>
                       LIVE — Code: {shareCode}{connectedUsers > 0 ? ` \u2022 ${connectedUsers} connected` : ''}
                   </Text>
@@ -532,7 +534,7 @@ export default function GameScreen() {
 
         <View style={styles.subHeaderAction}>
             <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addPlayerBtn}>
-                <Ionicons name="person-add" size={16} color={colors.text} /><Text style={styles.addPlayerText}>ADD PLAYER</Text>
+                <BrandedIcon name="person-add" size={16} color={colors.text} /><Text style={styles.addPlayerText}>ADD PLAYER</Text>
             </TouchableOpacity>
         </View>
 
@@ -580,7 +582,7 @@ export default function GameScreen() {
                 <Text style={styles.modalTitle}>GENERATE HD REPORT</Text>
                 {isFree && (
                     <TouchableOpacity onPress={() => showPaywall('Upgrade to Pro for clean, watermark-free reports!')} style={styles.watermarkBadge}>
-                        <Ionicons name="lock-closed" size={12} color="#ff6b35" />
+                        <BrandedIcon name="lock" size={12} color="#ff6b35" />
                         <Text style={styles.watermarkBadgeText}>FREE — Reports include watermark</Text>
                     </TouchableOpacity>
                 )}
@@ -589,14 +591,14 @@ export default function GameScreen() {
                 <Text style={styles.label}>Date & Time</Text>
                 <View style={styles.datePickerContainer}>
                     <View style={styles.dateRow}>
-                        <TouchableOpacity onPress={() => { adjustDate(-1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><Ionicons name="chevron-back" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => { adjustDate(-1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
                         <Text style={styles.dateValue}>{selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-                        <TouchableOpacity onPress={() => { adjustDate(1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><Ionicons name="chevron-forward" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => { adjustDate(1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
                     </View>
                     <View style={styles.dateRow}>
-                        <TouchableOpacity onPress={() => { adjustTime(-1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><Ionicons name="chevron-back" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => { adjustTime(-1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
                         <Text style={styles.dateValue}>{selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</Text>
-                        <TouchableOpacity onPress={() => { adjustTime(1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><Ionicons name="chevron-forward" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => { adjustTime(1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
                     </View>
                 </View>
                 <Text style={styles.previewText}>{getFormattedDateStr(selectedDate)}</Text>
@@ -620,14 +622,14 @@ export default function GameScreen() {
                 <Text style={styles.label}>Scheduled Date & Time</Text>
                 <View style={styles.datePickerContainer}>
                     <View style={styles.dateRow}>
-                        <TouchableOpacity onPress={() => adjustDate(-1)} style={styles.arrowBtn}><Ionicons name="chevron-back" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => adjustDate(-1)} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
                         <Text style={styles.dateValue}>{selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-                        <TouchableOpacity onPress={() => adjustDate(1)} style={styles.arrowBtn}><Ionicons name="chevron-forward" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => adjustDate(1)} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
                     </View>
                     <View style={styles.dateRow}>
-                        <TouchableOpacity onPress={() => adjustTime(-1)} style={styles.arrowBtn}><Ionicons name="chevron-back" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => adjustTime(-1)} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
                         <Text style={styles.dateValue}>{selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</Text>
-                        <TouchableOpacity onPress={() => adjustTime(1)} style={styles.arrowBtn}><Ionicons name="chevron-forward" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => adjustTime(1)} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
                     </View>
                 </View>
                 <Text style={styles.previewText}>{getFormattedDateStr(selectedDate)}</Text>

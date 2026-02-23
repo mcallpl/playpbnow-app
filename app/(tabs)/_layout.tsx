@@ -1,12 +1,15 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { BrandedIcon } from '../../components/BrandedIcon';
+import { PulsingTabIcon } from '../../components/PulsingTabIcon';
 import { useActiveMatch } from '../../context/ActiveMatchContext';
+import { useBeaconStatus } from '../../context/BeaconContext';
 import { useTheme } from '../../context/ThemeContext';
 import { FONT_DISPLAY_BOLD } from '../../constants/theme';
 
 export default function TabLayout() {
   const { activeMatch } = useActiveMatch();
+  const { hasActiveBeacons } = useBeaconStatus();
   const { colors } = useTheme();
 
   return (
@@ -40,14 +43,23 @@ export default function TabLayout() {
         options={{
           title: 'GROUPS',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="people" size={24} color={color} />
+            <BrandedIcon name="groups" size={24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="setup"
+        name="playnow"
         options={{
-          href: null,
+          title: 'PLAY NOW',
+          tabBarIcon: ({ color }) => (
+            <PulsingTabIcon
+              name="playnow"
+              size={24}
+              color={color}
+              active={hasActiveBeacons}
+              glowColor={colors.accent}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -55,7 +67,7 @@ export default function TabLayout() {
         options={{
           title: 'PLAYERS',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="person" size={24} color={color} />
+            <BrandedIcon name="players" size={24} color={color} />
           ),
         }}
       />
@@ -70,7 +82,7 @@ export default function TabLayout() {
         options={activeMatch ? {
           title: 'LIVE',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="radio" size={24} color={color} />
+            <BrandedIcon name="live" size={24} color={color} />
           ),
           tabBarLabelStyle: {
             fontFamily: FONT_DISPLAY_BOLD,
@@ -86,7 +98,7 @@ export default function TabLayout() {
         options={{
           title: 'RANKINGS',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="trophy" size={24} color={color} />
+            <BrandedIcon name="leaderboard" size={24} color={color} />
           ),
         }}
       />

@@ -1,15 +1,15 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { 
+import {
     ActivityIndicator,
     Image,
-    Modal, 
-    StyleSheet, 
-    Text, 
-    TextInput, 
-    TouchableOpacity, 
-    View 
+    Modal,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { BrandedIcon } from '../../components/BrandedIcon';
 
 interface ReportModalProps {
     visible: boolean;
@@ -70,7 +70,7 @@ export function ReportModal({
                                 }} 
                                 style={styles.arrowBtn}
                             >
-                                <Ionicons name="chevron-back" size={24} color="white" />
+                                <BrandedIcon name="chevron-left" size={24} color="white" />
                             </TouchableOpacity>
                             <Text style={styles.dateValue}>DAY</Text>
                             <TouchableOpacity 
@@ -80,7 +80,7 @@ export function ReportModal({
                                 }} 
                                 style={styles.arrowBtn}
                             >
-                                <Ionicons name="chevron-forward" size={24} color="white" />
+                                <BrandedIcon name="chevron-right" size={24} color="white" />
                             </TouchableOpacity>
                         </View>
                         
@@ -92,7 +92,7 @@ export function ReportModal({
                                 }} 
                                 style={styles.arrowBtn}
                             >
-                                <Ionicons name="chevron-back" size={24} color="white" />
+                                <BrandedIcon name="chevron-left" size={24} color="white" />
                             </TouchableOpacity>
                             <Text style={styles.dateValue}>TIME</Text>
                             <TouchableOpacity 
@@ -102,7 +102,7 @@ export function ReportModal({
                                 }} 
                                 style={styles.arrowBtn}
                             >
-                                <Ionicons name="chevron-forward" size={24} color="white" />
+                                <BrandedIcon name="chevron-right" size={24} color="white" />
                             </TouchableOpacity>
                         </View>
                     </View>

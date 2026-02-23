@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../components/BrandedIcon';
 import React, { useEffect, useMemo, useRef } from 'react';
 import {
     Animated,
@@ -80,7 +80,7 @@ export function ScoreUpdateToast({ visible, message, onHide }: ScoreUpdateToastP
         >
             <View style={styles.content}>
                 <View style={styles.iconContainer}>
-                    <Ionicons name="notifications" size={20} color="white" />
+                    <BrandedIcon name="notification" size={20} color="white" />
                 </View>
                 <Text style={styles.message}>{message}</Text>
             </View>

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -615,7 +615,7 @@ export default function PlayersScreen() {
                     style={[styles.selectBtn, selectionMode && styles.selectBtnActive]}
                     onPress={toggleSelectionMode}
                 >
-                    <Ionicons name={selectionMode ? 'close' : 'checkmark-done'} size={20} color={colors.text} />
+                    <BrandedIcon name={selectionMode ? 'close' : 'confirm'} size={20} color={colors.text} />
                     <Text style={styles.selectBtnText}>
                         {selectionMode ? 'CANCEL' : 'SELECT'}
                     </Text>
@@ -625,7 +625,7 @@ export default function PlayersScreen() {
             {/* Duplicate Warning Banner */}
             {totalDuplicates > 0 && !selectionMode && (
                 <TouchableOpacity style={styles.dupBanner} onPress={() => setMergeModalVisible(true)}>
-                    <Ionicons name="warning" size={20} color={colors.text} />
+                    <BrandedIcon name="warning" size={20} color={colors.text} />
                     <Text style={styles.dupBannerText}>
                         {totalDuplicates} duplicate player{totalDuplicates !== 1 ? 's' : ''} found
                     </Text>
@@ -677,7 +677,7 @@ export default function PlayersScreen() {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Duplicate Players</Text>
                             <TouchableOpacity onPress={() => { setMergeModalVisible(false); setSelectedMergeIds({}); }} disabled={isMerging}>
-                                <Ionicons name="close" size={28} color={isMerging ? colors.border : colors.textMuted} />
+                                <BrandedIcon name="close" size={28} color={isMerging ? colors.border : colors.textMuted} />
                             </TouchableOpacity>
                         </View>
 
@@ -696,7 +696,7 @@ export default function PlayersScreen() {
                                 {duplicateGroups.length > 0 && (
                                     <View style={styles.topActionRow}>
                                         <TouchableOpacity style={styles.selectAllBtn} onPress={toggleSelectAll}>
-                                            <Ionicons name={allSelected ? 'checkbox' : 'square-outline'} size={20} color={colors.text} />
+                                            <BrandedIcon name={allSelected ? 'checkbox' : 'checkbox-empty'} size={20} color={colors.text} />
                                             <Text style={styles.selectAllBtnText}>
                                                 {allSelected ? 'DESELECT ALL' : 'SELECT ALL'}
                                             </Text>
@@ -706,7 +706,7 @@ export default function PlayersScreen() {
                                             onPress={mergeAllSelected}
                                             disabled={mergeReadyCount === 0}
                                         >
-                                            <Ionicons name="git-merge" size={20} color={colors.text} />
+                                            <BrandedIcon name="merge" size={20} color={colors.text} />
                                             <Text style={styles.mergeAllBtnText}>
                                                 MERGE{mergeReadyCount > 0 ? ` (${mergeReadyCount})` : ''}
                                             </Text>
@@ -738,8 +738,8 @@ export default function PlayersScreen() {
                                                         onPress={() => toggleMergeSelection(group.name, p.id)}
                                                         activeOpacity={0.7}
                                                     >
-                                                        <Ionicons
-                                                            name={isChecked ? 'checkbox' : 'square-outline'}
+                                                        <BrandedIcon
+                                                            name={isChecked ? 'checkbox' : 'checkbox-empty'}
                                                             size={22}
                                                             color={isChecked ? colors.accent : colors.inputBorder}
                                                         />
@@ -768,7 +768,7 @@ export default function PlayersScreen() {
                                                     onPress={() => mergeSelectedInGroup(group)}
                                                     disabled={selected.length < 2}
                                                 >
-                                                    <Ionicons name="git-merge" size={16} color={colors.text} />
+                                                    <BrandedIcon name="merge" size={16} color={colors.text} />
                                                     <Text style={styles.mergeGroupBtnText}>
                                                         MERGE{selected.length >= 2 ? ` (${selected.length})` : ''}
                                                     </Text>
@@ -778,7 +778,7 @@ export default function PlayersScreen() {
                                                     style={styles.notSameBtn}
                                                     onPress={() => markNotDuplicate(group)}
                                                 >
-                                                    <Ionicons name="people" size={16} color={colors.textMuted} />
+                                                    <BrandedIcon name="groups" size={16} color={colors.textMuted} />
                                                     <Text style={styles.notSameBtnText}>Not Same Person</Text>
                                                 </TouchableOpacity>
                                             </View>
@@ -816,7 +816,7 @@ export default function PlayersScreen() {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Edit Player</Text>
                             <TouchableOpacity onPress={() => { setEditModalVisible(false); setShowCourtPicker(false); }}>
-                                <Ionicons name="close" size={28} color={colors.textMuted} />
+                                <BrandedIcon name="close" size={28} color={colors.textMuted} />
                             </TouchableOpacity>
                         </View>
 
@@ -860,14 +860,14 @@ export default function PlayersScreen() {
                                             style={[styles.genderBtn, gender === 'male' && styles.genderBtnActive]}
                                             onPress={() => setGender('male')}
                                         >
-                                            <Ionicons name="man" size={20} color={gender === 'male' ? colors.text : colors.textMuted} />
+                                            <BrandedIcon name="gender-male" size={20} color={gender === 'male' ? colors.text : colors.textMuted} />
                                             <Text style={[styles.genderBtnText, gender === 'male' && styles.genderBtnTextActive]}>Male</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={[styles.genderBtn, gender === 'female' && styles.genderBtnActive]}
                                             onPress={() => setGender('female')}
                                         >
-                                            <Ionicons name="woman" size={20} color={gender === 'female' ? colors.text : colors.textMuted} />
+                                            <BrandedIcon name="gender-female" size={20} color={gender === 'female' ? colors.text : colors.textMuted} />
                                             <Text style={[styles.genderBtnText, gender === 'female' && styles.genderBtnTextActive]}>Female</Text>
                                         </TouchableOpacity>
                                     </View>
@@ -877,11 +877,11 @@ export default function PlayersScreen() {
                                         style={styles.courtSelector}
                                         onPress={() => { Keyboard.dismiss(); setShowCourtPicker(true); }}
                                     >
-                                        <Ionicons name="location" size={20} color={homeCourtId ? colors.secondary : colors.textSoft} />
+                                        <BrandedIcon name="location" size={20} color={homeCourtId ? colors.secondary : colors.textSoft} />
                                         <Text style={[styles.courtSelectorText, !homeCourtId && { color: colors.textSoft }]}>
                                             {homeCourtName || 'Select a court...'}
                                         </Text>
-                                        <Ionicons name="chevron-forward" size={18} color={colors.textSoft} />
+                                        <BrandedIcon name="chevron-right" size={18} color={colors.textSoft} />
                                     </TouchableOpacity>
 
                                     <Text style={styles.label}>DUPR Rating</Text>
@@ -901,7 +901,7 @@ export default function PlayersScreen() {
                                                 style={styles.duprClearBtn}
                                                 onPress={() => setDuprRating('')}
                                             >
-                                                <Ionicons name="close-circle" size={22} color={colors.textSoft} />
+                                                <BrandedIcon name="close" size={22} color={colors.textSoft} />
                                             </TouchableOpacity>
                                         )}
                                     </View>
@@ -916,7 +916,7 @@ export default function PlayersScreen() {
                                              p.first_name.trim().toLowerCase() === editingPlayer.first_name.trim().toLowerCase()
                                     ).length > 0 && (
                                         <TouchableOpacity style={styles.mergeEditBtn} onPress={handleMergeFromEdit}>
-                                            <Ionicons name="git-merge" size={18} color={colors.danger} />
+                                            <BrandedIcon name="merge" size={18} color={colors.danger} />
                                             <Text style={styles.mergeEditBtnText}>Merge with duplicate...</Text>
                                         </TouchableOpacity>
                                     )}
@@ -928,7 +928,7 @@ export default function PlayersScreen() {
                                 <>
                                     <View style={styles.courtPickerHeader}>
                                         <TouchableOpacity onPress={() => setShowCourtPicker(false)} style={styles.courtBackBtn}>
-                                            <Ionicons name="arrow-back" size={22} color={colors.secondary} />
+                                            <BrandedIcon name="back" size={22} color={colors.secondary} />
                                             <Text style={styles.courtBackText}>Back</Text>
                                         </TouchableOpacity>
                                         <Text style={styles.courtPickerTitle}>Select Court</Text>
@@ -943,9 +943,9 @@ export default function PlayersScreen() {
                                             setShowCourtPicker(false);
                                         }}
                                     >
-                                        <Ionicons name="close-circle-outline" size={20} color={colors.textSoft} />
+                                        <BrandedIcon name="close" size={20} color={colors.textSoft} />
                                         <Text style={styles.courtOptionText}>No Court</Text>
-                                        {!homeCourtId && <Ionicons name="checkmark" size={20} color={colors.accent} />}
+                                        {!homeCourtId && <BrandedIcon name="checkmark" size={20} color={colors.accent} />}
                                     </TouchableOpacity>
 
                                     {courts.map((court) => (
@@ -958,7 +958,7 @@ export default function PlayersScreen() {
                                                 setShowCourtPicker(false);
                                             }}
                                         >
-                                            <Ionicons name="location" size={20} color={colors.secondary} />
+                                            <BrandedIcon name="location" size={20} color={colors.secondary} />
                                             <View style={{ flex: 1 }}>
                                                 <Text style={styles.courtOptionText}>{court.name}</Text>
                                                 {(court.city || court.state) && (
@@ -967,7 +967,7 @@ export default function PlayersScreen() {
                                                     </Text>
                                                 )}
                                             </View>
-                                            {homeCourtId === court.id && <Ionicons name="checkmark" size={20} color={colors.accent} />}
+                                            {homeCourtId === court.id && <BrandedIcon name="checkmark" size={20} color={colors.accent} />}
                                         </TouchableOpacity>
                                     ))}
 

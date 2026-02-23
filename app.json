@@ -2,7 +2,7 @@
   "expo": {
     "name": "PlayPBNow",
     "slug": "PlayPBNow",
-    "version": "1.2.5",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "playpbnow",
@@ -12,11 +12,16 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.mcallpl.PlayPBNow",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "PlayPBNow uses your location to show nearby pickleball beacons within your area."
       }
     },
     "android": {
       "package": "com.mcallpl.playpbnow",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -33,6 +38,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "PlayPBNow uses your location to show nearby pickleball beacons within your area.",
+          "locationWhenInUsePermission": "PlayPBNow uses your location to show nearby pickleball beacons within your area."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
@@ -43,7 +55,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,

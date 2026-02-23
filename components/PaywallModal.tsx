@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
+import { BrandedIcon } from './BrandedIcon';
 import {
     Image,
     Modal,
@@ -13,11 +13,11 @@ import { useTheme } from '../context/ThemeContext';
 import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 const BENEFITS = [
-    { icon: 'document-text' as const, title: 'Clean HD Match Reports', desc: 'No watermark on your professional reports' },
-    { icon: 'people' as const, title: 'Unlimited Collab Sessions', desc: 'Real-time scoring with unlimited collaborators' },
-    { icon: 'layers' as const, title: 'Unlimited Groups', desc: 'Create as many pickleball groups as you want' },
-    { icon: 'stats-chart' as const, title: 'Match History & Stats', desc: 'Track wins, losses, and player performance' },
-    { icon: 'headset' as const, title: 'Priority Support', desc: 'Get help when you need it' },
+    { icon: 'document', title: 'Clean HD Match Reports', desc: 'No watermark on your professional reports' },
+    { icon: 'players', title: 'Unlimited Collab Sessions', desc: 'Real-time scoring with unlimited collaborators' },
+    { icon: 'layers', title: 'Unlimited Groups', desc: 'Create as many pickleball groups as you want' },
+    { icon: 'stats-chart', title: 'Match History & Stats', desc: 'Track wins, losses, and player performance' },
+    { icon: 'headset', title: 'Priority Support', desc: 'Get help when you need it' },
 ];
 
 export const PaywallModal: React.FC = () => {
@@ -31,13 +31,13 @@ export const PaywallModal: React.FC = () => {
                 <View style={styles.container}>
                     {/* Close Button */}
                     <TouchableOpacity style={styles.closeBtn} onPress={hidePaywall}>
-                        <Ionicons name="close" size={24} color={colors.textMuted} />
+                        <BrandedIcon name="close" size={24} color={colors.textMuted} />
                     </TouchableOpacity>
 
                     {/* Header */}
                     <View style={styles.header}>
                         <Image
-                            source={require('../assets/images/PlayPBNow-Logo-SMALL.png')}
+                            source={require('../assets/images/PPBN-Logo-SMALL.png')}
                             style={styles.logo}
                             resizeMode="contain"
                         />
@@ -54,7 +54,7 @@ export const PaywallModal: React.FC = () => {
                         {BENEFITS.map((b, i) => (
                             <View key={i} style={styles.benefitRow}>
                                 <View style={styles.checkCircle}>
-                                    <Ionicons name="checkmark" size={14} color={colors.text} />
+                                    <BrandedIcon name="checkmark" size={14} color={colors.text} />
                                 </View>
                                 <View style={styles.benefitText}>
                                     <Text style={styles.benefitTitle}>{b.title}</Text>
@@ -68,14 +68,14 @@ export const PaywallModal: React.FC = () => {
                     <View style={styles.infoBox}>
                         {isTrial && trialDaysRemaining > 0 ? (
                             <>
-                                <Ionicons name="star" size={20} color={colors.accent} />
+                                <BrandedIcon name="star" size={20} color={colors.accent} />
                                 <Text style={styles.infoText}>
                                     You're enjoying a free <Text style={styles.infoBold}>{trialDaysRemaining}-day Pro trial</Text>! All features are unlocked.
                                 </Text>
                             </>
                         ) : (
                             <>
-                                <Ionicons name="rocket" size={20} color={colors.accent} />
+                                <BrandedIcon name="rocket" size={20} color={colors.accent} />
                                 <Text style={styles.infoText}>
                                     Pro subscriptions coming soon! Stay tuned for premium features.
                                 </Text>

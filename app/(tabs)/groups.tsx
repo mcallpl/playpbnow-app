@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BrandedIcon } from '../../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -10,15 +10,16 @@ import {
   Linking,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
+
   Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
 import { TrialBanner } from '../../components/TrialBanner';
 import { useSubscription } from '../../context/SubscriptionContext';
@@ -33,6 +34,7 @@ import {
   FONT_BODY_BOLD,
   FONT_BODY_SEMIBOLD,
 } from '../../constants/theme';
+import { haptic } from '../../utils/haptics';
 
 interface Court {
   id: number;
@@ -171,7 +173,7 @@ export default function HomeScreen() {
           body: JSON.stringify({ group_key: editingGroup.group_key, new_name: newGroupName.trim(), user_id: userId }),
         });
         const data = await res.json();
-        if (data.status === 'success') { await loadGroups(userId); closeModal(); }
+        if (data.status === 'success') { haptic.save(); await loadGroups(userId); closeModal(); }
         else Alert.alert('Error', data.message || 'Failed to update group');
       } else {
         const res = await fetch(`${API_URL}/create_group.php`, {
@@ -180,6 +182,7 @@ export default function HomeScreen() {
         });
         const data = await res.json();
         if (data.status === 'success') {
+          haptic.save();
           await loadGroups(userId);
           const group = data.group;
           await AsyncStorage.setItem('active_group_name', group.name);
@@ -280,14 +283,14 @@ export default function HomeScreen() {
         <Text style={styles.cardText}>{item.name}</Text>
         {item.court_name ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-            <Ionicons name="location" size={12} color={colors.accent} />
+            <BrandedIcon name="location" size={12} color={colors.accent} />
             <Text style={styles.courtLabel}>{item.court_name}</Text>
             {item.court_city ? <Text style={styles.courtCityLabel}>{item.court_city}</Text> : null}
           </View>
         ) : null}
       </View>
       <View style={styles.playerBadge}>
-        <Ionicons name="people" size={14} color={colors.accent} />
+        <BrandedIcon name="groups" size={14} color={colors.accent} />
         <Text style={styles.playerBadgeText}>{item.count || 0}</Text>
       </View>
       {/* Gender + actions row */}
@@ -308,10 +311,10 @@ export default function HomeScreen() {
         </View>
         <View style={styles.actionRow}>
           <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
-            <Ionicons name="pencil" size={16} color={colors.textMuted} />
+            <BrandedIcon name="edit" size={16} color={colors.textMuted} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => deleteGroup(item)} style={styles.iconBtn}>
-            <Ionicons name="trash" size={16} color={colors.danger} />
+            <BrandedIcon name="trash" size={16} color={colors.danger} />
           </TouchableOpacity>
         </View>
       </View>
@@ -324,7 +327,7 @@ export default function HomeScreen() {
         <>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setModalView('form')} style={{ padding: 5 }}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+              <BrandedIcon name="back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.modalTitleInline}>SELECT LOCATION</Text>
             <View style={{ width: 34 }} />
@@ -345,7 +348,7 @@ export default function HomeScreen() {
                     </Text>
                     {court.city ? <Text style={styles.courtCity}>{court.city}{court.state ? `, ${court.state}` : ''}</Text> : null}
                   </View>
-                  {selectedCourtId === court.id ? <Ionicons name="checkmark-circle" size={24} color={colors.accent} /> : null}
+                  {selectedCourtId === court.id ? <BrandedIcon name="confirm" size={24} color={colors.accent} /> : null}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -355,7 +358,7 @@ export default function HomeScreen() {
             setNewCourtName(''); setNewCourtCity(''); setNewCourtState('');
             setModalView('addCourt');
           }}>
-            <Ionicons name="add-circle-outline" size={20} color={colors.secondary} />
+            <BrandedIcon name="add" size={20} color={colors.secondary} />
             <Text style={styles.addCourtBtnText}>Add New Location</Text>
           </TouchableOpacity>
 
@@ -371,7 +374,7 @@ export default function HomeScreen() {
         <>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setModalView('courtPicker')} style={{ padding: 5 }}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+              <BrandedIcon name="back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.modalTitleInline}>ADD NEW LOCATION</Text>
             <View style={{ width: 34 }} />
@@ -392,7 +395,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.saveCourtBtn} onPress={handleAddCourt} disabled={savingCourt}>
             {savingCourt ? <ActivityIndicator color={colors.bg} /> : (
               <>
-                <Ionicons name="checkmark" size={22} color={colors.bg} />
+                <BrandedIcon name="checkmark" size={22} color={colors.bg} />
                 <Text style={styles.saveCourtBtnText}>SAVE LOCATION</Text>
               </>
             )}
@@ -416,7 +419,7 @@ export default function HomeScreen() {
               style={[styles.courtSelector, selectedCourtId ? styles.courtSelectorSelected : null]}
               onPress={() => setModalView('courtPicker')}
             >
-              <Ionicons name="location" size={20} color={selectedCourtId ? colors.accent : colors.textMuted} />
+              <BrandedIcon name="location" size={20} color={selectedCourtId ? colors.accent : colors.textMuted} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.courtSelectorText, selectedCourtId ? { color: colors.accent, fontFamily: FONT_DISPLAY_EXTRABOLD } : null]}>
                   {getSelectedCourtName() || 'Tap to select location'}
@@ -425,7 +428,7 @@ export default function HomeScreen() {
                   <Text style={{ fontSize: 12, fontFamily: FONT_BODY_REGULAR, color: colors.textMuted, marginTop: 2 }}>{getSelectedCourtCity()}</Text>
                 ) : null}
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              <BrandedIcon name="chevron-right" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
         )}
@@ -461,10 +464,10 @@ export default function HomeScreen() {
           <Text style={styles.headerSub}>{groups.length} groups · {totalPlayers} players</Text>
         </View>
         <TouchableOpacity onPress={() => setJoinModalVisible(true)} style={styles.headerBtn}>
-          <Ionicons name="flash" size={18} color={colors.text} />
+          <BrandedIcon name="flash" size={18} color={colors.text} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setSettingsVisible(true)} style={styles.headerBtn}>
-          <Ionicons name="settings-outline" size={18} color={colors.text} />
+          <BrandedIcon name="settings" size={18} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -517,7 +520,7 @@ export default function HomeScreen() {
               <View style={{ width: 34 }} />
               <Text style={styles.modalTitleInline}>SETTINGS</Text>
               <TouchableOpacity onPress={() => setSettingsVisible(false)} style={{ padding: 5 }}>
-                <Ionicons name="close" size={24} color={colors.textMuted} />
+                <BrandedIcon name="close" size={24} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -525,7 +528,7 @@ export default function HomeScreen() {
             <View style={styles.settingsSection}>
               <Text style={styles.settingsSectionTitle}>APPEARANCE</Text>
               <View style={styles.settingsActionRow}>
-                <Ionicons name={isDark ? 'moon' : 'sunny'} size={20} color={colors.textMuted} />
+                <BrandedIcon name="theme-toggle" size={20} color={colors.textMuted} />
                 <Text style={styles.settingsActionText}>Dark Mode</Text>
                 <View style={{ flex: 1 }} />
                 <Switch
@@ -568,7 +571,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.settingsActionRow} onPress={refreshSubscription}>
-                <Ionicons name="refresh" size={18} color={colors.secondary} />
+                <BrandedIcon name="refresh" size={18} color={colors.secondary} />
                 <Text style={[styles.settingsActionText, { color: colors.secondary }]}>Restore Purchases</Text>
               </TouchableOpacity>
             </View>
@@ -577,7 +580,7 @@ export default function HomeScreen() {
             <View style={styles.settingsSection}>
               <Text style={styles.settingsSectionTitle}>ACCOUNT</Text>
               <TouchableOpacity style={styles.settingsActionRow} onPress={handleLogout}>
-                <Ionicons name="log-out-outline" size={20} color={colors.danger} />
+                <BrandedIcon name="logout" size={20} color={colors.danger} />
                 <Text style={[styles.settingsActionText, { color: colors.danger }]}>Log Out</Text>
               </TouchableOpacity>
             </View>
