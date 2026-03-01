@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -15,11 +15,18 @@ $beacon_id = $_GET['beacon_id'] ?? null;
 $after_id = $_GET['after_id'] ?? null;
 
 if (!$beacon_id) {
+    http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => 'beacon_id is required']);
     exit;
 }
 
 $conn = getDBConnection();
+
+if (!$conn) {
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
+    exit;
+}
 
 if ($after_id) {
     // Incremental: only messages after the given ID

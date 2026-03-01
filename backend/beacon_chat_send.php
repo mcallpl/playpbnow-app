@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, GET');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -13,22 +13,36 @@ require_once 'db_config.php';
 
 $input = json_decode(file_get_contents('php://input'), true);
 
+if (!is_array($input)) {
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Invalid JSON input']);
+    exit;
+}
+
 $beacon_id = $input['beacon_id'] ?? null;
 $user_id = $input['user_id'] ?? null;
 $message = $input['message'] ?? null;
 
 if (!$beacon_id || !$user_id || !$message) {
+    http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => 'beacon_id, user_id, and message are required']);
     exit;
 }
 
 $message = trim($message);
-if (strlen($message) === 0 || strlen($message) > 500) {
+if (mb_strlen($message, 'UTF-8') === 0 || mb_strlen($message, 'UTF-8') > 500) {
+    http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => 'Message must be 1-500 characters']);
     exit;
 }
 
 $conn = getDBConnection();
+
+if (!$conn) {
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
+    exit;
+}
 
 // Verify user has a completed profile (verified phone + name)
 $stmt = $conn->prepare("SELECT first_name, last_name, phone FROM user_profiles WHERE user_id = ?");
@@ -64,7 +78,15 @@ $stmt = $conn->prepare(
     "INSERT INTO beacon_messages (beacon_id, user_id, user_name, message) VALUES (?, ?, ?, ?)"
 );
 $stmt->bind_param('isss', $beacon_id, $user_id, $user_name, $message);
-$stmt->execute();
+
+if (!$stmt->execute()) {
+    $stmt->close();
+    $conn->close();
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Failed to send message']);
+    exit;
+}
+
 $msg_id = $conn->insert_id;
 $stmt->close();
 
@@ -77,4 +99,10 @@ $stmt->close();
 
 $conn->close();
 
-echo json_encode(['status' => 'success', 'message' => $msg]);
+if ($msg === null) {
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Failed to retrieve sent message']);
+    exit;
+}
+
+echo json_encode(['status' => 'success', 'data' => $msg]);

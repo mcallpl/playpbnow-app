@@ -1,16 +1,18 @@
 import React, { useMemo } from 'react';
-import { BrandedIcon } from './BrandedIcon';
 import {
+    ActivityIndicator,
     Image,
+    Linking,
     Modal,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
+import { FONT_BODY_BOLD, FONT_BODY_MEDIUM, FONT_BODY_REGULAR, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, ThemeColors } from '../constants/theme';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useTheme } from '../context/ThemeContext';
-import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
+import { BrandedIcon } from './BrandedIcon';
 
 const BENEFITS = [
     { icon: 'document', title: 'Clean HD Match Reports', desc: 'No watermark on your professional reports' },
@@ -21,9 +23,36 @@ const BENEFITS = [
 ];
 
 export const PaywallModal: React.FC = () => {
-    const { paywallVisible, paywallMessage, hidePaywall, isTrial, trialDaysRemaining } = useSubscription();
+    const {
+        paywallVisible, paywallMessage, hidePaywall,
+        isTrial, trialDaysRemaining, isPro,
+        offerings, purchaseSubscription, restorePurchases, purchaseLoading,
+    } = useSubscription();
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
+
+    const monthlyPrice = offerings.monthly?.product?.priceString || '$4.99';
+    const annualPrice = offerings.annual?.product?.priceString || '$29.99';
+    const annualMonthly = offerings.annual?.product?.price
+        ? `$${(offerings.annual.product.price / 12).toFixed(2)}/mo`
+        : '$2.50/mo';
+
+    const handlePurchaseMonthly = async () => {
+        if (!offerings.monthly) return;
+        const success = await purchaseSubscription(offerings.monthly);
+        if (success) hidePaywall();
+    };
+
+    const handlePurchaseAnnual = async () => {
+        if (!offerings.annual) return;
+        const success = await purchaseSubscription(offerings.annual);
+        if (success) hidePaywall();
+    };
+
+    const handleRestore = async () => {
+        const success = await restorePurchases();
+        if (success) hidePaywall();
+    };
 
     return (
         <Modal visible={paywallVisible} transparent animationType="slide" onRequestClose={hidePaywall}>
@@ -64,30 +93,97 @@ export const PaywallModal: React.FC = () => {
                         ))}
                     </View>
 
-                    {/* Trial / Coming Soon Info */}
-                    <View style={styles.infoBox}>
-                        {isTrial && trialDaysRemaining > 0 ? (
-                            <>
-                                <BrandedIcon name="star" size={20} color={colors.accent} />
-                                <Text style={styles.infoText}>
-                                    You're enjoying a free <Text style={styles.infoBold}>{trialDaysRemaining}-day Pro trial</Text>! All features are unlocked.
-                                </Text>
-                            </>
-                        ) : (
-                            <>
-                                <BrandedIcon name="rocket" size={20} color={colors.accent} />
-                                <Text style={styles.infoText}>
-                                    Pro subscriptions coming soon! Stay tuned for premium features.
-                                </Text>
-                            </>
-                        )}
-                    </View>
+                    {/* Trial Info */}
+                    {isTrial && trialDaysRemaining > 0 && (
+                        <View style={styles.infoBox}>
+                            <BrandedIcon name="star" size={20} color={colors.accent} />
+                            <Text style={styles.infoText}>
+                                You're enjoying a free <Text style={styles.infoBold}>{trialDaysRemaining}-day Pro trial</Text>! Subscribe now to keep all features.
+                            </Text>
+                        </View>
+                    )}
 
-                    {/* Got It Button */}
-                    <TouchableOpacity style={styles.gotItBtn} onPress={hidePaywall} activeOpacity={0.8}>
-                        <Text style={styles.gotItBtnText}>Got It</Text>
-                    </TouchableOpacity>
+                    {/* Purchase Buttons */}
+                    {!isPro && (
+                        <View style={styles.purchaseSection}>
+                            {/* Annual — Best Value */}
+                            <TouchableOpacity
+                                style={[styles.purchaseBtn, styles.purchaseBtnAnnual]}
+                                onPress={handlePurchaseAnnual}
+                                disabled={purchaseLoading || !offerings.annual}
+                                activeOpacity={0.8}
+                            >
+                                {purchaseLoading ? (
+                                    <ActivityIndicator color="#ffffff" />
+                                ) : (
+                                    <>
+                                        <View style={styles.bestValueBadge}>
+                                            <Text style={styles.bestValueText}>BEST VALUE</Text>
+                                        </View>
+                                        <Text style={styles.purchaseBtnTitle}>Annual</Text>
+                                        <Text style={styles.purchaseBtnPrice}>{annualPrice}/year</Text>
+                                        <Text style={styles.purchaseBtnSub}>{annualMonthly} — Save 50%</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+
+                            {/* Monthly */}
+                            <TouchableOpacity
+                                style={[styles.purchaseBtn, styles.purchaseBtnMonthly]}
+                                onPress={handlePurchaseMonthly}
+                                disabled={purchaseLoading || !offerings.monthly}
+                                activeOpacity={0.8}
+                            >
+                                {purchaseLoading ? (
+                                    <ActivityIndicator color={colors.text} />
+                                ) : (
+                                    <>
+                                        <Text style={styles.purchaseBtnTitleMonthly}>Monthly</Text>
+                                        <Text style={styles.purchaseBtnPriceMonthly}>{monthlyPrice}/month</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* Already Pro */}
+                    {isPro && (
+                        <View style={styles.infoBox}>
+                            <BrandedIcon name="confirm" size={20} color={colors.accent} />
+                            <Text style={styles.infoText}>
+                                You're a <Text style={styles.infoBold}>Pro member</Text>! All features are unlocked.
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Restore Purchases */}
+                    {!isPro && (
+                        <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore} disabled={purchaseLoading}>
+                            <Text style={styles.restoreBtnText}>Restore Purchases</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Dismiss */}
+                    {isPro && (
+                        <TouchableOpacity style={styles.gotItBtn} onPress={hidePaywall} activeOpacity={0.8}>
+                            <Text style={styles.gotItBtnText}>Got It</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
+                {/* Legal Links — REQUIRED for Apple Approval */}
+                {!isPro && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10, gap: 10 }}>
+                        <TouchableOpacity onPress={() => Linking.openURL('https://peoplestar.com/privacy')}>
+                            <Text style={{ fontSize: 11, color: colors.textMuted, textDecorationLine: 'underline' }}>Privacy Policy</Text>
+                        </TouchableOpacity>
+                        
+                        <Text style={{ fontSize: 11, color: colors.textMuted }}>|</Text>
+
+                        <TouchableOpacity onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+                            <Text style={{ fontSize: 11, color: colors.textMuted, textDecorationLine: 'underline' }}>Terms of Use (EULA)</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
         </Modal>
     );
@@ -144,7 +240,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         fontFamily: FONT_BODY_REGULAR,
     },
     benefits: {
-        marginBottom: 20,
+        marginBottom: 16,
     },
     benefitRow: {
         flexDirection: 'row',
@@ -196,6 +292,83 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     infoBold: {
         fontFamily: FONT_BODY_BOLD,
         color: c.text,
+    },
+    purchaseSection: {
+        gap: 10,
+        marginBottom: 12,
+    },
+    purchaseBtn: {
+        borderRadius: 16,
+        padding: 18,
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+    },
+    purchaseBtnAnnual: {
+        backgroundColor: c.accent,
+        elevation: 4,
+        shadowColor: c.accent,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+    },
+    purchaseBtnMonthly: {
+        backgroundColor: c.surfaceLight,
+        borderWidth: 1,
+        borderColor: c.border,
+    },
+    bestValueBadge: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        backgroundColor: '#FFD23F',
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderBottomLeftRadius: 8,
+    },
+    bestValueText: {
+        fontFamily: FONT_DISPLAY_BOLD,
+        fontSize: 10,
+        color: '#000000',
+        letterSpacing: 0.5,
+    },
+    purchaseBtnTitle: {
+        fontFamily: FONT_DISPLAY_EXTRABOLD,
+        fontSize: 18,
+        color: '#ffffff',
+    },
+    purchaseBtnPrice: {
+        fontFamily: FONT_BODY_BOLD,
+        fontSize: 15,
+        color: '#ffffff',
+        marginTop: 2,
+    },
+    purchaseBtnSub: {
+        fontFamily: FONT_BODY_REGULAR,
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.8)',
+        marginTop: 2,
+    },
+    purchaseBtnTitleMonthly: {
+        fontFamily: FONT_DISPLAY_BOLD,
+        fontSize: 16,
+        color: c.text,
+    },
+    purchaseBtnPriceMonthly: {
+        fontFamily: FONT_BODY_MEDIUM,
+        fontSize: 14,
+        color: c.textMuted,
+        marginTop: 2,
+    },
+    restoreBtn: {
+        alignItems: 'center',
+        paddingVertical: 12,
+    },
+    restoreBtnText: {
+        fontFamily: FONT_BODY_MEDIUM,
+        fontSize: 13,
+        color: c.textMuted,
+        textDecorationLine: 'underline',
     },
     gotItBtn: {
         backgroundColor: c.accent,

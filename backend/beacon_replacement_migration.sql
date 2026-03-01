@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS replacement_requests (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   filled_at DATETIME DEFAULT NULL,
   FOREIGN KEY (lobby_id) REFERENCES beacon_lobbies(id) ON DELETE CASCADE,
-  FOREIGN KEY (departing_member_id) REFERENCES beacon_lobby_members(id) ON DELETE CASCADE,
+  FOREIGN KEY (departing_member_id) REFERENCES beacon_lobby_members(id) ON DELETE RESTRICT,
+  FOREIGN KEY (replacement_member_id) REFERENCES beacon_lobby_members(id) ON DELETE SET NULL,
   INDEX idx_lobby_status (lobby_id, status),
   INDEX idx_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

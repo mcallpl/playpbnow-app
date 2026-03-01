@@ -26,16 +26,17 @@ $has_location = ($user_lat !== null && $user_lng !== null);
 if ($has_location) {
     $sql = "SELECT COUNT(*) AS cnt FROM (
                 SELECT b.id,
-                    (3959 * ACOS(
-                        COS(RADIANS($user_lat)) * COS(RADIANS(c.lat)) *
-                        COS(RADIANS(c.lng) - RADIANS($user_lng)) +
-                        SIN(RADIANS($user_lat)) * SIN(RADIANS(c.lat))
-                    )) AS distance_miles
+                    CASE WHEN c.lat IS NOT NULL AND c.lng IS NOT NULL THEN
+                        (3959 * ACOS(LEAST(1.0, GREATEST(-1.0,
+                            COS(RADIANS($user_lat)) * COS(RADIANS(c.lat)) *
+                            COS(RADIANS(c.lng) - RADIANS($user_lng)) +
+                            SIN(RADIANS($user_lat)) * SIN(RADIANS(c.lat))
+                        ))))
+                    ELSE NULL END AS distance_miles
                 FROM beacons b
-                JOIN courts c ON b.court_id = c.id
+                LEFT JOIN courts c ON b.court_id = c.id
                 WHERE b.status = 'active'
-                  AND c.lat IS NOT NULL AND c.lng IS NOT NULL
-                HAVING distance_miles <= $radius_miles
+                HAVING distance_miles <= " . (float)$radius_miles . " OR distance_miles IS NULL
             ) AS nearby";
 } else {
     $sql = "SELECT COUNT(*) AS cnt FROM beacons WHERE status='active'";

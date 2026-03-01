@@ -99,9 +99,13 @@ export function BrandedIcon({ name, size = 24, color = '#ffffff', strokeWidth = 
     }
     return null;
   }
-  return (
-    <React.Fragment>
-      <Icon size={size} color={color} strokeWidth={strokeWidth} />
-    </React.Fragment>
-  );
+  if (style) {
+    const { View } = require('react-native');
+    return (
+      <View style={style}>
+        <Icon size={size} color={color} strokeWidth={strokeWidth} />
+      </View>
+    );
+  }
+  return <Icon size={size} color={color} strokeWidth={strokeWidth} />;
 }

@@ -36,26 +36,33 @@ $conn->query("
     WHERE rr.status = 'open' AND bl.status NOT IN ('gathering', 'locked')
 ");
 
+// Check if beacon_type column exists (migration may not have been run yet)
+$colCheck = $conn->query("SHOW COLUMNS FROM beacons LIKE 'beacon_type'");
+$hasBeaconType = $colCheck && $colCheck->num_rows > 0;
+if ($colCheck) $colCheck->free();
+$beaconTypeCol = $hasBeaconType ? "b.beacon_type," : "'structured' AS beacon_type,";
+
 // 2. Select active beacons (with optional radius filtering)
 $has_location = ($user_lat !== null && $user_lng !== null);
 
 if ($has_location) {
-    $sql = "SELECT b.id, b.user_id, b.beacon_type, b.court_id, b.player_count, b.skill_level, b.message,
+    $sql = "SELECT b.id, b.user_id, $beaconTypeCol b.court_id, b.player_count, b.skill_level, b.message,
                    b.status, b.expires_at, b.created_at,
                    c.name AS court_name,
                    c.lat AS court_lat,
                    c.lng AS court_lng,
-                   (3959 * ACOS(
-                       COS(RADIANS($user_lat)) * COS(RADIANS(c.lat)) *
-                       COS(RADIANS(c.lng) - RADIANS($user_lng)) +
-                       SIN(RADIANS($user_lat)) * SIN(RADIANS(c.lat))
-                   )) AS distance_miles
+                   CASE WHEN c.lat IS NOT NULL AND c.lng IS NOT NULL THEN
+                       (3959 * ACOS(LEAST(1.0, GREATEST(-1.0,
+                           COS(RADIANS($user_lat)) * COS(RADIANS(c.lat)) *
+                           COS(RADIANS(c.lng) - RADIANS($user_lng)) +
+                           SIN(RADIANS($user_lat)) * SIN(RADIANS(c.lat))
+                       ))))
+                   ELSE NULL END AS distance_miles
             FROM beacons b
             LEFT JOIN courts c ON b.court_id = c.id
-            WHERE b.status = 'active'
-              AND c.lat IS NOT NULL AND c.lng IS NOT NULL";
+            WHERE b.status = 'active'";
 } else {
-    $sql = "SELECT b.id, b.user_id, b.beacon_type, b.court_id, b.player_count, b.skill_level, b.message,
+    $sql = "SELECT b.id, b.user_id, $beaconTypeCol b.court_id, b.player_count, b.skill_level, b.message,
                    b.status, b.expires_at, b.created_at,
                    c.name AS court_name,
                    c.lat AS court_lat,
@@ -70,8 +77,8 @@ if ($court_id) {
 }
 
 if ($has_location) {
-    $sql .= " HAVING distance_miles <= $radius_miles";
-    $sql .= " ORDER BY distance_miles ASC";
+    $sql .= " HAVING distance_miles <= " . (float)$radius_miles . " OR distance_miles IS NULL";
+    $sql .= " ORDER BY distance_miles IS NULL, distance_miles ASC";
 } else {
     $sql .= " ORDER BY b.created_at DESC";
 }

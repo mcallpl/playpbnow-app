@@ -12,7 +12,7 @@ export const LiveIcon = ({ size, color, strokeWidth }: IconProps) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Circle cx="12" cy="12" r="3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
     <Circle cx="12" cy="12" r="7" stroke={color} strokeWidth={strokeWidth * 0.75} strokeLinecap="round" strokeLinejoin="round" opacity={0.5} />
-    <Circle cx="12" cy="12" r="11" stroke={color} strokeWidth={strokeWidth * 0.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.3} />
+    <Circle cx="12" cy="12" r={Math.min(11, 12 - strokeWidth * 0.25 - 0.5)} stroke={color} strokeWidth={strokeWidth * 0.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.3} />
   </Svg>
 );
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { playChatPing } from '../utils/sounds';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://peoplestar.com/Chipleball/api';
 const POLL_INTERVAL = 3000;
 
 export interface ChatMessage {
@@ -21,17 +21,22 @@ export function useBeaconChat() {
   const beaconIdRef = useRef<number | null>(null);
   const initialFetchDoneRef = useRef(false);
   const currentUserIdRef = useRef<string>('');
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const pollInProgressRef = useRef(false);
 
-  const fetchMessages = useCallback(async (beaconId: number, afterId?: number) => {
+  const fetchMessages = useCallback(async (beaconId: number, afterId?: number, isInitial = false) => {
     try {
       let url = `${API_URL}/beacon_chat_poll.php?beacon_id=${beaconId}`;
-      if (afterId && afterId > 0) {
+      if ((afterId ?? 0) > 0) {
         url += `&after_id=${afterId}`;
       }
-      const res = await fetch(url);
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
+      const res = await fetch(url, { signal: abortControllerRef.current.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.status === 'success' && data.messages) {
-        if (afterId && afterId > 0) {
+        if (!isInitial) {
           // Incremental — append new messages, deduplicating
           if (data.messages.length > 0) {
             setMessages(prev => {
@@ -49,7 +54,10 @@ export function useBeaconChat() {
               }
               return prev;
             });
-            lastIdRef.current = data.messages[data.messages.length - 1].id;
+            const maxId = data.messages[data.messages.length - 1].id;
+            if (maxId > lastIdRef.current) {
+              lastIdRef.current = maxId;
+            }
           }
         } else {
           // Initial load
@@ -59,7 +67,8 @@ export function useBeaconChat() {
           }
         }
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       // Silently fail on poll errors
     }
   }, []);
@@ -73,29 +82,37 @@ export function useBeaconChat() {
 
   const stopPolling = useCallback(() => {
     clearPollingInterval();
+    abortControllerRef.current?.abort();
     beaconIdRef.current = null;
     initialFetchDoneRef.current = false;
+    pollInProgressRef.current = false;
   }, [clearPollingInterval]);
 
   const startPolling = useCallback((beaconId: number, currentUserId?: string) => {
     // Clear any existing polling
     clearPollingInterval();
+    abortControllerRef.current?.abort();
     beaconIdRef.current = beaconId;
     lastIdRef.current = 0;
     initialFetchDoneRef.current = false;
+    pollInProgressRef.current = false;
     if (currentUserId) currentUserIdRef.current = currentUserId;
     setMessages([]);
     setIsLoading(true);
 
     // Initial fetch — only start interval polling AFTER this completes
-    fetchMessages(beaconId).then(() => {
+    fetchMessages(beaconId, undefined, true).then(() => {
+      // Bail out if this session was superseded by stopPolling or a new startPolling call
+      if (beaconIdRef.current !== beaconId) return;
       setIsLoading(false);
       initialFetchDoneRef.current = true;
 
       // Now start the interval for incremental updates
       pollingRef.current = setInterval(() => {
-        if (beaconIdRef.current && initialFetchDoneRef.current) {
-          fetchMessages(beaconIdRef.current, lastIdRef.current);
+        if (beaconIdRef.current === beaconId && !pollInProgressRef.current) {
+          pollInProgressRef.current = true;
+          fetchMessages(beaconIdRef.current, lastIdRef.current)
+            .finally(() => { pollInProgressRef.current = false; });
         }
       }, POLL_INTERVAL);
     });
@@ -118,14 +135,16 @@ export function useBeaconChat() {
           message: text,
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (data.status === 'success' && data.message) {
+      if (data.status === 'success' && (data.message || data.data)) {
+        const msg = data.data || data.message;
         // Append immediately for instant feedback, skip if already present
         setMessages(prev => {
-          if (prev.some(m => m.id === data.message.id)) return prev;
-          return [...prev, data.message];
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
         });
-        lastIdRef.current = data.message.id;
+        lastIdRef.current = msg.id;
         return true;
       }
       return false;
@@ -138,6 +157,7 @@ export function useBeaconChat() {
   useEffect(() => {
     return () => {
       clearPollingInterval();
+      abortControllerRef.current?.abort();
       beaconIdRef.current = null;
     };
   }, [clearPollingInterval]);

@@ -75,7 +75,7 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.copyBtn} onPress={copyToClipboard}>
-                            <BrandedIcon name="copy" size={20} color={colors.surface} style={{ marginRight: 8 }} />
+                            <BrandedIcon name="copy" size={20} color={colors.text} style={{ marginRight: 8 }} />
                             <Text style={styles.copyBtnText}>COPY</Text>
                         </TouchableOpacity>
                     </View>
