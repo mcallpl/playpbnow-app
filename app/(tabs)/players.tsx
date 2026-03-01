@@ -646,6 +646,7 @@ export default function PlayersScreen() {
                     data={players}
                     renderItem={renderPlayer}
                     keyExtractor={(item) => item.id.toString()}
+                    alwaysBounceHorizontal={false}
                     contentContainerStyle={[
                         styles.listContent,
                         selectionMode && selectedPlayerIds.length > 0 && styles.listContentWithSelector

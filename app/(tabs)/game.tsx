@@ -539,6 +539,7 @@ export default function GameScreen() {
         </View>
 
         <FlatList ref={flatListRef} data={schedule} keyExtractor={(item) => item.id}
+          alwaysBounceHorizontal={false}
           contentContainerStyle={styles.listContent}
           onScrollToIndexFailed={(info) => { setTimeout(() => flatListRef.current?.scrollToIndex({ index: info.index, animated: true }), 500); }}
           ListEmptyComponent={

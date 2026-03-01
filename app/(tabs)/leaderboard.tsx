@@ -306,8 +306,6 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       );
   };
 
-  console.log('Roster data:', roster);
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -367,6 +365,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             renderItem={renderLeaderboardRow}
             keyExtractor={(i) => i.id}
             ListHeaderComponent={renderPedestal}
+            alwaysBounceHorizontal={false}
             contentContainerStyle={{padding: 20, paddingBottom: 100}}
             ListEmptyComponent={<Text style={styles.empty}>{leaderboard.length === 0 ? "No data found." : ""}</Text>}
         />

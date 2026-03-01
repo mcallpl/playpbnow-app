@@ -223,6 +223,7 @@ export default function LiveMatchScreen() {
                     data={matches}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderMatch}
+                    alwaysBounceHorizontal={false}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>

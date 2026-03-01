@@ -61,7 +61,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { colors, isDark, toggleTheme } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
-  const { isPro, isFree, isTrial, trialDaysRemaining, showPaywall, features, subscription, refreshSubscription } = useSubscription();
+  const { isPro, isFree, isTrial, trialDaysRemaining, showPaywall, features, subscription, refreshSubscription, restorePurchases, purchaseLoading } = useSubscription();
   const [groups, setGroups] = useState<Group[]>([]);
   const [joinModalVisible, setJoinModalVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -487,6 +487,7 @@ export default function HomeScreen() {
         data={groups}
         keyExtractor={(item) => item.group_key}
         renderItem={renderGroupItem}
+        alwaysBounceHorizontal={false}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={!loading ? (
           <View style={styles.emptyState}>
@@ -555,9 +556,9 @@ export default function HomeScreen() {
                   Trial Ends In {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''}
                 </Text>
               )}
-              {subscription?.expires_at && (
+              {subscription?.expiryDate && (
                 <Text style={{ color: colors.textMuted, fontSize: 12, fontFamily: FONT_BODY_REGULAR, marginBottom: 8 }}>
-                  Expires: {new Date(subscription.expires_at).toLocaleDateString()}
+                  Expires: {new Date(subscription.expiryDate).toLocaleDateString()}
                 </Text>
               )}
               {!isPro && (
@@ -570,9 +571,11 @@ export default function HomeScreen() {
                   <Text style={styles.manageBtnText}>Manage Subscription</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.settingsActionRow} onPress={refreshSubscription}>
+              <TouchableOpacity style={styles.settingsActionRow} onPress={restorePurchases} disabled={purchaseLoading}>
                 <BrandedIcon name="refresh" size={18} color={colors.secondary} />
-                <Text style={[styles.settingsActionText, { color: colors.secondary }]}>Restore Purchases</Text>
+                <Text style={[styles.settingsActionText, { color: colors.secondary }]}>
+                  {purchaseLoading ? 'Restoring...' : 'Restore Purchases'}
+                </Text>
               </TouchableOpacity>
             </View>
 

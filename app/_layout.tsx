@@ -44,7 +44,7 @@ function RootLayoutInner() {
     <BeaconProvider>
       <ActiveMatchProvider>
         <SubscriptionProvider>
-          <Stack screenOptions={{ headerShown: false }}>
+          <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
             <Stack.Screen name="login" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="live-match" />

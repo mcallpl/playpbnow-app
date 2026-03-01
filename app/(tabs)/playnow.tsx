@@ -155,6 +155,11 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
       cancelAnimation(pulseOpacity);
       cancelAnimation(dotScale);
     }
+    return () => {
+      cancelAnimation(pulseScale);
+      cancelAnimation(pulseOpacity);
+      cancelAnimation(dotScale);
+    };
   }, [isExpired]);
 
   const pulseRingStyle = useAnimatedStyle(() => ({
@@ -276,9 +281,10 @@ export default function PlayNowTab() {
     setError,
   } = useBeacon();
 
-  const { location, locationPermissionDenied, showLocationDeniedAlert } = useBeaconStatus();
+  const { location, locationPermissionDenied, showLocationDeniedAlert, reportBeaconCount } = useBeaconStatus();
 
   const [view, setView] = useState<BeaconView>('feed');
+  const viewRef = useRef<BeaconView>('feed');
   const [userId, setUserId] = useState('');
   const [mapsApiKey, setMapsApiKey] = useState('');
   const [historyExpanded, setHistoryExpanded] = useState(false);
@@ -305,6 +311,7 @@ export default function PlayNowTab() {
   const [expandedChatId, setExpandedChatId] = useState<number | null>(null);
   const [chatInput, setChatInput] = useState('');
   const feedScrollRef = useRef<ScrollView>(null);
+  const feedLoadedOnce = useRef(false);
   const { messages: chatMessages, isLoading: chatLoading, sendMessage: sendChatMessage, startPolling: startChatPolling, stopPolling: stopChatPolling } = useBeaconChat();
 
   // Profile gate state
@@ -328,10 +335,8 @@ export default function PlayNowTab() {
           setMapsApiKey(data.google_maps_api_key);
         }
       })
-      .catch(() => {})
-      .finally(() => {
-        // Fallback if server endpoint isn't deployed yet
-        setMapsApiKey(prev => prev || 'AIzaSyBkBl7cWQUTFyrxsl8tNzjQu84MXvoUOoM');
+      .catch(() => {
+        // Map thumbnails will show placeholder until key is available
       });
   }, []);
 
@@ -351,7 +356,7 @@ export default function PlayNowTab() {
 
   // Detect when selected beacon expires (no longer in active feed)
   useEffect(() => {
-    if (selectedBeacon && beacons.length >= 0) {
+    if (selectedBeacon && beacons.length > 0) {
       const stillActive = beacons.some((b) => b.id === selectedBeacon.id);
       if (!stillActive && !selectedBeaconExpired) {
         setSelectedBeaconExpired(true);
@@ -379,7 +384,7 @@ export default function PlayNowTab() {
     prevChatCountsRef.current = newCounts;
 
     if (shouldPing) playChatPing();
-  }, [beacons]);
+  }, [beacons, expandedChatId]);
 
   const loadUserInfo = async () => {
     const uid = await AsyncStorage.getItem('user_id');
@@ -504,30 +509,38 @@ export default function PlayNowTab() {
     }
   };
 
+  // Keep viewRef in sync so useFocusEffect can read current view without depending on it
+  useEffect(() => { viewRef.current = view; }, [view]);
+
+  // Sync beacon count to context so the tab icon matches exactly what the feed shows
+  useEffect(() => { reportBeaconCount(beacons.length); }, [beacons.length, reportBeaconCount]);
+
   // Helper to pass location into every fetchFeed call
   const fetchFeedWithLocation = useCallback(
-    () => {
-      fetchFeed(undefined, location?.latitude, location?.longitude);
-    },
+    () => fetchFeed(undefined, location?.latitude, location?.longitude),
     [fetchFeed, location]
   );
 
   // Always show the feed when the tab gains focus, and refresh beacons
   useFocusEffect(
     useCallback(() => {
-      setView('feed');
-      setSelectedBeacon(null);
-      fetchFeedWithLocation();
+      // Only reset to feed from the feed view itself (tab re-focus refresh).
+      // Never reset from mode_select, create, or lobby — those are active user flows.
+      if (viewRef.current === 'feed') {
+        setSelectedBeacon(null);
+      }
+      fetchFeedWithLocation().finally(() => { feedLoadedOnce.current = true; });
 
       const refreshInterval = setInterval(() => {
         fetchFeedWithLocation();
       }, 15000);
       return () => {
         clearInterval(refreshInterval);
+        stopPolling();
         stopChatPolling();
         setExpandedChatId(null);
       };
-    }, [fetchFeedWithLocation])
+    }, [fetchFeedWithLocation, stopPolling])
   );
 
   // Auto-navigate when lobby status changes to 'started'
@@ -636,7 +649,7 @@ export default function PlayNowTab() {
 
     // Reset create form
     setCreateCourtId(null);
-    setCreatePlayerCount(8);
+    setCreatePlayerCount(1);
     setCreateSkillLevel('');
     setCreateMessage('');
     setCreateDuration(60);
@@ -821,13 +834,13 @@ export default function PlayNowTab() {
           </TouchableOpacity>
         )}
 
-        {/* Loading */}
-        {loading && beacons.length === 0 && history.length === 0 ? (
+        {/* Loading — only show spinner before the first feed load completes */}
+        {loading && !feedLoadedOnce.current && beacons.length === 0 && history.length === 0 ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.accent} />
           </View>
         ) : (
-          <ScrollView ref={feedScrollRef} style={styles.flex} showsVerticalScrollIndicator={false} contentContainerStyle={styles.feedScrollContent}>
+          <ScrollView ref={feedScrollRef} style={styles.flex} showsVerticalScrollIndicator={false} alwaysBounceHorizontal={false} contentContainerStyle={styles.feedScrollContent}>
             {/* Active Beacons — Map Cards */}
             {beacons.length > 0 ? (
               beacons.map((beacon) => (
@@ -1185,7 +1198,7 @@ export default function PlayNowTab() {
                             })}
                           </ScrollView>
                         )}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cannedRow} contentContainerStyle={styles.cannedRowContent}>
+                        <View style={styles.cannedRow}>
                           {CANNED_MESSAGES.map((msg) => (
                             <TouchableOpacity
                               key={msg}
@@ -1202,7 +1215,7 @@ export default function PlayNowTab() {
                               <Text style={styles.cannedChipText}>{msg}</Text>
                             </TouchableOpacity>
                           ))}
-                        </ScrollView>
+                        </View>
                         <View style={styles.chatInputRow}>
                           <TextInput
                             style={styles.chatTextInput}
@@ -1234,7 +1247,7 @@ export default function PlayNowTab() {
                                 return;
                               }
                               const name = `${playerInfo.first_name} ${playerInfo.last_name}`.trim();
-                              sendChatMessage(selectedBeacon.id, userId, name, chatInput.trim());
+                              sendChatMessage(selectedBeacon!.id, userId, name, chatInput.trim());
                               setChatInput('');
                               Keyboard.dismiss();
                             }}
@@ -1259,7 +1272,7 @@ export default function PlayNowTab() {
   // ========================
   const renderModeSelect = () => {
     return (
-      <ScrollView style={styles.flex} contentContainerStyle={styles.createContent}>
+      <ScrollView style={styles.flex} alwaysBounceHorizontal={false} contentContainerStyle={styles.createContent}>
         {/* Back */}
         <TouchableOpacity style={styles.backButton} onPress={() => setView('feed')}>
           <BrandedIcon name="back" size={20} color={colors.text} />
@@ -1274,6 +1287,7 @@ export default function PlayNowTab() {
           style={[styles.modeCard, styles.modeCardCasual]}
           onPress={async () => {
             setView('create_casual');
+            setCourtDropdownOpen(false);
             await loadCourtsForCreate();
           }}
         >
@@ -1292,6 +1306,7 @@ export default function PlayNowTab() {
           style={[styles.modeCard, styles.modeCardStructured]}
           onPress={async () => {
             setView('create_structured');
+            setCourtDropdownOpen(false);
             await loadCourtsForCreate();
           }}
         >
@@ -1313,7 +1328,7 @@ export default function PlayNowTab() {
   // ========================
   const renderCreateCasual = () => {
     return (
-      <ScrollView style={styles.flex} contentContainerStyle={styles.createContent}>
+      <ScrollView style={styles.flex} alwaysBounceHorizontal={false} contentContainerStyle={styles.createContent}>
         {/* Back */}
         <TouchableOpacity style={styles.backButton} onPress={() => setView('mode_select')}>
           <BrandedIcon name="back" size={20} color={colors.text} />
@@ -1439,7 +1454,7 @@ export default function PlayNowTab() {
   // ========================
   const renderCreateStructured = () => {
     return (
-      <ScrollView style={styles.flex} contentContainerStyle={styles.createContent}>
+      <ScrollView style={styles.flex} alwaysBounceHorizontal={false} contentContainerStyle={styles.createContent}>
         {/* Back */}
         <TouchableOpacity style={styles.backButton} onPress={() => setView('mode_select')}>
           <BrandedIcon name="back" size={20} color={colors.text} />
@@ -1629,7 +1644,7 @@ export default function PlayNowTab() {
       : 'syncing';
 
     return (
-      <ScrollView style={styles.flex} contentContainerStyle={styles.lobbyContent}>
+      <ScrollView style={styles.flex} alwaysBounceHorizontal={false} contentContainerStyle={styles.lobbyContent}>
         {/* Back */}
         <TouchableOpacity style={styles.backButton} onPress={handleLeaveLobby}>
           <BrandedIcon name="back" size={20} color={colors.text} />
@@ -1843,7 +1858,7 @@ export default function PlayNowTab() {
     const matchQuality = lobby?.match_quality_percent;
 
     return (
-      <ScrollView style={styles.flex} contentContainerStyle={styles.lockedContent}>
+      <ScrollView style={styles.flex} alwaysBounceHorizontal={false} contentContainerStyle={styles.lockedContent}>
         <Text style={styles.sectionTitle}>Match Preview</Text>
 
         {/* Match Quality */}
@@ -3121,7 +3136,9 @@ const createStyles = (c: ThemeColors) =>
     // --- Canned Messages ---
     cannedRow: {
       marginBottom: 8,
-      maxHeight: 36,
+      flexDirection: 'row' as const,
+      flexWrap: 'wrap' as const,
+      gap: 6,
     },
     cannedRowContent: {
       gap: 6,
