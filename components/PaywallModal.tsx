@@ -1,11 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Image,
     Linking,
     Modal,
+    Platform,
+    ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -22,14 +25,19 @@ const BENEFITS = [
     { icon: 'headset', title: 'Priority Support', desc: 'Get help when you need it' },
 ];
 
+const isWeb = Platform.OS === 'web';
+
 export const PaywallModal: React.FC = () => {
     const {
         paywallVisible, paywallMessage, hidePaywall,
         isTrial, trialDaysRemaining, isPro,
         offerings, purchaseSubscription, restorePurchases, purchaseLoading,
+        purchaseViaStripe, redeemPromoCode,
     } = useSubscription();
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
+    const [promoCode, setPromoCode] = useState('');
+    const [showPromoInput, setShowPromoInput] = useState(false);
 
     const monthlyPrice = offerings.monthly?.product?.priceString || '$4.99';
     const annualPrice = offerings.annual?.product?.priceString || '$29.99';
@@ -38,12 +46,20 @@ export const PaywallModal: React.FC = () => {
         : '$2.50/mo';
 
     const handlePurchaseMonthly = async () => {
+        if (isWeb) {
+            await purchaseViaStripe('monthly');
+            return;
+        }
         if (!offerings.monthly) return;
         const success = await purchaseSubscription(offerings.monthly);
         if (success) hidePaywall();
     };
 
     const handlePurchaseAnnual = async () => {
+        if (isWeb) {
+            await purchaseViaStripe('annual');
+            return;
+        }
         if (!offerings.annual) return;
         const success = await purchaseSubscription(offerings.annual);
         if (success) hidePaywall();
@@ -54,16 +70,26 @@ export const PaywallModal: React.FC = () => {
         if (success) hidePaywall();
     };
 
+    const handleRedeemPromo = async () => {
+        if (!promoCode.trim()) return;
+        const success = await redeemPromoCode(promoCode.trim());
+        if (success) {
+            setPromoCode('');
+            setShowPromoInput(false);
+            hidePaywall();
+        }
+    };
+
     return (
         <Modal visible={paywallVisible} transparent animationType="slide" onRequestClose={hidePaywall}>
             <View style={styles.overlay}>
-                <View style={styles.container}>
-                    {/* Close Button */}
+                <View style={styles.containerWrapper}>
+                    {/* Close Button — outside ScrollView so it stays fixed */}
                     <TouchableOpacity style={styles.closeBtn} onPress={hidePaywall}>
                         <BrandedIcon name="close" size={24} color={colors.textMuted} />
                     </TouchableOpacity>
-
-                    {/* Header */}
+                    <ScrollView contentContainerStyle={styles.containerContent} bounces={false} showsVerticalScrollIndicator={false}>
+                        {/* Header */}
                     <View style={styles.header}>
                         <Image
                             source={require('../assets/images/PPBN-Logo-SMALL.png')}
@@ -110,7 +136,7 @@ export const PaywallModal: React.FC = () => {
                             <TouchableOpacity
                                 style={[styles.purchaseBtn, styles.purchaseBtnAnnual]}
                                 onPress={handlePurchaseAnnual}
-                                disabled={purchaseLoading || !offerings.annual}
+                                disabled={purchaseLoading || (!isWeb && !offerings.annual)}
                                 activeOpacity={0.8}
                             >
                                 {purchaseLoading ? (
@@ -131,7 +157,7 @@ export const PaywallModal: React.FC = () => {
                             <TouchableOpacity
                                 style={[styles.purchaseBtn, styles.purchaseBtnMonthly]}
                                 onPress={handlePurchaseMonthly}
-                                disabled={purchaseLoading || !offerings.monthly}
+                                disabled={purchaseLoading || (!isWeb && !offerings.monthly)}
                                 activeOpacity={0.8}
                             >
                                 {purchaseLoading ? (
@@ -143,6 +169,28 @@ export const PaywallModal: React.FC = () => {
                                     </>
                                 )}
                             </TouchableOpacity>
+
+                            {/* Promo Code */}
+                            {!showPromoInput ? (
+                                <TouchableOpacity style={styles.restoreBtn} onPress={() => setShowPromoInput(true)}>
+                                    <Text style={styles.restoreBtnText}>Have a promo code?</Text>
+                                </TouchableOpacity>
+                            ) : (
+                                <View style={styles.promoRow}>
+                                    <TextInput
+                                        style={styles.promoInput}
+                                        placeholder="Enter code"
+                                        placeholderTextColor={colors.textMuted}
+                                        value={promoCode}
+                                        onChangeText={setPromoCode}
+                                        autoCapitalize="characters"
+                                        onSubmitEditing={handleRedeemPromo}
+                                    />
+                                    <TouchableOpacity style={styles.promoBtn} onPress={handleRedeemPromo} disabled={purchaseLoading}>
+                                        <Text style={styles.promoBtnText}>REDEEM</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </View>
                     )}
 
@@ -156,8 +204,8 @@ export const PaywallModal: React.FC = () => {
                         </View>
                     )}
 
-                    {/* Restore Purchases */}
-                    {!isPro && (
+                    {/* Restore Purchases (native only) */}
+                    {!isPro && !isWeb && (
                         <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore} disabled={purchaseLoading}>
                             <Text style={styles.restoreBtnText}>Restore Purchases</Text>
                         </TouchableOpacity>
@@ -169,21 +217,32 @@ export const PaywallModal: React.FC = () => {
                             <Text style={styles.gotItBtnText}>Got It</Text>
                         </TouchableOpacity>
                     )}
+                    {/* Auto-Renewable Subscription Terms */}
+                    {!isPro && (
+                        <View style={styles.legalSection}>
+                            <Text style={styles.legalText}>
+                                {isWeb
+                                    ? 'Payment is processed securely via Stripe. Subscription automatically renews unless canceled. You can manage your subscription from your account settings.'
+                                    : 'Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless it is canceled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions by going to your App Store account settings after purchase.'}
+                            </Text>
+                            {isTrial && trialDaysRemaining > 0 && (
+                                <Text style={styles.legalText}>
+                                    Any unused portion of a free trial period will be forfeited when you purchase a subscription.
+                                </Text>
+                            )}
+                            <View style={styles.legalLinks}>
+                                <TouchableOpacity onPress={() => Linking.openURL('https://peoplestar.com/privacy')}>
+                                    <Text style={styles.legalLink}>Privacy Policy</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.legalDivider}>|</Text>
+                                <TouchableOpacity onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+                                    <Text style={styles.legalLink}>Terms of Use (EULA)</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+                    </ScrollView>
                 </View>
-                {/* Legal Links — REQUIRED for Apple Approval */}
-                {!isPro && (
-                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10, gap: 10 }}>
-                        <TouchableOpacity onPress={() => Linking.openURL('https://peoplestar.com/privacy')}>
-                            <Text style={{ fontSize: 11, color: colors.textMuted, textDecorationLine: 'underline' }}>Privacy Policy</Text>
-                        </TouchableOpacity>
-                        
-                        <Text style={{ fontSize: 11, color: colors.textMuted }}>|</Text>
-
-                        <TouchableOpacity onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
-                            <Text style={{ fontSize: 11, color: colors.textMuted, textDecorationLine: 'underline' }}>Terms of Use (EULA)</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
             </View>
         </Modal>
     );
@@ -196,11 +255,15 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         justifyContent: 'center',
         padding: 20,
     },
-    container: {
+    containerWrapper: {
         backgroundColor: c.modalBg,
         borderRadius: 24,
-        padding: 25,
         maxHeight: '90%',
+        overflow: 'hidden',
+    },
+    containerContent: {
+        padding: 25,
+        paddingTop: 45,
     },
     closeBtn: {
         position: 'absolute',
@@ -385,6 +448,63 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         color: c.text,
         fontFamily: FONT_DISPLAY_EXTRABOLD,
         fontSize: 16,
+        letterSpacing: 0.5,
+    },
+    legalSection: {
+        marginTop: 10,
+        paddingHorizontal: 4,
+    },
+    legalText: {
+        fontSize: 10,
+        color: c.textMuted,
+        textAlign: 'center',
+        lineHeight: 14,
+        marginBottom: 6,
+        fontFamily: FONT_BODY_REGULAR,
+    },
+    legalLinks: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 10,
+        marginTop: 2,
+    },
+    legalLink: {
+        fontSize: 11,
+        color: c.textMuted,
+        textDecorationLine: 'underline' as const,
+        fontFamily: FONT_BODY_REGULAR,
+    },
+    legalDivider: {
+        fontSize: 11,
+        color: c.textMuted,
+    },
+    promoRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 4,
+    },
+    promoInput: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: c.border,
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        color: c.text,
+        fontFamily: FONT_BODY_MEDIUM,
+        fontSize: 14,
+        backgroundColor: c.surfaceLight,
+    },
+    promoBtn: {
+        backgroundColor: c.accent,
+        borderRadius: 10,
+        paddingHorizontal: 18,
+        justifyContent: 'center',
+    },
+    promoBtnText: {
+        fontFamily: FONT_DISPLAY_BOLD,
+        fontSize: 13,
+        color: '#ffffff',
         letterSpacing: 0.5,
     },
 });

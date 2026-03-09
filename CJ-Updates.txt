@@ -1,5 +1,5 @@
 You are working on a production React Native (Expo Router) + TypeScript app called Play PB Now, backed by PHP + MariaDB at:
-https://peoplestar.com/Chipleball/api/
+https://peoplestar.com/PlayPBNow/api/
 
 This is a precision implementation pass — not a rewrite.
 Do NOT refactor working architecture unless explicitly instructed.

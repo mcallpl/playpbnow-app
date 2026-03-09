@@ -1,10 +1,12 @@
 import { BrandedIcon } from '../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import { storeNavData } from '../utils/navData';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -36,6 +38,9 @@ interface Player {
   first_name: string;
   last_name?: string;
   gender: string;
+  cell_phone?: string;
+  dupr_rating?: string;
+  home_court_id?: number | null;
   home_court_name?: string | null;
   wins?: number;
   losses?: number;
@@ -55,7 +60,7 @@ interface SearchResult {
 
 interface RoundConfig { type: 'mixed' | 'gender' | 'mixer'; }
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 export default function SetupScreen() {
   const router = useRouter();
@@ -84,8 +89,19 @@ export default function SetupScreen() {
 
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [saveAsName, setSaveAsName] = useState('');
+  const nameInputRef = useRef<any>(null);
+  const listRef = useRef<any>(null);
   const [configModalVisible, setConfigModalVisible] = useState(false);
-  const [phoneInfoVisible, setPhoneInfoVisible] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editGender, setEditGender] = useState<'male' | 'female'>('male');
+  const [editPhone, setEditPhone] = useState('');
+  const [editDupr, setEditDupr] = useState('');
+  const [editHomeCourtId, setEditHomeCourtId] = useState<number | null>(null);
+  const [allCourts, setAllCourts] = useState<Court[]>([]);
+  const [showCourtPicker, setShowCourtPicker] = useState(false);
+  const [courtSearchText, setCourtSearchText] = useState('');
 
   const [roundsConfig, setRoundsConfig] = useState<RoundConfig[]>([
       { type: 'mixed' }, { type: 'mixed' }, { type: 'mixed' },
@@ -112,6 +128,19 @@ export default function SetupScreen() {
             if (params.courtId) setCourtId(parseInt(params.courtId as string));
             if (params.courtName) setCourtName(params.courtName as string);
 
+            // Load all courts for edit player dropdown
+            try {
+                const courtsRes = await fetch(`${API_URL}/get_courts.php`);
+                const courtsData = await courtsRes.json();
+                if (courtsData.status === 'success') setAllCourts(courtsData.courts || []);
+            } catch (e) {}
+
+            // Load preselected players from navData (AsyncStorage) or legacy URL params
+            if (params.navId) {
+                const { getNavData } = require('../utils/navData');
+                const navData = await getNavData(params.navId as string);
+                if (navData?.preselectedPlayers) { setPlayers(navData.preselectedPlayers); return; }
+            }
             if (params.preselectedPlayers) {
                 try { setPlayers(JSON.parse(params.preselectedPlayers as string)); return; } catch (e) {}
             }
@@ -125,7 +154,11 @@ export default function SetupScreen() {
                 } catch (e) { setPlayers([]); }
             }
         };
-        load();
+        load().then(() => {
+            setTimeout(() => nameInputRef.current?.focus(), 300);
+        });
+        // Also focus whenever this screen regains focus
+        setTimeout(() => nameInputRef.current?.focus(), 500);
     }, [params.groupId, params.groupName, params.groupKey])
   );
 
@@ -171,6 +204,8 @@ export default function SetupScreen() {
                   }, ...players]);
               }
               setNewPlayerName(''); setSearchResults([]); setShowSearchResults(false); setShowPhoneInput(false); setNewPlayerPhone('');
+              setTimeout(() => nameInputRef.current?.focus(), 100);
+              scrollToNewestPlayer();
           } else { Alert.alert('Error', data.message); }
       } catch (e) { Alert.alert('Error', 'Failed to add player'); }
   };
@@ -193,6 +228,8 @@ export default function SetupScreen() {
                   gender, home_court_name: courtName || null
               }, ...players]);
               setNewPlayerName(''); setSearchResults([]); setShowSearchResults(false); setShowPhoneInput(false); setNewPlayerPhone('');
+              setTimeout(() => nameInputRef.current?.focus(), 100);
+              scrollToNewestPlayer();
           } else { Alert.alert('Error', data.message); }
       } catch (e) { Alert.alert('Error', 'Failed to add player'); }
   };
@@ -254,25 +291,114 @@ export default function SetupScreen() {
           setNewPlayerName(''); setShowPhoneInput(false); setNewPlayerPhone('');
       } finally {
           setIsAdding(false);
+          setTimeout(() => nameInputRef.current?.focus(), 100);
+          scrollToNewestPlayer();
       }
+  };
+
+  const scrollToNewestPlayer = () => {
+    setTimeout(() => {
+      try { listRef.current?.scrollToEnd({ animated: true }); } catch (e) {}
+    }, 300);
   };
 
   const removePlayer = (pid: string) => setPlayers(players.filter(p => p.id !== pid));
 
-  const handleSavePress = () => { setSaveAsName(groupName); setSaveModalVisible(true); };
-  const performSave = async () => {
-     try {
-        if (!groupKey || !deviceId) { Alert.alert("Error", "Missing group info"); return; }
-        const res = await fetch(`${API_URL}/save_players.php`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ group_key: groupKey, user_id: deviceId, players })
-        });
-        const data = await res.json();
-        if (data.status === 'success') { setSaveModalVisible(false); Alert.alert("Success", `Roster saved!`); }
-        else Alert.alert("Error", data.message);
-     } catch (e) { Alert.alert("Error", "Failed to save roster"); }
+  const openEditPlayer = (player: Player) => {
+    setEditingPlayer(player);
+    setEditName(player.first_name);
+    setEditLastName(player.last_name || '');
+    setEditGender(player.gender);
+    setEditPhone(player.cell_phone || '');
+    setEditDupr(player.dupr_rating || '');
+    setEditHomeCourtId(player.home_court_id || null);
+    setShowCourtPicker(false);
+    setCourtSearchText('');
   };
-  const handleSmartSave = async () => { if (!saveAsName.trim()) { Alert.alert("Error", "Enter a group name."); return; } await performSave(); };
+
+  const saveEditPlayer = async () => {
+    if (!editingPlayer || !editName.trim()) return;
+    const duprVal = editDupr.trim();
+    if (duprVal) {
+      const num = parseFloat(duprVal);
+      if (isNaN(num) || num < 1.0 || num > 8.0) {
+        Alert.alert('Invalid DUPR', 'DUPR rating must be between 1.0 and 8.0');
+        return;
+      }
+    }
+    const selectedCourt = allCourts.find(c => c.id === editHomeCourtId);
+    const updatedPlayers = players.map(p =>
+      p.id === editingPlayer.id ? {
+        ...p,
+        first_name: editName.trim(),
+        last_name: editLastName.trim(),
+        gender: editGender,
+        cell_phone: editPhone.trim() || undefined,
+        dupr_rating: duprVal || undefined,
+        home_court_id: editHomeCourtId,
+        home_court_name: selectedCourt ? selectedCourt.name : null,
+      } : p
+    );
+    setPlayers(updatedPlayers);
+    try {
+      await fetch(`${API_URL}/update_player.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          player_key: editingPlayer.id,
+          first_name: editName.trim(),
+          last_name: editLastName.trim(),
+          gender: editGender,
+          cell_phone: editPhone.trim() || null,
+          dupr_rating: duprVal || null,
+          home_court_id: editHomeCourtId || '',
+        }),
+      });
+    } catch (e) {
+      console.error('Failed to update player on server:', e);
+    }
+    setEditingPlayer(null);
+  };
+
+  const movePlayer = (index: number, direction: 'up' | 'down') => {
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= players.length) return;
+      const updated = [...players];
+      [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+      setPlayers(updated);
+  };
+
+  const handleSavePress = () => { setSaveAsName(groupName); setSaveModalVisible(true); };
+  const handleSmartSave = async () => {
+     const name = saveAsName.trim();
+     if (!name) { Alert.alert("Error", "Enter a group name."); return; }
+     if (!groupKey || !deviceId) { Alert.alert("Error", `Missing group info (key: ${groupKey}, device: ${deviceId})`); return; }
+     try {
+        const payload = { group_key: groupKey, user_id: deviceId, new_name: name, players };
+        console.log('Save payload:', JSON.stringify(payload).substring(0, 200));
+        const res = await fetch(`${API_URL}/save_group_roster.php`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const text = await res.text();
+        console.log('Save response:', text);
+        let data;
+        try { data = JSON.parse(text); } catch { Alert.alert("Error", "Invalid server response: " + text.substring(0, 100)); return; }
+        if (data.status === 'success') {
+            setSaveModalVisible(false);
+            if (data.group_key !== groupKey) {
+                setGroupKey(data.group_key);
+                setGroupName(data.group_name);
+                await AsyncStorage.setItem('active_group_key', data.group_key);
+                await AsyncStorage.setItem('active_group_name', data.group_name);
+            } else if (data.group_name !== groupName) {
+                setGroupName(data.group_name);
+                await AsyncStorage.setItem('active_group_name', data.group_name);
+            }
+            Alert.alert("Saved!", name === groupName ? "Group roster updated." : `New group "${name}" created.`);
+        } else Alert.alert("Error", data.message || "Unknown error");
+     } catch (e: any) { Alert.alert("Error", "Failed to save: " + (e.message || e)); }
+  };
 
   const handleDragEnd = ({ data }: { data: Player[] }) => {
       setPlayers(data);
@@ -303,47 +429,70 @@ export default function SetupScreen() {
         });
         const data = await res.json();
         if (data.status === 'success') {
+            const navId = await storeNavData({ schedule: data.schedule, players });
             router.push({
                 pathname: '/(tabs)/game',
-                params: { schedule: JSON.stringify(data.schedule), players: JSON.stringify(players), groupName, groupKey, courtName, courtId: (courtId || '').toString() }
+                params: { navId, groupName, groupKey, courtName, courtId: (courtId || '').toString() }
             });
         } else { Alert.alert("Error", data.message || "Generation failed."); }
     } catch (e) { Alert.alert("Error", "Network error."); }
   };
 
-  const renderItem = ({ item, drag, isActive }: RenderItemParams<Player>) => {
+  const renderPlayerRow = (item: Player, drag: () => void, isActive: boolean, index?: number) => {
     const totalGames = (item.wins || 0) + (item.losses || 0);
     const hasStats = totalGames > 0;
     return (
-      <ScaleDecorator>
         <View style={[styles.playerRow, isActive && { backgroundColor: colors.cardHover, elevation: 5 }]}>
           <View style={styles.playerInfo}>
-             <Pressable onPressIn={drag} hitSlop={20} style={styles.dragHandle}>
-                 <BrandedIcon name="menu" size={24} color={colors.textMuted} />
-             </Pressable>
+             {Platform.OS === 'web' && index !== undefined ? (
+               <View style={{ marginRight: 8, gap: 0 }}>
+                   <Pressable onPress={() => movePlayer(index, 'up')}
+                       style={{ opacity: index === 0 ? 0.2 : 1, paddingHorizontal: 6, paddingVertical: 2 }}>
+                       <Text style={{ fontSize: 16, color: colors.textMuted, fontWeight: '700' }}>▲</Text>
+                   </Pressable>
+                   <Pressable onPress={() => movePlayer(index, 'down')}
+                       style={{ opacity: index === players.length - 1 ? 0.2 : 1, paddingHorizontal: 6, paddingVertical: 2 }}>
+                       <Text style={{ fontSize: 16, color: colors.textMuted, fontWeight: '700' }}>▼</Text>
+                   </Pressable>
+               </View>
+             ) : Platform.OS !== 'web' ? (
+               <Pressable onPressIn={drag} hitSlop={20} style={styles.dragHandle}>
+                   <BrandedIcon name="menu" size={24} color={colors.textMuted} />
+               </Pressable>
+             ) : null}
              <View style={[styles.genderIcon, { backgroundColor: item.gender === 'female' ? 'rgba(247,140,162,0.15)' : 'rgba(79,172,254,0.15)' }]}>
                  <BrandedIcon name={item.gender === 'female' ? 'gender-female' : 'gender-male'} size={16}
                     color={item.gender === 'female' ? colors.female : colors.male} />
              </View>
              <View style={{ marginLeft: 12, flex: 1 }}>
                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                     <Text style={styles.playerName}>{item.first_name}</Text>
+                     <Text style={styles.playerName}>{item.first_name}{item.last_name ? ` ${item.last_name}` : ''}</Text>
                      {item.is_verified && <BrandedIcon name="confirm" size={14} color={colors.accent} />}
                  </View>
                  <Text style={styles.playerStats}>
+                     {item.dupr_rating ? `DUPR ${item.dupr_rating}` : ''}
+                     {item.dupr_rating && hasStats ? ' · ' : ''}
                      {hasStats ? `${item.wins}W-${item.losses}L · ${(item.win_pct || 0).toFixed(0)}%` : ''}
-                     {hasStats && item.home_court_name ? ' · ' : ''}
+                     {(hasStats || item.dupr_rating) && item.home_court_name ? ' · ' : ''}
                      {item.home_court_name || ''}
                  </Text>
              </View>
           </View>
-          <TouchableOpacity onPress={() => removePlayer(item.id)}>
-            <BrandedIcon name="close" size={22} color={colors.danger} style={{ opacity: 0.5 }} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity onPress={() => openEditPlayer(item)}>
+              <BrandedIcon name="edit" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => removePlayer(item.id)}>
+              <BrandedIcon name="close" size={22} color={colors.danger} style={{ opacity: 0.5 }} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </ScaleDecorator>
     );
   };
+
+  const renderItem = ({ item, drag, isActive }: RenderItemParams<Player>) => (
+    <ScaleDecorator>{renderPlayerRow(item, drag, isActive)}</ScaleDecorator>
+  );
 
   const courtCount = Math.floor(players.length / 4);
   const maleCount = players.filter(p => p.gender === 'male').length;
@@ -400,40 +549,20 @@ export default function SetupScreen() {
         {/* PLAYER INPUT WITH GLOBAL SEARCH */}
         <View style={styles.inputArea}>
             <View style={styles.inputRow}>
-                <TextInput style={styles.input} placeholder="Search or add player..."
+                <TextInput ref={nameInputRef} style={styles.input} placeholder="Search or add player..."
                     placeholderTextColor={colors.inputPlaceholder}
                     value={newPlayerName} onChangeText={handleNameChange}
                     onSubmitEditing={isAdding ? undefined : addNewPlayer} returnKeyType="done" blurOnSubmit={false}
                     editable={!isAdding} />
-                <TouchableOpacity style={[styles.genderBtn, newPlayerGender === 'male' ? styles.maleActive : styles.femaleActive]}
-                    onPress={() => setNewPlayerGender(prev => prev === 'male' ? 'female' : 'male')}
+                <Pressable style={[styles.genderBtn, newPlayerGender === 'male' ? styles.maleActive : styles.femaleActive]}
+                    onPress={() => { setNewPlayerGender(newPlayerGender === 'male' ? 'female' : 'male'); }}
                     disabled={isAdding}>
                     <BrandedIcon name={newPlayerGender === 'male' ? 'gender-male' : 'gender-female'} size={20} color="white" />
-                </TouchableOpacity>
+                </Pressable>
                 <TouchableOpacity style={[styles.addBtn, isAdding && { opacity: 0.5 }]} onPress={addNewPlayer} disabled={isAdding}>
                     {isAdding ? <ActivityIndicator size="small" color={colors.text} /> : <BrandedIcon name="add" size={24} color={colors.text} />}
                 </TouchableOpacity>
             </View>
-
-            {!showPhoneInput ? (
-                <TouchableOpacity onPress={() => setShowPhoneInput(true)} style={styles.phoneToggle}>
-                    <BrandedIcon name="phone" size={14} color={colors.secondary} />
-                    <Text style={styles.phoneToggleText}>Add phone number</Text>
-                    <TouchableOpacity onPress={() => setPhoneInfoVisible(true)} hitSlop={10}>
-                        <BrandedIcon name="info" size={16} color={colors.textMuted} />
-                    </TouchableOpacity>
-                </TouchableOpacity>
-            ) : (
-                <View style={styles.phoneRow}>
-                    <TextInput style={styles.phoneInput} placeholder="Phone (optional)"
-                        placeholderTextColor={colors.inputPlaceholder}
-                        value={newPlayerPhone} onChangeText={setNewPlayerPhone}
-                        keyboardType="phone-pad" />
-                    <TouchableOpacity onPress={() => { setShowPhoneInput(false); setNewPlayerPhone(''); }}>
-                        <BrandedIcon name="close" size={20} color={colors.textMuted} />
-                    </TouchableOpacity>
-                </View>
-            )}
 
             {showSearchResults && (
                 <View style={styles.searchDropdown}>
@@ -460,28 +589,136 @@ export default function SetupScreen() {
             )}
         </View>
 
-        <DraggableFlatList data={players} onDragEnd={handleDragEnd} keyExtractor={(item) => item.id}
-          renderItem={renderItem} contentContainerStyle={styles.listContent}
-          ListEmptyComponent={<Text style={styles.emptyText}>No players added yet. Type a name above to search or create.</Text>} />
+        {Platform.OS === 'web' ? (
+          <FlatList ref={listRef} data={players} keyExtractor={(item) => item.id}
+            renderItem={({ item, index }) => renderPlayerRow(item, () => {}, false, index)}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={<Text style={styles.emptyText}>No players added yet. Type a name above to search or create.</Text>} />
+        ) : (
+          <DraggableFlatList ref={listRef} data={players} onDragEnd={handleDragEnd} keyExtractor={(item) => item.id}
+            renderItem={renderItem} contentContainerStyle={styles.listContent}
+            ListEmptyComponent={<Text style={styles.emptyText}>No players added yet. Type a name above to search or create.</Text>} />
+        )}
 
-        {/* PHONE INFO MODAL */}
-        <Modal visible={phoneInfoVisible} transparent animationType="fade">
+        {/* EDIT PLAYER MODAL */}
+        <Modal visible={!!editingPlayer} transparent animationType="fade">
             <View style={styles.modalOverlay}>
-                <View style={[styles.modalContent, { padding: 30 }]}>
-                    <BrandedIcon name="confirm" size={48} color={colors.accent} style={{ alignSelf: 'center', marginBottom: 15 }} />
-                    <Text style={styles.modalTitle}>Why Add a Phone?</Text>
-                    <Text style={styles.infoText}>
-                        Adding a phone number creates a <Text style={{ fontFamily: FONT_BODY_BOLD }}>verified player profile</Text> that tracks stats across ALL groups and courts.
-                    </Text>
-                    <Text style={[styles.infoText, { marginTop: 10 }]}>
-                        Without a phone number, players are matched by name only, which can create duplicates if someone plays in multiple groups.
-                    </Text>
-                    <Text style={[styles.infoText, { marginTop: 10 }]}>
-                        Phone numbers are <Text style={{ fontFamily: FONT_BODY_BOLD }}>never shared</Text> with other users.
-                    </Text>
-                    <TouchableOpacity style={styles.infoCloseBtn} onPress={() => setPhoneInfoVisible(false)}>
-                        <Text style={styles.infoCloseBtnText}>GOT IT</Text>
+                <View style={styles.modalContent}>
+                    <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+                    <Text style={styles.modalTitle}>EDIT PLAYER</Text>
+
+                    <Text style={styles.fieldLabel}>First Name</Text>
+                    <TextInput
+                        style={styles.modalInput}
+                        value={editName}
+                        onChangeText={setEditName}
+                        autoFocus
+                        placeholder="First name"
+                        placeholderTextColor={colors.inputPlaceholder}
+                    />
+
+                    <Text style={styles.fieldLabel}>Last Name</Text>
+                    <TextInput
+                        style={styles.modalInput}
+                        value={editLastName}
+                        onChangeText={setEditLastName}
+                        placeholder="Last name"
+                        placeholderTextColor={colors.inputPlaceholder}
+                    />
+
+                    <Text style={styles.fieldLabel}>Gender</Text>
+                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 16 }}>
+                        <Pressable
+                            onPress={() => setEditGender('male')}
+                            style={[styles.editGenderBtn, editGender === 'male' && { backgroundColor: colors.male }]}
+                        >
+                            <BrandedIcon name="gender-male" size={18} color={editGender === 'male' ? 'white' : colors.textMuted} />
+                            <Text style={{ color: editGender === 'male' ? 'white' : colors.textMuted, fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14 }}>Male</Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={() => setEditGender('female')}
+                            style={[styles.editGenderBtn, editGender === 'female' && { backgroundColor: colors.female }]}
+                        >
+                            <BrandedIcon name="gender-female" size={18} color={editGender === 'female' ? 'white' : colors.textMuted} />
+                            <Text style={{ color: editGender === 'female' ? 'white' : colors.textMuted, fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14 }}>Female</Text>
+                        </Pressable>
+                    </View>
+
+                    <Text style={styles.fieldLabel}>Cell Phone</Text>
+                    <TextInput
+                        style={styles.modalInput}
+                        value={editPhone}
+                        onChangeText={setEditPhone}
+                        placeholder="(optional)"
+                        placeholderTextColor={colors.inputPlaceholder}
+                        keyboardType="phone-pad"
+                    />
+
+                    <Text style={styles.fieldLabel}>DUPR Rating</Text>
+                    <TextInput
+                        style={styles.modalInput}
+                        value={editDupr}
+                        onChangeText={setEditDupr}
+                        placeholder="1.0 - 8.0 (optional)"
+                        placeholderTextColor={colors.inputPlaceholder}
+                        keyboardType="decimal-pad"
+                    />
+
+                    <Text style={styles.fieldLabel}>Home Court</Text>
+                    <TouchableOpacity
+                        style={[styles.modalInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 }]}
+                        onPress={() => { setShowCourtPicker(!showCourtPicker); setCourtSearchText(''); }}
+                    >
+                        <Text style={{ color: editHomeCourtId ? colors.inputText : colors.inputPlaceholder, fontFamily: FONT_BODY_MEDIUM, fontSize: 16 }}>
+                            {editHomeCourtId ? (allCourts.find(c => c.id === editHomeCourtId)?.name || 'Unknown') : '(optional)'}
+                        </Text>
+                        <Text style={{ color: colors.textMuted, fontSize: 12 }}>{showCourtPicker ? '▲' : '▼'}</Text>
                     </TouchableOpacity>
+                    {showCourtPicker && (
+                        <View style={{ backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginBottom: 10, maxHeight: 200 }}>
+                            <TextInput
+                                style={[styles.modalInput, { margin: 8, marginBottom: 4 }]}
+                                value={courtSearchText}
+                                onChangeText={setCourtSearchText}
+                                placeholder="Search courts..."
+                                placeholderTextColor={colors.inputPlaceholder}
+                                autoFocus
+                            />
+                            <ScrollView nestedScrollEnabled style={{ maxHeight: 140 }}>
+                                {editHomeCourtId && (
+                                    <TouchableOpacity
+                                        style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border }}
+                                        onPress={() => { setEditHomeCourtId(null); setShowCourtPicker(false); }}
+                                    >
+                                        <Text style={{ color: colors.danger, fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14 }}>Clear Home Court</Text>
+                                    </TouchableOpacity>
+                                )}
+                                {allCourts
+                                    .filter(c => !courtSearchText || c.name.toLowerCase().includes(courtSearchText.toLowerCase()) || (c.city && c.city.toLowerCase().includes(courtSearchText.toLowerCase())))
+                                    .map(court => (
+                                        <TouchableOpacity
+                                            key={court.id}
+                                            style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: court.id === editHomeCourtId ? colors.accentSoft : 'transparent' }}
+                                            onPress={() => { setEditHomeCourtId(court.id); setShowCourtPicker(false); }}
+                                        >
+                                            <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text }}>{court.name}</Text>
+                                            {court.city && <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: colors.textMuted }}>{court.city}{court.state ? `, ${court.state}` : ''}</Text>}
+                                        </TouchableOpacity>
+                                    ))
+                                }
+                            </ScrollView>
+                        </View>
+                    )}
+
+                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+                        <TouchableOpacity style={[styles.modalBtn, { flex: 1, backgroundColor: colors.border }]} onPress={() => setEditingPlayer(null)}>
+                            <Text style={[styles.modalBtnText, { color: colors.text }]}>CANCEL</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.modalBtn, { flex: 1, backgroundColor: colors.accent }]} onPress={saveEditPlayer}>
+                            <Text style={[styles.modalBtnText, { color: 'white' }]}>SAVE</Text>
+                        </TouchableOpacity>
+                    </View>
+                    </ScrollView>
                 </View>
             </View>
         </Modal>
@@ -505,6 +742,7 @@ export default function SetupScreen() {
         {/* MATCH CONFIG MODAL */}
         <Modal visible={configModalVisible} transparent animationType="slide">
             <View style={styles.modalOverlay}><View style={styles.modalContent}>
+                <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>MATCH SETUP</Text>
                 {courtName ? (
                     <View style={styles.courtDisplayBar}>
@@ -525,8 +763,8 @@ export default function SetupScreen() {
                         <TouchableOpacity onPress={addRound} style={styles.roundBtn}><BrandedIcon name="add" size={24} color={colors.text} /></TouchableOpacity>
                     </View>
                 </View>
-                <View style={{ height: 250, marginVertical: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 12 }}>
-                    <ScrollView contentContainerStyle={{ padding: 10 }}>
+                <View style={{ maxHeight: 200, marginVertical: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 12 }}>
+                    <ScrollView contentContainerStyle={{ padding: 10 }} nestedScrollEnabled>
                         {roundsConfig.map((conf, index) => (
                             <View key={index} style={styles.roundConfigRow}>
                                 <Text style={styles.roundNum}>#{index + 1}</Text>
@@ -548,6 +786,7 @@ export default function SetupScreen() {
                 <TouchableOpacity onPress={() => setConfigModalVisible(false)} style={styles.closeModalBtn}>
                     <Text style={styles.closeText}>CANCEL</Text>
                 </TouchableOpacity>
+                </ScrollView>
             </View></View>
         </Modal>
 
@@ -749,6 +988,10 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   saveOptionText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.bg },
   closeModalBtn: { marginTop: 10, alignItems: 'center', padding: 10 },
   closeText: { color: c.textMuted, fontFamily: FONT_BODY_BOLD },
+  fieldLabel: { fontFamily: FONT_BODY_SEMIBOLD, fontSize: 12, color: c.textMuted, letterSpacing: 1, textTransform: 'uppercase' },
+  modalBtn: { alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 14 },
+  modalBtnText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 15, letterSpacing: 0.5 },
+  editGenderBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: c.border },
   courtDisplayBar: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.accentSoft, padding: 10, borderRadius: 10, marginBottom: 15 },
   courtDisplayText: { flex: 1, fontFamily: FONT_BODY_BOLD, color: c.accent, fontSize: 14 },
   infoBox: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 20, backgroundColor: c.surfaceLight, padding: 10, borderRadius: 10 },

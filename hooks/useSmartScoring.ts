@@ -132,29 +132,42 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
                 return result(newState, true);
             }
 
+            // WTS-1 as single digit (e.g. PLAY TO 5, entered 4) → deuce: auto-fill WTS+1
+            if (numVal === wts - 1 && wts <= 9) {
+                if (!newState[otherKey] || newState[otherKey] === '') {
+                    newState = { ...newState, [otherKey]: (wts + 1).toString() };
+                    setScores(newState);
+                    AsyncStorage.setItem(`scores_${groupName}`, JSON.stringify(newState));
+                }
+                jumpToNextEmpty(rIdx, gIdx, team, newState);
+                return result(newState, true);
+            }
+
             // > WTS → jump
             if (numVal > wts) {
                 jumpToNextEmpty(rIdx, gIdx, team, newState);
                 return result(newState, true);
             }
-            
-            // WTS-1: wait for second digit
+
+            // WTS-1: wait for second digit (WTS >= 10)
             return result(newState, false);
         }
 
         // ── TWO DIGITS ──
         if (value.length === 2) {
-            // Too high → strip
-            if (numVal > wts + 2) {
-                const stripped = value.substring(0, 1);
-                const strippedState = { ...newState, [currentKey]: stripped };
-                setScores(strippedState);
-                AsyncStorage.setItem(`scores_${groupName}`, JSON.stringify(strippedState));
-                return result(strippedState, false);
+            // WTS or higher → allow and jump
+            if (numVal >= wts) {
+                jumpToNextEmpty(rIdx, gIdx, team, newState);
+                return result(newState, true);
             }
 
-            // WTS or overtime → jump
-            if (numVal >= wts) {
+            // WTS-1 → deuce: auto-fill WTS+1 in opponent
+            if (numVal === wts - 1) {
+                if (!newState[otherKey] || newState[otherKey] === '') {
+                    newState = { ...newState, [otherKey]: (wts + 1).toString() };
+                    setScores(newState);
+                    AsyncStorage.setItem(`scores_${groupName}`, JSON.stringify(newState));
+                }
                 jumpToNextEmpty(rIdx, gIdx, team, newState);
                 return result(newState, true);
             }
@@ -174,7 +187,7 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
             if (newState[otherKey] && newState[otherKey] !== '') {
                 jumpToNextEmpty(rIdx, gIdx, team, newState);
             }
-            
+
             return result(newState, true);
         }
 

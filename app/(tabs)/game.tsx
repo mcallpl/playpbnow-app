@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
+import { getNavData, saveActiveMatchData, loadActiveMatchData } from '../../utils/navData';
 import {
     ActivityIndicator,
     Alert,
@@ -12,6 +13,7 @@ import {
     KeyboardAvoidingView,
     Modal,
     Platform,
+    ScrollView,
     Share,
     StyleSheet,
     Switch,
@@ -42,7 +44,7 @@ import {
 } from '../../constants/theme';
 import { haptic } from '../../utils/haptics';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 interface SearchResult { id: string; name: string; source: string; }
 
@@ -55,14 +57,65 @@ export default function GameScreen() {
   const [groupName, setGroupName] = useState(params.groupName as string || '');
   const [groupKey, setGroupKey] = useState(params.groupKey as string || '');
   const courtName = (params.courtName as string) || '';
-  const playersData = useMemo(() => params.players ? JSON.parse(params.players as string) : [], [params.players]);
-  const [currentRoster, setCurrentRoster] = useState<Player[]>(playersData);
+
+  // Nav data loaded from AsyncStorage (large payloads) or fallback to URL params
+  const [navScheduleJson, setNavScheduleJson] = useState<string | undefined>(
+      params.schedule ? (params.schedule as string) : undefined
+  );
+  const [navPlayersData, setNavPlayersData] = useState<Player[]>(
+      params.players ? JSON.parse(params.players as string) : []
+  );
+  const [navCollabScores, setNavCollabScores] = useState<any>(
+      params.collabScores ? JSON.parse(params.collabScores as string) : null
+  );
+  const [navDataLoaded, setNavDataLoaded] = useState(false);
+
+  useEffect(() => {
+      const loadMatchData = async () => {
+          // Try navId first
+          if (params.navId) {
+              const data = await getNavData(params.navId as string);
+              if (data) {
+                  if (data.schedule) setNavScheduleJson(JSON.stringify(data.schedule));
+                  if (data.players) setNavPlayersData(data.players);
+                  if (data.collabScores) setNavCollabScores(data.collabScores);
+                  // Persist for refresh survival
+                  await saveActiveMatchData({
+                      schedule: data.schedule,
+                      players: data.players,
+                      groupName: params.groupName,
+                      groupKey: params.groupKey,
+                      courtName: params.courtName,
+                  });
+                  setNavDataLoaded(true);
+                  return;
+              }
+          }
+          // Fallback: recover from persisted active match data (hard refresh)
+          const saved = await loadActiveMatchData();
+          if (saved) {
+              if (saved.schedule) setNavScheduleJson(JSON.stringify(saved.schedule));
+              if (saved.players) setNavPlayersData(saved.players);
+              if (saved.groupName && !params.groupName) setGroupName(saved.groupName as string);
+              if (saved.groupKey && !params.groupKey) setGroupKey(saved.groupKey as string);
+          }
+          setNavDataLoaded(true);
+      };
+      loadMatchData();
+  }, []);
+
+  const [currentRoster, setCurrentRoster] = useState<Player[]>([]);
   const [editingPlayer, setEditingPlayer] = useState<{r:number,g:number,t:number,p:number} | null>(null);
+
+  // Update roster when nav data loads async
+  useEffect(() => {
+      if (navPlayersData.length > 0) setCurrentRoster(navPlayersData);
+  }, [navPlayersData]);
 
   const {
       schedule, setSchedule, loading, swapSource, setSwapSource,
       partnerCounts, handlePlayerTap, handlePlayerNameChange, performShuffle, updateGame
-  } = useGameLogic(params.schedule as string, playersData, currentRoster, groupName);
+  } = useGameLogic(navScheduleJson, navPlayersData, currentRoster, groupName);
 
   const finishButtonRef = React.useRef<any & { measure: Function }>(null);
 
@@ -89,7 +142,7 @@ export default function GameScreen() {
   });
 
   const { setActiveMatch, clearActiveMatch } = useActiveMatch();
-  const { isPro, isFree, showPaywall, features } = useSubscription();
+  const { isPro, isTrial, isFree, showPaywall, features } = useSubscription();
 
   const [isMatchScored, setIsMatchScored] = useState(false);
   const [generatingImg, setGeneratingImg] = useState(false);
@@ -240,10 +293,19 @@ export default function GameScreen() {
   };
 
   const handleShuffle = () => {
-    Alert.alert("Shuffle Matchups?", "This will generate completely NEW matchups. Current scores will be cleared.", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Shuffle", style: "destructive", onPress: async () => { const s = await performShuffle(); if (s) clearScores(); }}
-    ]);
+    const doShuffle = () => {
+        performShuffle().then((s) => { if (s) clearScores(); });
+    };
+    if (Platform.OS === 'web') {
+        if (window.confirm("Shuffle Matchups?\n\nThis will generate completely NEW matchups. Current scores will be cleared.")) {
+            doShuffle();
+        }
+    } else {
+        Alert.alert("Shuffle Matchups?", "This will generate completely NEW matchups. Current scores will be cleared.", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Shuffle", style: "destructive", onPress: doShuffle }
+        ]);
+    }
   };
 
   const handleGenerateReport = async () => {
@@ -271,27 +333,38 @@ export default function GameScreen() {
           const courtInfo = courtName ? ` at ${courtName}` : '';
           const shareMessage = `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtInfo}\n${generatedImageUrl}`;
 
-          // Download image to local cache and share the actual image
-          const filename = generatedImageUrl.split('/').pop() || 'match_report.png';
-          const localUri = FileSystem.cacheDirectory + filename;
-          const download = await FileSystem.downloadAsync(generatedImageUrl, localUri);
-
-          if (Platform.OS === 'ios') {
-              // iOS: Share.share with url sends the actual image file
-              await Share.share({ message: shareMessage, url: download.uri });
+          if (Platform.OS === 'web') {
+              // Web: Use Web Share API if available, otherwise open in new tab
+              if (navigator.share) {
+                  await navigator.share({ title: `Match Schedule - ${reportTitle}`, text: shareMessage, url: generatedImageUrl });
+              } else {
+                  window.open(generatedImageUrl, '_blank');
+              }
           } else {
-              // Android: Use expo-sharing for file sharing
-              await Sharing.shareAsync(download.uri, { mimeType: 'image/png', dialogTitle: shareMessage });
+              // Native: Download image to local cache and share the actual image
+              const filename = generatedImageUrl.split('/').pop() || 'match_report.png';
+              const localUri = FileSystem.cacheDirectory + filename;
+              const download = await FileSystem.downloadAsync(generatedImageUrl, localUri);
+
+              if (Platform.OS === 'ios') {
+                  await Share.share({ message: shareMessage, url: download.uri });
+              } else {
+                  await Sharing.shareAsync(download.uri, { mimeType: 'image/png', dialogTitle: shareMessage });
+              }
           }
       } catch (e) {
           console.error('Share error:', e);
-          // Fallback to URL sharing if download fails
+          // Fallback to URL sharing
           const day = selectedDate.getDate();
           const suffix = (day === 1 || day === 21 || day === 31) ? 'st' : (day === 2 || day === 22) ? 'nd' : (day === 3 || day === 23) ? 'rd' : 'th';
           const dateLabel = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + suffix;
           const timeLabel = selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
           const courtFallback = courtName ? ` at ${courtName}` : '';
-          await Share.share({ message: `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtFallback}\n${generatedImageUrl}`, url: generatedImageUrl });
+          if (Platform.OS === 'web') {
+              window.open(generatedImageUrl, '_blank');
+          } else {
+              await Share.share({ message: `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtFallback}\n${generatedImageUrl}`, url: generatedImageUrl });
+          }
       }
       // Save the match snapshot so the LIVE tab can restore it
       setActiveMatch({
@@ -306,7 +379,7 @@ export default function GameScreen() {
       setReportModalVisible(false);
 
       // Post-share nudge for free users
-      if (isFree) {
+      if (isFree && !isTrial) {
           setTimeout(() => {
               Alert.alert(
                   'Upgrade to Pro',
@@ -324,8 +397,8 @@ export default function GameScreen() {
   const handleTextMatchPress = () => { setReportModalVisible(true); handleGenerateReport(); };
   const handleGatekeeperSuccess = (newId: string) => setUserId(newId);
 
-  // INVITE COLLABORATOR
-  const handleInviteCollaborator = async () => {
+  // CREATE COLLAB SESSION (only when in scoring mode)
+  const createNewCollabSession = async () => {
       if (sessionId && shareCode) { setShareModalVisible(true); return; }
       const batchId = groupKey || `collab_${Date.now()}`;
       const result = await createCollabSession(batchId, groupName, schedule);
@@ -349,6 +422,30 @@ export default function GameScreen() {
       }
   };
 
+  // THUNDERBOLT PRESS — show options based on scoring mode
+  const handleThunderboltPress = () => {
+      // If already in a collab session, show share modal
+      if (sessionId && shareCode) { setShareModalVisible(true); return; }
+
+      if (isMatchScored) {
+          // In scoring mode — offer to create OR join
+          if (Platform.OS === 'web') {
+              const choice = window.confirm('Create a shared match?\n\nOK = Create Shared Match\nCancel = Join Existing Match');
+              if (choice) createNewCollabSession();
+              else setJoinModalVisible(true);
+          } else {
+              Alert.alert('Shared Scoring', 'What would you like to do?', [
+                  { text: 'Create Shared Match', onPress: createNewCollabSession },
+                  { text: 'Join Match', onPress: () => setJoinModalVisible(true) },
+                  { text: 'Cancel', style: 'cancel' },
+              ]);
+          }
+      } else {
+          // Not scoring — only join
+          setJoinModalVisible(true);
+      }
+  };
+
   const executeSave = async (forceUpdate: boolean = false) => {
     const matchesToSave: any[] = [];
     schedule.forEach((round, rIdx) => {
@@ -365,9 +462,17 @@ export default function GameScreen() {
             }
         });
     });
-    if (matchesToSave.length === 0) { Alert.alert("No Scores", "Enter scores before finishing."); setSaveModalVisible(false); return; }
+    if (matchesToSave.length === 0) {
+        if (Platform.OS === 'web') window.alert("Enter scores before finishing.");
+        else Alert.alert("No Scores", "Enter scores before finishing.");
+        setSaveModalVisible(false); return;
+    }
     try {
-        if (!groupName) { Alert.alert("Error", "Group Name Lost."); return; }
+        if (!groupName) {
+            if (Platform.OS === 'web') window.alert("Group Name Lost.");
+            else Alert.alert("Error", "Group Name Lost.");
+            return;
+        }
         const payload = {
             group_name: groupName, group_id: groupKey, matches: matchesToSave, user_id: userId,
             custom_timestamp: Math.floor(selectedDate.getTime() / 1000), match_title: saveTitle,
@@ -377,13 +482,21 @@ export default function GameScreen() {
         const res = await fetch(`${API_URL}/save_scores.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
         const responseText = await res.text();
         let data;
-        try { data = JSON.parse(responseText); } catch (parseError) { Alert.alert("Error", `Server returned invalid data`); return; }
+        try { data = JSON.parse(responseText); } catch (parseError) {
+            if (Platform.OS === 'web') window.alert("Server returned invalid data");
+            else Alert.alert("Error", "Server returned invalid data");
+            return;
+        }
 
         if (data.status === 'success') {
             haptic.save();
             await clearScores(); setSaveModalVisible(false);
             clearActiveMatch();
-            Alert.alert("Success!", data.message || "Match saved successfully!");
+            if (Platform.OS === 'web') {
+                window.alert(data.message || "Match saved successfully!");
+            } else {
+                Alert.alert("Success!", data.message || "Match saved successfully!");
+            }
             router.replace({ pathname: '/(tabs)/leaderboard', params: {
                 groupName,
                 forceGlobal: 'true',
@@ -391,24 +504,39 @@ export default function GameScreen() {
                 refresh: Date.now().toString()
             } });
         } else if (data.status === 'already_exists') {
-            // Same title, time, AND scores — nothing to save
-            Alert.alert("Already Saved", "This match has already been saved with identical scores. Nothing to update.");
             setSaveModalVisible(false);
+            if (Platform.OS === 'web') {
+                window.alert("This match has already been saved with identical scores. Nothing to update.");
+            } else {
+                Alert.alert("Already Saved", "This match has already been saved with identical scores. Nothing to update.");
+            }
         } else if (data.status === 'duplicate_diff_scores') {
-            // Same title + time but different scores — ask user
             setSaveModalVisible(false);
-            Alert.alert(
-                "Update Scores?",
-                "A match with this title and date already exists but with different scores. Would you like to update it?",
-                [
-                    { text: "No, Keep Original", style: "cancel" },
-                    { text: "Yes, Update", style: "default", onPress: () => executeSave(true) }
-                ]
-            );
+            if (Platform.OS === 'web') {
+                if (window.confirm("A match with this title and date already exists but with different scores. Would you like to update it?")) {
+                    executeSave(true);
+                }
+            } else {
+                Alert.alert(
+                    "Update Scores?",
+                    "A match with this title and date already exists but with different scores. Would you like to update it?",
+                    [
+                        { text: "No, Keep Original", style: "cancel" },
+                        { text: "Yes, Update", style: "default", onPress: () => executeSave(true) }
+                    ]
+                );
+            }
         } else {
-            Alert.alert("Error", `Could not save scores: ${data.message || 'Unknown error'}`);
+            if (Platform.OS === 'web') {
+                window.alert(`Could not save scores: ${data.message || 'Unknown error'}`);
+            } else {
+                Alert.alert("Error", `Could not save scores: ${data.message || 'Unknown error'}`);
+            }
         }
-    } catch (e: any) { Alert.alert("Error", `Network error: ${e.message || 'Unknown'}`); }
+    } catch (e: any) {
+        if (Platform.OS === 'web') window.alert(`Network error: ${e.message || 'Unknown'}`);
+        else Alert.alert("Error", `Network error: ${e.message || 'Unknown'}`);
+    }
   };
 
   // FIXED: Uses ScoreChangeResult — syncs FINAL values after auto-fill
@@ -498,7 +626,19 @@ export default function GameScreen() {
             <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
                 {groupName ? groupName.toUpperCase() : "MATCH SETUP"}
             </Text>
-            <View style={{width: 30}} />
+            <TouchableOpacity onPress={() => {
+                const doLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
+                if (Platform.OS === 'web') {
+                    if (window.confirm('Log out of PlayPBNow?')) doLogout();
+                } else {
+                    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Log Out', style: 'destructive', onPress: doLogout }
+                    ]);
+                }
+            }} style={{ padding: 5 }}>
+                <BrandedIcon name="logout" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.controlsRow}>
@@ -508,7 +648,7 @@ export default function GameScreen() {
                       onChangeText={setWinningScore} maxLength={2} />
               </View>
               <View style={styles.headerRightControls}>
-                  <TouchableOpacity onPress={handleInviteCollaborator} style={styles.shuffleBtn}>
+                  <TouchableOpacity onPress={handleThunderboltPress} style={styles.shuffleBtn}>
                       <BrandedIcon name="flash" size={24} color={shareCode ? colors.accent : colors.text} />
                   </TouchableOpacity>
                   {shareCode && connectedUsers > 0 && (
@@ -580,8 +720,9 @@ export default function GameScreen() {
         {/* REPORT MODAL */}
         <Modal visible={reportModalVisible} transparent animationType="slide" onRequestClose={() => setReportModalVisible(false)}>
             <View style={styles.modalOverlay}><View style={styles.modalContent}>
+                <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>GENERATE HD REPORT</Text>
-                {isFree && (
+                {isFree && !isTrial && (
                     <TouchableOpacity onPress={() => showPaywall('Upgrade to Pro for clean, watermark-free reports!')} style={styles.watermarkBadge}>
                         <BrandedIcon name="lock" size={12} color="#ff6b35" />
                         <Text style={styles.watermarkBadgeText}>FREE — Reports include watermark</Text>
@@ -611,6 +752,7 @@ export default function GameScreen() {
                     <TouchableOpacity onPress={handleShareImage} style={[styles.modalBtn, styles.saveBtn, !generatedImageUrl && {opacity: 0.5}]} disabled={!generatedImageUrl}>
                         <Text style={[styles.modalBtnText, {color: colors.text}]}>SHARE NOW</Text></TouchableOpacity>
                 </View>
+                </ScrollView>
             </View></View>
         </Modal>
 

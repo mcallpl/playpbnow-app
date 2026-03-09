@@ -2,8 +2,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Image,
+  Platform,
   StatusBar,
   StyleSheet,
   Text,
@@ -12,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Rect, Line, Circle, Path } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BrandedIcon } from '../../components/BrandedIcon';
 import { useTheme } from '../../context/ThemeContext';
 import {
@@ -23,7 +26,7 @@ import {
   ANIMATION,
 } from '../../constants/theme';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 // Abstract court geometry motif — thin lines at very low opacity
 function CourtGeometry({ width, height, color }: { width: number; height: number; color: string }) {
@@ -108,6 +111,21 @@ export default function LandingScreen() {
     router.replace('/groups');
   };
 
+  const handleLogout = () => {
+    const doLogout = async () => {
+      await AsyncStorage.clear();
+      router.replace('/login');
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to log out?')) doLogout();
+    } else {
+      Alert.alert('Log Out', 'Are you sure you want to log out?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Log Out', style: 'destructive', onPress: doLogout },
+      ]);
+    }
+  };
+
   const screenWidth = 400;
   const screenHeight = 400;
 
@@ -118,10 +136,12 @@ export default function LandingScreen() {
       {/* Noise overlay — full screen */}
       <NoiseOverlay width={screenWidth} height={800} color={isDark ? '#ffffff' : '#000000'} />
 
-      {/* Court geometry — top 40% */}
-      <View style={styles.courtGeometryWrap}>
-        <CourtGeometry width={screenWidth} height={screenHeight} color={isDark ? '#ffffff' : '#1b3358'} />
-      </View>
+      {/* Court geometry — top 40% (hidden on web due to rendering artifacts) */}
+      {Platform.OS !== 'web' && (
+        <View style={styles.courtGeometryWrap}>
+          <CourtGeometry width={screenWidth} height={screenHeight} color={isDark ? '#ffffff' : '#1b3358'} />
+        </View>
+      )}
 
       {/* Light sweep sheen — hero area */}
       <LinearGradient
@@ -153,6 +173,11 @@ export default function LandingScreen() {
           activeOpacity={0.8}
         >
           <Text style={styles.enterText}>Enter App</Text>
+        </TouchableOpacity>
+
+        {/* Logout */}
+        <TouchableOpacity onPress={handleLogout} activeOpacity={0.7}>
+          <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
         {/* System status row */}
@@ -226,6 +251,12 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     fontSize: 18,
     fontFamily: FONT_DISPLAY_EXTRABOLD,
     letterSpacing: 1.5,
+  },
+  logoutText: {
+    fontFamily: FONT_BODY_MEDIUM,
+    fontSize: 14,
+    color: c.danger,
+    letterSpacing: 0.5,
   },
   statusRow: {
     flexDirection: 'row',

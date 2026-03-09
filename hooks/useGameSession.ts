@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 interface GameSessionHookResult {
     sessionId: string;

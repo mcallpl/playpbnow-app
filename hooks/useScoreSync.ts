@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 interface ScoreSyncHookParams {
     isCollaborator: boolean;

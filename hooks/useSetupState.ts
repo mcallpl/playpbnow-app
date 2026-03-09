@@ -13,7 +13,7 @@ export interface RoundConfig {
     type: 'mixed' | 'gender' | 'mixer';
 }
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 export function useSetupState(params: any) {
     const [groupId, setGroupId] = useState(params.groupId as string || '');

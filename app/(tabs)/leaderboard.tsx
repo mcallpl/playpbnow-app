@@ -425,7 +425,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   dateBar: { backgroundColor: c.surface, padding: 10, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: c.border },
   dateBarText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 12 },
   backBtn: { padding: 5 },
-  pedestalContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', height: 230, marginBottom: 30, marginTop: 20 },
+  pedestalContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', height: 250, marginBottom: 30, marginTop: 30 },
   podiumCol: { alignItems: 'center', width: SCREEN_WIDTH * 0.28 },
   podiumBar: { width: '100%', borderTopLeftRadius: 10, borderTopRightRadius: 10, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 10 },
   barGold: { height: 120, backgroundColor: isDark ? 'rgba(255, 210, 63, 0.15)' : 'rgba(245, 166, 35, 0.15)', borderWidth: 2, borderColor: c.gold },

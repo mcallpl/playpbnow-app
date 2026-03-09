@@ -1,6 +1,7 @@
 import { BrandedIcon } from '../../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { storeNavData } from '../../utils/navData';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -37,7 +38,7 @@ import { useGroupManagement } from '../../hooks/useGroupManagement';
 import { usePlayerManagement } from '../../hooks/usePlayerManagement';
 import { usePlayerSelection } from '../../hooks/usePlayerSelection';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 export default function PlayersScreen() {
     const router = useRouter();
@@ -565,7 +566,7 @@ export default function PlayersScreen() {
     };
 
     // Create match with selected players
-    const handleCreateMatch = () => {
+    const handleCreateMatch = async () => {
         if (selectedPlayerIds.length < 4) {
             Alert.alert('Not Enough Players', 'You need at least 4 players to create a match.');
             return;
@@ -577,12 +578,13 @@ export default function PlayersScreen() {
             last_name: p.last_name || '',
             gender: p.gender?.toLowerCase().startsWith('f') ? 'female' : 'male'
         }));
+        const navId = await storeNavData({ preselectedPlayers: formattedPlayers });
         router.push({
             pathname: '/setup',
             params: {
+                navId,
                 groupName: 'Quick Match',
                 groupKey: `quick_${Date.now()}`,
-                preselectedPlayers: JSON.stringify(formattedPlayers)
             }
         });
         clearSelection();

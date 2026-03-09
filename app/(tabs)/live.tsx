@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
+import { storeNavData } from '../../utils/navData';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useActiveMatch } from '../../context/ActiveMatchContext';
@@ -20,12 +21,15 @@ export default function LiveTab() {
     useFocusEffect(
         useCallback(() => {
             if (activeMatch) {
-                const timer = setTimeout(() => {
+                const timer = setTimeout(async () => {
+                    const navId = await storeNavData({
+                        schedule: activeMatch.schedule,
+                        players: activeMatch.players,
+                    });
                     router.push({
                         pathname: '/(tabs)/game',
                         params: {
-                            schedule: JSON.stringify(activeMatch.schedule),
-                            players: JSON.stringify(activeMatch.players),
+                            navId,
                             groupName: activeMatch.groupName,
                             groupKey: activeMatch.groupKey || '',
                             courtName: activeMatch.courtName || '',

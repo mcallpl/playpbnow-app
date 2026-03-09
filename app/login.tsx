@@ -6,7 +6,9 @@ import {
     Alert,
     Image,
     KeyboardAvoidingView,
+    Linking,
     Platform,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -25,202 +27,214 @@ import {
     FONT_BODY_SEMIBOLD,
 } from '../constants/theme';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 export default function LoginScreen() {
     const router = useRouter();
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
+
+    const [mode, setMode] = useState<'login' | 'register'>('login');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [phone, setPhone] = useState('');
-    const [code, setCode] = useState('');
-    const [codeSent, setCodeSent] = useState(false);
     const [loading, setLoading] = useState(false);
 
-    const formatPhoneNumber = (text: string) => {
-        const cleaned = text.replace(/\D/g, '');
+    const handleSubmit = async () => {
+        const trimmedEmail = email.trim().toLowerCase();
 
-        if (cleaned.length <= 3) {
-            return cleaned;
-        } else if (cleaned.length <= 6) {
-            return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
-        } else {
-            return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+        if (!trimmedEmail || !password) {
+            Alert.alert('Missing Fields', 'Please enter your email and password.');
+            return;
         }
-    };
 
-    const handlePhoneChange = (text: string) => {
-        const formatted = formatPhoneNumber(text);
-        setPhone(formatted);
-    };
+        if (mode === 'register' && !firstName.trim()) {
+            Alert.alert('Missing Name', 'Please enter your first name.');
+            return;
+        }
 
-    const sendVerificationCode = async () => {
-        if (phone.replace(/\D/g, '').length !== 10) {
-            Alert.alert('Invalid Phone', 'Please enter a valid 10-digit phone number');
+        if (mode === 'register' && password.length < 6) {
+            Alert.alert('Weak Password', 'Password must be at least 6 characters.');
             return;
         }
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/send_verification_code.php`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone })
-            });
-
-            const data = await response.json();
-
-            if (data.status === 'success') {
-                setCodeSent(true);
-                Alert.alert('Code Sent', `A 6-digit code has been sent to ${phone}`);
-            } else {
-                Alert.alert('Error', data.message || 'Failed to send code');
+            const body: any = {
+                mode,
+                email: trimmedEmail,
+                password,
+                device_info: Platform.OS,
+            };
+            if (mode === 'register') {
+                body.first_name = firstName.trim();
+                body.last_name = lastName.trim();
+                if (phone.trim()) body.phone = phone.trim();
             }
-        } catch (error) {
-            console.error('Send code error:', error);
-            Alert.alert('Error', 'Network error. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    const verifyCode = async () => {
-        if (code.length !== 6) {
-            Alert.alert('Invalid Code', 'Please enter the 6-digit code');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const response = await fetch(`${API_URL}/verify_code.php`, {
+            const response = await fetch(`${API_URL}/email_login.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone,
-                    code,
-                    device_info: Platform.OS
-                })
+                body: JSON.stringify(body),
             });
 
             const data = await response.json();
 
             if (data.status === 'success') {
-                await AsyncStorage.setItem('session_token', data.session_token);
-                await AsyncStorage.setItem('user_id', data.user.id.toString());
-                await AsyncStorage.setItem('user_phone', data.user.phone);
+                const pairs: [string, string][] = [
+                    ['session_token', data.session_token],
+                    ['user_id', data.user.id.toString()],
+                ];
+                if (data.user.email) pairs.push(['user_email', data.user.email]);
+                if (data.user.first_name) pairs.push(['user_first_name', data.user.first_name]);
+                if (data.user.last_name) pairs.push(['user_last_name', data.user.last_name]);
+                await AsyncStorage.multiSet(pairs);
 
                 setLoading(false);
                 router.replace('/(tabs)/groups');
             } else {
                 setLoading(false);
-                Alert.alert('Invalid Code', data.message || 'Please check your code and try again');
+                Alert.alert('Error', data.message || 'Something went wrong. Please try again.');
             }
         } catch (error) {
             setLoading(false);
-            console.error('Verify error:', error);
-            Alert.alert('Error', 'Network error. Please try again.');
+            console.error('Login error:', error);
+            Alert.alert('Error', 'Network error. Please check your connection and try again.');
         }
     };
 
-    const resetForm = () => {
-        setCodeSent(false);
-        setCode('');
+    const toggleMode = () => {
+        setMode(mode === 'login' ? 'register' : 'login');
     };
 
     return (
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.content}
+                style={styles.keyboardView}
             >
-                <View style={styles.header}>
-                    <Image
-                        source={require('../assets/images/PPBN-Logo-SMALL.png')}
-                        style={styles.logo}
-                        resizeMode="contain"
-                    />
-                    <Text style={styles.subtitle}>MATCH TRACKING</Text>
-                </View>
+                <ScrollView
+                    contentContainerStyle={styles.content}
+                    bounces={false}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <View style={styles.header}>
+                        <Image
+                            source={require('../assets/images/PPBN-Logo-SMALL.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
+                        <Text style={styles.subtitle}>MATCH TRACKING</Text>
+                    </View>
 
-                {!codeSent ? (
-                    <>
-                        <View style={styles.form}>
-                            <Text style={styles.label}>PHONE NUMBER</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="(555) 555-5555"
-                                placeholderTextColor={colors.inputPlaceholder}
-                                keyboardType="phone-pad"
-                                value={phone}
-                                onChangeText={handlePhoneChange}
-                                maxLength={14}
-                                autoFocus
-                            />
-                            <Text style={styles.hint}>
-                                We'll send a 6-digit verification code via SMS
+                    <View style={styles.form}>
+                        {mode === 'register' && (
+                            <>
+                                <Text style={styles.label}>FIRST NAME</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="First name"
+                                    placeholderTextColor={colors.inputPlaceholder}
+                                    value={firstName}
+                                    onChangeText={setFirstName}
+                                    autoCapitalize="words"
+                                    autoComplete="given-name"
+                                    textContentType="givenName"
+                                />
+
+                                <Text style={styles.label}>LAST NAME</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Last name (optional)"
+                                    placeholderTextColor={colors.inputPlaceholder}
+                                    value={lastName}
+                                    onChangeText={setLastName}
+                                    autoCapitalize="words"
+                                    autoComplete="family-name"
+                                    textContentType="familyName"
+                                />
+
+                                <Text style={styles.label}>PHONE NUMBER</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="(optional)"
+                                    placeholderTextColor={colors.inputPlaceholder}
+                                    value={phone}
+                                    onChangeText={setPhone}
+                                    keyboardType="phone-pad"
+                                    autoComplete="tel"
+                                    textContentType="telephoneNumber"
+                                />
+                            </>
+                        )}
+
+                        <Text style={styles.label}>EMAIL</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="you@example.com"
+                            placeholderTextColor={colors.inputPlaceholder}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoComplete="email"
+                            textContentType="emailAddress"
+                            value={email}
+                            onChangeText={setEmail}
+                        />
+
+                        <Text style={styles.label}>PASSWORD</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder={mode === 'register' ? '6+ characters' : 'Your password'}
+                            placeholderTextColor={colors.inputPlaceholder}
+                            secureTextEntry
+                            autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                            textContentType={mode === 'register' ? 'newPassword' : 'password'}
+                            value={password}
+                            onChangeText={setPassword}
+                            onSubmitEditing={handleSubmit}
+                            returnKeyType="go"
+                        />
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.button, loading && styles.buttonDisabled]}
+                        onPress={handleSubmit}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color={colors.bg} />
+                        ) : (
+                            <Text style={styles.buttonText}>
+                                {mode === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT'}
                             </Text>
-                        </View>
+                        )}
+                    </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={[styles.button, loading && styles.buttonDisabled]}
-                            onPress={sendVerificationCode}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <ActivityIndicator color={colors.bg} />
-                            ) : (
-                                <Text style={styles.buttonText}>SEND CODE</Text>
-                            )}
-                        </TouchableOpacity>
-                    </>
-                ) : (
-                    <>
-                        <View style={styles.form}>
-                            <Text style={styles.label}>VERIFICATION CODE</Text>
-                            <Text style={styles.phoneDisplay}>{phone}</Text>
+                    <TouchableOpacity style={styles.toggleBtn} onPress={toggleMode}>
+                        <Text style={styles.toggleText}>
+                            {mode === 'login'
+                                ? "Don't have an account? Create one"
+                                : 'Already have an account? Sign in'}
+                        </Text>
+                    </TouchableOpacity>
 
-                            <TextInput
-                                style={styles.codeInput}
-                                placeholder="000000"
-                                placeholderTextColor={colors.inputPlaceholder}
-                                keyboardType="number-pad"
-                                value={code}
-                                onChangeText={setCode}
-                                maxLength={6}
-                                autoFocus
-                            />
-
-                            <TouchableOpacity onPress={resetForm}>
-                                <Text style={styles.changeNumber}>Change number</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <TouchableOpacity
-                            style={[styles.button, loading && styles.buttonDisabled]}
-                            onPress={verifyCode}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <ActivityIndicator color={colors.bg} />
-                            ) : (
-                                <Text style={styles.buttonText}>VERIFY & LOGIN</Text>
-                            )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.resendBtn}
-                            onPress={sendVerificationCode}
-                            disabled={loading}
-                        >
-                            <Text style={styles.resendText}>Resend code</Text>
-                        </TouchableOpacity>
-                    </>
-                )}
-
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>
-                        By continuing, you agree to receive SMS messages for verification
-                    </Text>
-                </View>
+                    <View style={styles.footer}>
+                        <Text style={styles.footerText}>
+                            By continuing, you agree to our{' '}
+                            <Text style={styles.footerLink} onPress={() => {
+                                const url = 'https://peoplestar.com/PlayPBNow/api/terms.html';
+                                Platform.OS === 'web' ? window.open(url, '_blank') : Linking.openURL(url);
+                            }}>Terms of Service</Text>
+                            {' '}and{' '}
+                            <Text style={styles.footerLink} onPress={() => {
+                                const url = 'https://peoplestar.com/PlayPBNow/api/privacy.html';
+                                Platform.OS === 'web' ? window.open(url, '_blank') : Linking.openURL(url);
+                            }}>Privacy Policy</Text>.
+                        </Text>
+                    </View>
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -228,7 +242,8 @@ export default function LoginScreen() {
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
-    content: { flex: 1, padding: 32, justifyContent: 'center' },
+    keyboardView: { flex: 1 },
+    content: { flexGrow: 1, padding: 32, justifyContent: 'center' },
     header: { alignItems: 'center', marginBottom: 0 },
     logo: { width: 240, height: 240, marginTop: 0 },
     subtitle: {
@@ -239,60 +254,24 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         marginTop: -40,
         marginBottom: 24,
     },
-    form: { marginBottom: 30 },
+    form: { marginBottom: 24 },
     label: {
         color: c.textMuted,
         fontSize: 12,
         fontFamily: FONT_BODY_SEMIBOLD,
         letterSpacing: 1.5,
-        marginBottom: 10,
+        marginBottom: 8,
+        marginTop: 12,
     },
     input: {
         backgroundColor: c.inputBg,
         borderWidth: 1,
         borderColor: c.glassStroke,
-        padding: 18,
+        padding: 16,
         borderRadius: 16,
-        fontSize: 22,
-        fontFamily: FONT_BODY_SEMIBOLD,
-        color: c.inputText,
-        textAlign: 'center',
-        letterSpacing: 2,
-    },
-    codeInput: {
-        backgroundColor: c.inputBg,
-        borderWidth: 1,
-        borderColor: c.glassStroke,
-        padding: 18,
-        borderRadius: 16,
-        fontSize: 32,
-        fontFamily: FONT_DISPLAY_BOLD,
-        color: c.inputText,
-        textAlign: 'center',
-        letterSpacing: 8,
-        marginBottom: 15,
-    },
-    hint: {
-        color: c.textMuted,
-        fontSize: 12,
+        fontSize: 16,
         fontFamily: FONT_BODY_REGULAR,
-        textAlign: 'center',
-        marginTop: 12,
-        lineHeight: 18,
-    },
-    phoneDisplay: {
-        color: c.accent,
-        fontSize: 18,
-        fontFamily: FONT_DISPLAY_BOLD,
-        textAlign: 'center',
-        marginBottom: 20,
-    },
-    changeNumber: {
-        color: c.accent,
-        textAlign: 'center',
-        fontSize: 14,
-        fontFamily: FONT_BODY_BOLD,
-        textDecorationLine: 'underline',
+        color: c.inputText,
     },
     button: {
         backgroundColor: c.accent,
@@ -307,15 +286,18 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         fontFamily: FONT_DISPLAY_EXTRABOLD,
         letterSpacing: 1,
     },
-    resendBtn: { marginTop: 20, padding: 10, alignItems: 'center' },
-    resendText: {
-        color: c.textSoft,
+    toggleBtn: {
+        marginTop: 20,
+        padding: 10,
+        alignItems: 'center',
+    },
+    toggleText: {
+        color: c.accent,
         fontSize: 14,
         fontFamily: FONT_BODY_BOLD,
-        textDecorationLine: 'underline',
     },
     footer: {
-        marginTop: 40,
+        marginTop: 30,
         paddingTop: 20,
         borderTopWidth: 1,
         borderTopColor: c.border,
@@ -326,5 +308,10 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         fontFamily: FONT_BODY_REGULAR,
         textAlign: 'center',
         lineHeight: 16,
+    },
+    footerLink: {
+        color: c.accent,
+        fontFamily: FONT_BODY_BOLD,
+        textDecorationLine: 'underline',
     },
 });

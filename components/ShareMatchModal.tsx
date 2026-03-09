@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import {
     Alert,
     Modal,
+    Platform,
     Share,
     StyleSheet,
     Text,
@@ -26,24 +27,33 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     const handleShare = async () => {
+        const message = `Join my pickleball match "${matchTitle}"!\n\nEnter code: ${shareCode}\n\nDownload Play PB Now to join and see live scores!`;
         try {
-            await Share.share({
-                message: `Join my pickleball match "${matchTitle}"!\n\nEnter code: ${shareCode}\n\nDownload Play PB Now to join and see live scores!`,
-                title: 'Join My Match'
-            });
+            if (Platform.OS === 'web' && navigator.share) {
+                await navigator.share({ title: 'Join My Match', text: message });
+            } else if (Platform.OS === 'web') {
+                await navigator.clipboard.writeText(message);
+                Alert.alert('Copied!', 'Share message copied to clipboard.');
+            } else {
+                await Share.share({ message, title: 'Join My Match' });
+            }
         } catch (error) {
             console.error('Error sharing:', error);
         }
     };
 
-    const copyToClipboard = () => {
-        // Note: Expo Clipboard requires expo-clipboard package
-        // For now, just show alert
-        Alert.alert(
-            'Share Code',
-            `Code: ${shareCode}\n\nShare this code with others so they can view and score this match live!`,
-            [{ text: 'OK' }]
-        );
+    const copyToClipboard = async () => {
+        const text = shareCode;
+        try {
+            if (Platform.OS === 'web') {
+                await navigator.clipboard.writeText(text);
+                Alert.alert('Copied!', `Code "${shareCode}" copied to clipboard.`);
+            } else {
+                Alert.alert('Share Code', `Code: ${shareCode}\n\nShare this code with others so they can view and score this match live!`, [{ text: 'OK' }]);
+            }
+        } catch {
+            Alert.alert('Share Code', `Code: ${shareCode}`, [{ text: 'OK' }]);
+        }
     };
 
     return (

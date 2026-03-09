@@ -55,7 +55,7 @@ interface Group {
   femaleCount?: number;
 }
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -67,6 +67,7 @@ export default function HomeScreen() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('');
 
   const [modalVisible, setModalVisible] = useState(false);
   type ModalView = 'form' | 'courtPicker' | 'addCourt';
@@ -97,8 +98,10 @@ export default function HomeScreen() {
       return;
     }
     setUserId(uid);
-    await loadGroups(uid);
-    await loadCourts();
+    const firstName = await AsyncStorage.getItem('user_first_name');
+    const email = await AsyncStorage.getItem('user_email');
+    setUserName(firstName || email || '');
+    await Promise.all([loadGroups(uid), loadCourts()]);
   };
 
   const loadGroups = async (did: string) => {
@@ -163,7 +166,6 @@ export default function HomeScreen() {
 
   const saveGroup = async () => {
     if (!newGroupName.trim()) { Alert.alert('Error', 'Please enter a group name.'); return; }
-    if (!selectedCourtId && !editingGroup) { Alert.alert('Select Location', 'Please select a match location for this group.'); return; }
 
     setLoading(true);
     try {
@@ -461,7 +463,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Your Groups</Text>
-          <Text style={styles.headerSub}>{groups.length} groups · {totalPlayers} players</Text>
+          <Text style={styles.headerSub}>{userName ? `${userName} · ` : ''}{groups.length} groups · {totalPlayers} players</Text>
         </View>
         <TouchableOpacity onPress={() => setJoinModalVisible(true)} style={styles.headerBtn}>
           <BrandedIcon name="flash" size={18} color={colors.text} />

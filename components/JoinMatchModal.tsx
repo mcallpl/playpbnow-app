@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
+import { storeNavData } from '../utils/navData';
 import {
     ActivityIndicator,
     Alert,
@@ -20,7 +21,7 @@ interface JoinMatchModalProps {
     onClose: () => void;
 }
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
     const router = useRouter();
@@ -57,16 +58,19 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                 setShareCode('');
 
                 // Navigate to the game screen with full schedule from the collab session
+                const navId = await storeNavData({
+                    schedule: data.schedule,
+                    players: data.players || [],
+                    collabScores: data.scores || {}
+                });
                 router.push({
                     pathname: '/(tabs)/game',
                     params: {
+                        navId,
                         groupName: data.session.group_name,
                         shareCode: data.session.share_code,
                         sessionId: data.session.id,
                         isCollaborator: 'true',
-                        schedule: JSON.stringify(data.schedule),
-                        collabScores: JSON.stringify(data.scores || {}),
-                        players: JSON.stringify(data.players || [])
                     }
                 });
             } else {

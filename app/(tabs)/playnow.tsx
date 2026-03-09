@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { storeNavData } from '../../utils/navData';
 import { Image } from 'expo-image';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -46,7 +47,7 @@ import { playChatPing } from '../../utils/sounds';
 import { useBeaconChat } from '../../hooks/useBeaconChat';
 import { haptic } from '../../utils/haptics';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 type BeaconView = 'feed' | 'mode_select' | 'create_casual' | 'create_structured' | 'lobby' | 'locked';
 
@@ -547,25 +548,25 @@ export default function PlayNowTab() {
   useEffect(() => {
     if (lobby?.status === 'started') {
       stopPolling();
-      router.push({
-        pathname: '/(tabs)/game',
-        params: {
-          schedule: JSON.stringify(lobby.schedule_json),
-          players: JSON.stringify(
-            members
-              .filter((m) => m.status !== 'left' && m.status !== 'replaced')
-              .map((m) => ({
-                id: String(m.player_id || m.user_id),
-                first_name: m.first_name,
-                last_name: m.last_name,
-                gender: m.gender,
-              }))
-          ),
-          groupName: lobby.court_name || 'Beacon Match',
-          shareCode: lobby.session_code || '',
-          sessionId: String(lobby.collab_session_id || ''),
-          isCollaborator: lobby.host_user_id !== userId ? 'true' : 'false',
-        },
+      const players = members
+        .filter((m) => m.status !== 'left' && m.status !== 'replaced')
+        .map((m) => ({
+          id: String(m.player_id || m.user_id),
+          first_name: m.first_name,
+          last_name: m.last_name,
+          gender: m.gender,
+        }));
+      storeNavData({ schedule: lobby.schedule_json, players }).then((navId) => {
+        router.push({
+          pathname: '/(tabs)/game',
+          params: {
+            navId,
+            groupName: lobby.court_name || 'Beacon Match',
+            shareCode: lobby.session_code || '',
+            sessionId: String(lobby.collab_session_id || ''),
+            isCollaborator: lobby.host_user_id !== userId ? 'true' : 'false',
+          },
+        });
       });
     }
   }, [lobby?.status]);

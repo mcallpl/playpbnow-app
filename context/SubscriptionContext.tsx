@@ -1,18 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Alert, AppState, AppStateStatus, Platform } from 'react-native';
+import { Alert, AppState, AppStateStatus, Linking, Platform } from 'react-native';
 import { PurchasesPackage } from 'react-native-purchases';
 import {
     initializePurchases,
     identifyUser,
     getOfferings,
     purchasePackage,
-    restorepurchases,
+    restorePurchases as restorePurchasesRC,
     getCustomerInfo,
     hasProEntitlement,
 } from '../utils/purchases';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const isWeb = Platform.OS === 'web';
+
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 const STORAGE_KEY = 'subscription_data';
 
 export interface SubscriptionFeatures {
@@ -47,11 +49,14 @@ interface SubscriptionContextType {
     showPaywall: (message?: string) => void;
     hidePaywall: () => void;
     refreshSubscription: () => Promise<void>;
-    // RevenueCat methods
+    // RevenueCat methods (native)
     offerings: { monthly: PurchasesPackage | null; annual: PurchasesPackage | null };
     purchaseSubscription: (pkg: PurchasesPackage) => Promise<boolean>;
     restorePurchases: () => Promise<boolean>;
     purchaseLoading: boolean;
+    // Stripe methods (web)
+    purchaseViaStripe: (plan: 'monthly' | 'annual') => Promise<void>;
+    redeemPromoCode: (code: string) => Promise<boolean>;
 }
 
 const DEFAULT_FEATURES: SubscriptionFeatures = {
@@ -79,6 +84,8 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
     purchaseSubscription: async () => false,
     restorePurchases: async () => false,
     purchaseLoading: false,
+    purchaseViaStripe: async () => {},
+    redeemPromoCode: async () => false,
 });
 
 export const useSubscription = () => useContext(SubscriptionContext);
@@ -94,9 +101,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
     const rcInitialized = useRef(false);
 
-    // Initialize RevenueCat and fetch offerings
+    // Initialize RevenueCat and fetch offerings (skip on web)
     const initRC = useCallback(async () => {
-        if (rcInitialized.current) return;
+        if (isWeb || rcInitialized.current) return;
         try {
             const userId = await AsyncStorage.getItem('user_id');
             await initializePurchases(userId || undefined);
@@ -259,7 +266,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const handleRestorePurchases = useCallback(async (): Promise<boolean> => {
         setPurchaseLoading(true);
         try {
-            const customerInfo = await restorepurchases();
+            const customerInfo = await restorePurchasesRC();
             if (hasProEntitlement(customerInfo)) {
                 await fetchSubscription();
                 setPurchaseLoading(false);
@@ -273,6 +280,93 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setPurchaseLoading(false);
             Alert.alert('Restore Failed', e.message || 'Could not restore purchases. Please try again.');
             return false;
+        }
+    }, [fetchSubscription]);
+
+    // Stripe checkout for web
+    const purchaseViaStripe = useCallback(async (plan: 'monthly' | 'annual') => {
+        setPurchaseLoading(true);
+        try {
+            const userId = await AsyncStorage.getItem('user_id');
+            if (!userId) {
+                Alert.alert('Error', 'Please log in first.');
+                setPurchaseLoading(false);
+                return;
+            }
+            const response = await fetch(`${API_URL}/stripe_create_checkout.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, plan }),
+            });
+            const data = await response.json();
+            if (data.checkout_url) {
+                if (isWeb) {
+                    window.location.href = data.checkout_url;
+                } else {
+                    Linking.openURL(data.checkout_url);
+                }
+            } else {
+                Alert.alert('Error', data.message || 'Could not start checkout.');
+            }
+        } catch (e) {
+            Alert.alert('Error', 'Network error. Please try again.');
+        }
+        setPurchaseLoading(false);
+    }, []);
+
+    // Redeem promo/bypass code (works on all platforms)
+    const redeemPromoCode = useCallback(async (code: string): Promise<boolean> => {
+        setPurchaseLoading(true);
+        try {
+            const userId = await AsyncStorage.getItem('user_id');
+            if (!userId) {
+                Alert.alert('Error', 'Please log in first.');
+                setPurchaseLoading(false);
+                return false;
+            }
+            const response = await fetch(`${API_URL}/stripe_create_checkout.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, plan: 'monthly', promo_code: code }),
+            });
+            const data = await response.json();
+            if (data.bypass) {
+                await fetchSubscription();
+                setPurchaseLoading(false);
+                Alert.alert('Welcome!', data.message || 'Pro activated!');
+                return true;
+            } else if (data.checkout_url) {
+                if (isWeb) {
+                    window.location.href = data.checkout_url;
+                } else {
+                    Linking.openURL(data.checkout_url);
+                }
+                setPurchaseLoading(false);
+                return false;
+            } else {
+                Alert.alert('Invalid Code', data.message || 'Code not recognized.');
+                setPurchaseLoading(false);
+                return false;
+            }
+        } catch (e) {
+            Alert.alert('Error', 'Network error. Please try again.');
+            setPurchaseLoading(false);
+            return false;
+        }
+    }, [fetchSubscription]);
+
+    // Check for Stripe success redirect on web
+    useEffect(() => {
+        if (!isWeb) return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('subscription') === 'success') {
+            // Clear the URL param
+            window.history.replaceState({}, '', window.location.pathname);
+            // Refresh subscription after a short delay for webhook processing
+            setTimeout(() => {
+                fetchSubscription();
+                Alert.alert('Success!', 'Your Pro subscription is now active!');
+            }, 2000);
         }
     }, [fetchSubscription]);
 
@@ -293,6 +387,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             purchaseSubscription,
             restorePurchases: handleRestorePurchases,
             purchaseLoading,
+            purchaseViaStripe,
+            redeemPromoCode,
         }}>
             {children}
         </SubscriptionContext.Provider>

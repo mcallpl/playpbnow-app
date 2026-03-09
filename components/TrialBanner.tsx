@@ -43,8 +43,8 @@ export const TrialBanner: React.FC = () => {
                 <View style={styles.bannerContent}>
                     <BrandedIcon name="lock" size={16} color={colors.text} />
                     <Text style={styles.bannerText}>Your trial has ended</Text>
-                    <TouchableOpacity style={styles.subscribeBtn} onPress={() => showPaywall('Pro subscriptions are coming soon! Here is what you will get:')}>
-                        <Text style={styles.subscribeBtnText}>Learn More</Text>
+                    <TouchableOpacity style={styles.subscribeBtn} onPress={() => showPaywall('Upgrade to Pro to unlock all features!')}>
+                        <Text style={styles.subscribeBtnText}>Upgrade</Text>
                     </TouchableOpacity>
                 </View>
                 <TouchableOpacity style={styles.dismissBtn} onPress={() => setDismissed(true)}>

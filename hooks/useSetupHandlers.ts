@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { Player } from './useSetupState';
+import { storeNavData } from '../utils/navData';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 export function useSetupHandlers(props: any) {
     const {
@@ -167,13 +168,10 @@ export function useSetupHandlers(props: any) {
                 props.setConfigModalVisible(false);
                 
                 // Navigate to game screen
+                const navId = await storeNavData({ schedule: data.schedule, players });
                 router.push({
                     pathname: '/(tabs)/game',
-                    params: {
-                        schedule: JSON.stringify(data.schedule),
-                        players: JSON.stringify(players),
-                        groupName: groupName
-                    }
+                    params: { navId, groupName }
                 });
             } else {
                 Alert.alert("Error", data.message || "Failed to generate schedule");

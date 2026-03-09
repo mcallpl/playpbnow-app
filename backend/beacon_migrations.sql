@@ -1,5 +1,5 @@
 -- Live Beacon Feature — Database Migrations
--- Run these on the Chipleball database (MariaDB at peoplestar.com)
+-- Run these on the PlayPBNow database (MariaDB at peoplestar.com)
 
 -- 1. Beacons: A player broadcasting availability at a court
 CREATE TABLE IF NOT EXISTS beacons (

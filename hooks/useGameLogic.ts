@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
-const API_URL = 'https://peoplestar.com/Chipleball/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 export interface Player {
     id: string;
@@ -262,8 +262,10 @@ export const useGameLogic = (
 
             } else if (config.type === 'mixed') {
                 // Mixed: enforce 1M+1F per team where possible
-                const men   = [...allPlayers.filter(isMale)].sort(() => Math.random() - 0.5);
-                const women = [...allPlayers.filter(isFemale)].sort(() => Math.random() - 0.5);
+                const men   = allPlayers.filter(isMale);
+                const women = allPlayers.filter(isFemale);
+                let bestGames: GameData[] = [];
+                let bestByes: Player[] = [...allPlayers];
 
                 for (let attempt = 0; attempt < 200; attempt++) {
                     const mCopy = [...men].sort(() => Math.random() - 0.5);
@@ -280,18 +282,36 @@ export const useGameLogic = (
                     }
 
                     if (valid) {
-                        roundGames = games;
-                        roundByes  = [...mCopy, ...wCopy];
+                        // Put any leftover M or F into additional games via processPool
+                        const leftovers = [...mCopy, ...wCopy];
+                        if (leftovers.length >= 4) {
+                            const extra = processPool(leftovers);
+                            bestGames = [...games, ...extra.games];
+                            bestByes = extra.leftovers;
+                        } else {
+                            bestGames = games;
+                            bestByes = leftovers;
+                        }
                         break;
+                    }
+
+                    // Track best attempt (most games) even if not fully valid
+                    if (games.length > bestGames.length) {
+                        bestGames = games;
+                        const usedIds = new Set(games.flatMap(g => [...g.team1, ...g.team2].map(p => p.id)));
+                        bestByes = allPlayers.filter(p => !usedIds.has(p.id));
                     }
                 }
 
-                if (roundGames.length === 0) {
+                if (bestGames.length === 0) {
                     // fallback to any pool
                     const result = processPool(allPlayers);
-                    roundGames = result.games;
-                    roundByes  = result.leftovers;
+                    bestGames = result.games;
+                    bestByes = result.leftovers;
                 }
+
+                roundGames = bestGames;
+                roundByes = bestByes;
 
             } else {
                 // Mixer
@@ -317,30 +337,48 @@ export const useGameLogic = (
     };
 
     const performShuffle = async (): Promise<boolean> => {
-        const rosterToUse = currentRoster.length > 0 ? currentRoster : playersData;
+        // Build the most complete player list: prefer currentRoster, fall back to playersData,
+        // then extract from the schedule itself as last resort
+        let rosterToUse = currentRoster.length > 0 ? currentRoster : playersData;
+        console.log('Shuffle: currentRoster=' + currentRoster.length + ' playersData=' + playersData.length + ' schedule=' + schedule.length);
+        if (rosterToUse.length === 0 && schedule.length > 0) {
+            const seen = new Set<string>();
+            const extracted: Player[] = [];
+            schedule.forEach(round => {
+                [...round.games.flatMap(g => [...g.team1, ...g.team2]), ...round.byes].forEach(p => {
+                    if (!seen.has(p.id)) { seen.add(p.id); extracted.push(p); }
+                });
+            });
+            rosterToUse = extracted;
+            console.log('Shuffle: extracted ' + extracted.length + ' players from schedule');
+        }
         if (rosterToUse.length === 0) {
             Alert.alert('Error', 'No player data available to shuffle.');
             return false;
         }
-        setLoading(true);
 
-        let currentRoundConfigs = schedule.map((r, i) => ({
-            id: (i + 1).toString(), type: r.type
-        }));
-        if (currentRoundConfigs.length === 0) {
-            currentRoundConfigs = Array(5).fill(null).map((_, i) => ({
-                id: (i + 1).toString(), type: 'mixer'
-            }));
-        }
+        const currentRoundConfigs = schedule.length > 0
+            ? schedule.map((r, i) => ({ id: (i + 1).toString(), type: r.type }))
+            : Array(5).fill(null).map((_, i) => ({ id: (i + 1).toString(), type: 'mixer' }));
+
+        console.log('Shuffle: ' + rosterToUse.length + ' players, ' + currentRoundConfigs.length + ' rounds');
+        setLoading(true);
 
         return new Promise<boolean>((resolve) => {
             setTimeout(() => {
-                const newSchedule = generateLocalSchedule(rosterToUse, currentRoundConfigs);
-                setSchedule(newSchedule);
-                setSwapSource(null);
-                setLoading(false);
+                try {
+                    const newSchedule = generateLocalSchedule(rosterToUse, currentRoundConfigs);
+                    console.log('Shuffle result: ' + newSchedule.length + ' rounds, games per round: ' + newSchedule.map(r => r.games.length).join(','));
+                    setSchedule(newSchedule);
+                    setSwapSource(null);
+                } catch (e: any) {
+                    console.error('Shuffle error:', e);
+                    Alert.alert('Error', 'Shuffle failed: ' + e.message);
+                } finally {
+                    setLoading(false);
+                }
                 resolve(true);
-            }, 500);
+            }, 100);
         });
     };
 
