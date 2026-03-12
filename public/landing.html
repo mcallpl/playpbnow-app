@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Play Pickleball NOW! — Fill Your Courts in Minutes.</title>
+<meta name="description" content="Play Pickleball NOW! The only app that connects coordinators with hundreds of eager players — from beginners to pros. Fill your foursome in minutes, not days.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1b2d;--surface:#152945;--card:#1e3a5f;--accent:#87ca37;
+  --accent-dim:rgba(135,202,55,0.12);--accent-glow:rgba(135,202,55,0.25);
+  --text:#fff;--muted:rgba(255,255,255,0.55);--soft:rgba(255,255,255,0.75);
+  --border:rgba(255,255,255,0.07);--radius:20px;
+}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
+
+/* ═══════════════════ UTILITY ═══════════════════ */
+.container{max-width:1140px;margin:0 auto;padding:0 28px}
+.accent{color:var(--accent)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ═══════════════════ SCROLL ANIMATIONS ═══════════════════ */
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-left{opacity:0;transform:translateX(-50px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal-left.visible{opacity:1;transform:translateX(0)}
+.reveal-right{opacity:0;transform:translateX(50px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal-right.visible{opacity:1;transform:translateX(0)}
+.stagger-1{transition-delay:.08s}
+.stagger-2{transition-delay:.16s}
+.stagger-3{transition-delay:.24s}
+.stagger-4{transition-delay:.32s}
+.stagger-5{transition-delay:.4s}
+.stagger-6{transition-delay:.48s}
+.stagger-7{transition-delay:.56s}
+.stagger-8{transition-delay:.64s}
+
+/* ═══════════════════ NAV ═══════════════════ */
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:16px 0;
+  background:rgba(15,27,45,0.75);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  transition:padding .3s,background .3s;
+}
+.nav.scrolled{padding:10px 0;background:rgba(15,27,45,0.92)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo-img{
+  height:114px;width:auto;object-fit:contain;
+  filter:drop-shadow(0 0 12px var(--accent-glow));
+}
+.footer-logo-img{
+  height:114px;width:auto;object-fit:contain;
+  filter:drop-shadow(0 0 12px var(--accent-glow));
+}
+.nav-links{display:flex;align-items:center;gap:6px}
+.nav-links a{
+  color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;
+  padding:8px 14px;border-radius:10px;transition:all .25s;
+}
+.nav-links a:hover{color:var(--text);background:rgba(255,255,255,0.05)}
+.nav-cta{
+  background:var(--accent)!important;color:#0f1b2d!important;
+  font-family:'Outfit',sans-serif!important;font-weight:700!important;
+  font-size:13px!important;letter-spacing:.5px;text-transform:uppercase;
+  padding:10px 22px!important;border-radius:12px!important;
+  box-shadow:0 2px 16px var(--accent-glow);transition:all .3s!important;
+}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(135,202,55,0.35)!important}
+.nav-hamburger{display:none;background:none;border:none;cursor:pointer;padding:8px}
+.nav-hamburger span{display:block;width:22px;height:2px;background:var(--text);margin:5px 0;border-radius:2px;transition:all .3s}
+
+/* ═══════════════════ HERO ═══════════════════ */
+.hero{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;padding:120px 28px 80px;
+}
+.hero-bg{
+  position:absolute;inset:0;z-index:0;
+}
+.hero-bg::before{
+  content:'';position:absolute;top:-40%;left:-30%;width:160%;height:160%;
+  background:
+    radial-gradient(ellipse 600px 500px at 25% 30%,rgba(135,202,55,0.1) 0%,transparent 70%),
+    radial-gradient(ellipse 500px 600px at 75% 70%,rgba(30,80,160,0.12) 0%,transparent 70%),
+    radial-gradient(ellipse 400px 400px at 50% 50%,rgba(135,202,55,0.04) 0%,transparent 60%);
+  animation:heroDrift 25s ease-in-out infinite alternate;
+}
+@keyframes heroDrift{
+  0%{transform:translate(0,0) rotate(0deg)}
+  50%{transform:translate(-3%,2%) rotate(1deg)}
+  100%{transform:translate(2%,-1%) rotate(-0.5deg)}
+}
+/* Decorative court lines */
+.hero-court{
+  position:absolute;width:420px;height:280px;
+  border:1px solid rgba(135,202,55,0.06);border-radius:6px;
+  top:50%;left:50%;transform:translate(-50%,-50%) rotate(-8deg);
+  z-index:0;
+}
+.hero-court::before{
+  content:'';position:absolute;top:0;bottom:0;left:50%;width:1px;
+  background:rgba(135,202,55,0.06);
+}
+.hero-court::after{
+  content:'';position:absolute;left:50%;top:50%;
+  width:80px;height:80px;border:1px solid rgba(135,202,55,0.06);
+  border-radius:50%;transform:translate(-50%,-50%);
+}
+/* Floating pickleballs */
+.hero-ball{
+  position:absolute;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,rgba(135,202,55,0.15),rgba(135,202,55,0.03));
+  border:1px solid rgba(135,202,55,0.08);z-index:0;
+}
+.hero-ball:nth-child(2){width:120px;height:120px;top:15%;right:10%;animation:float1 12s ease-in-out infinite}
+.hero-ball:nth-child(3){width:80px;height:80px;bottom:20%;left:8%;animation:float2 15s ease-in-out infinite}
+.hero-ball:nth-child(4){width:50px;height:50px;top:60%;right:25%;animation:float3 10s ease-in-out infinite}
+.hero-ball:nth-child(5){width:160px;height:160px;bottom:5%;right:5%;animation:float1 18s ease-in-out infinite reverse;opacity:.5}
+@keyframes float1{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-20px) rotate(8deg)}}
+@keyframes float2{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(15px) rotate(-6deg)}}
+@keyframes float3{0%,100%{transform:translate(0,0)}50%{transform:translate(10px,-12px)}}
+
+.hero-content{
+  position:relative;z-index:2;text-align:center;max-width:700px;
+}
+.hero-pill{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--accent-dim);border:1px solid rgba(135,202,55,0.2);
+  border-radius:50px;padding:6px 18px 6px 8px;margin-bottom:28px;
+  font-family:'Outfit',sans-serif;font-weight:600;font-size:13px;color:var(--accent);
+  letter-spacing:.4px;
+  animation:fadeSlideIn .8s cubic-bezier(.16,1,.3,1) both;
+}
+.hero-pill-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--accent);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+.hero h1{
+  font-weight:900;font-size:clamp(2.8rem,6.5vw,4.5rem);
+  line-height:1.05;margin-bottom:20px;letter-spacing:-2px;
+  animation:fadeSlideIn .8s cubic-bezier(.16,1,.3,1) .1s both;
+}
+.hero h1 .accent{
+  background:linear-gradient(135deg,#87ca37 0%,#a8e063 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.hero-sub{
+  font-size:clamp(1.05rem,2.2vw,1.25rem);color:var(--soft);
+  max-width:540px;margin:0 auto 40px;line-height:1.75;
+  animation:fadeSlideIn .8s cubic-bezier(.16,1,.3,1) .2s both;
+}
+.hero-ctas{
+  display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;
+  animation:fadeSlideIn .8s cubic-bezier(.16,1,.3,1) .3s both;
+}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:10px;
+  background:var(--accent);color:#0f1b2d;
+  font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;
+  padding:18px 36px;border-radius:16px;border:none;cursor:pointer;
+  letter-spacing:.8px;text-transform:uppercase;text-decoration:none;
+  box-shadow:0 4px 30px var(--accent-glow);transition:all .3s ease;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 40px rgba(135,202,55,0.4)}
+.btn-outline{
+  display:inline-flex;align-items:center;gap:10px;
+  background:transparent;color:var(--text);
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:16px;
+  padding:17px 34px;border-radius:16px;cursor:pointer;text-decoration:none;
+  border:2px solid rgba(255,255,255,0.15);transition:all .3s ease;
+}
+.btn-outline:hover{border-color:rgba(135,202,55,0.5);background:var(--accent-dim)}
+
+/* ═══════════════════ STATS BAR ═══════════════════ */
+.stats{
+  background:var(--surface);
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:28px 0;position:relative;overflow:hidden;
+}
+.stats::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(135,202,55,0.03),transparent);
+}
+.stats-inner{
+  display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.stat-item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 20px;
+}
+.stat-icon{font-size:22px;opacity:.9}
+.stat-icon img{width:24px;height:24px;object-fit:contain}
+.pb-emoji{display:inline-block;width:1em;height:1em;vertical-align:-0.1em;object-fit:contain}
+.pb-emoji-lg{display:inline-block;width:28px;height:28px;vertical-align:-4px;object-fit:contain}
+.stat-content{}
+.stat-number{font-family:'Outfit',sans-serif;font-weight:800;font-size:1.3rem;color:var(--accent);line-height:1.2}
+.stat-label{font-size:12px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+.stat-divider{
+  width:1px;height:36px;background:var(--border);flex-shrink:0;
+}
+
+/* ═══════════════════ FEATURES ═══════════════════ */
+.features{padding:100px 0;position:relative}
+.features::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:600px;height:600px;
+  background:radial-gradient(circle,rgba(135,202,55,0.04) 0%,transparent 70%);
+  pointer-events:none;
+}
+.section-header{text-align:center;margin-bottom:60px;position:relative;z-index:1}
+.section-tag{
+  display:inline-block;
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;
+  text-transform:uppercase;letter-spacing:2px;color:var(--accent);
+  margin-bottom:16px;
+}
+.section-title{
+  font-weight:900;font-size:clamp(2rem,4.5vw,3rem);
+  letter-spacing:-1px;margin-bottom:14px;line-height:1.1;
+}
+.section-desc{
+  color:var(--muted);font-size:1.1rem;max-width:520px;margin:0 auto;line-height:1.7;
+}
+
+.features-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:18px;
+  position:relative;z-index:1;
+}
+.feature-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:32px 26px;transition:all .4s cubic-bezier(.16,1,.3,1);
+  position:relative;overflow:hidden;
+}
+.feature-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent),rgba(135,202,55,0.2));
+  transform:scaleX(0);transform-origin:left;transition:transform .4s ease;
+}
+.feature-card:hover{
+  border-color:rgba(135,202,55,0.25);
+  transform:translateY(-4px);
+  box-shadow:0 20px 50px rgba(0,0,0,0.3),0 0 40px rgba(135,202,55,0.08);
+}
+.feature-card:hover::before{transform:scaleX(1)}
+.feature-icon{
+  width:52px;height:52px;border-radius:14px;
+  background:var(--accent-dim);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;margin-bottom:20px;
+  transition:all .3s;
+}
+.feature-card:hover .feature-icon{
+  background:rgba(135,202,55,0.2);box-shadow:0 0 20px rgba(135,202,55,0.15);
+}
+.feature-card h3{
+  font-weight:700;font-size:1.1rem;margin-bottom:10px;letter-spacing:-.2px;
+}
+.feature-card p{color:var(--muted);font-size:.92rem;line-height:1.65}
+
+/* ═══════════════════ SPLIT SECTIONS ═══════════════════ */
+.split{padding:100px 0;position:relative;overflow:hidden}
+.split-inner{
+  display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;
+}
+.split-visual{
+  position:relative;
+}
+.split-phone{
+  width:280px;height:520px;border-radius:40px;
+  background:var(--surface);border:2px solid var(--border);
+  margin:0 auto;position:relative;overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,0.4),0 0 60px rgba(135,202,55,0.06);
+}
+.split-phone-screen{
+  position:absolute;inset:12px;border-radius:30px;overflow:hidden;
+  background:var(--bg);display:flex;flex-direction:column;
+}
+.phone-header{
+  background:var(--surface);padding:16px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.phone-header-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.phone-header-title{font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;letter-spacing:.3px}
+.phone-body{flex:1;padding:14px;display:flex;flex-direction:column;gap:10px}
+.phone-msg{
+  padding:10px 14px;border-radius:14px;font-size:12px;line-height:1.5;
+  max-width:85%;animation:msgAppear .4s ease both;
+}
+.phone-msg.in{
+  background:var(--card);border:1px solid var(--border);
+  align-self:flex-start;border-top-left-radius:4px;
+}
+.phone-msg.out{
+  background:var(--accent);color:#0f1b2d;font-weight:500;
+  align-self:flex-end;border-top-right-radius:4px;
+}
+.phone-msg.system{
+  background:var(--accent-dim);color:var(--accent);
+  font-family:'Outfit',sans-serif;font-weight:600;font-size:11px;
+  text-align:center;align-self:center;border-radius:20px;padding:6px 16px;
+}
+.phone-msg-name{font-family:'Outfit',sans-serif;font-weight:700;font-size:10px;color:var(--accent);margin-bottom:3px}
+@keyframes msgAppear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.phone-input{
+  display:flex;align-items:center;gap:8px;padding:10px 14px;
+  border-top:1px solid var(--border);background:var(--surface);
+}
+.phone-input-field{
+  flex:1;background:var(--bg);border:1px solid var(--border);
+  border-radius:20px;padding:8px 14px;font-size:11px;color:var(--muted);
+}
+.phone-input-send{
+  width:30px;height:30px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+}
+
+.split-glow{
+  position:absolute;width:300px;height:300px;border-radius:50%;
+  background:radial-gradient(circle,rgba(135,202,55,0.1),transparent 70%);
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+
+.split-content{}
+.split-tag{
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;
+  text-transform:uppercase;letter-spacing:2px;color:var(--accent);
+  margin-bottom:16px;display:block;
+}
+.split-title{
+  font-weight:900;font-size:clamp(1.8rem,3.5vw,2.6rem);
+  letter-spacing:-1px;margin-bottom:18px;line-height:1.12;
+}
+.split-desc{
+  color:var(--soft);font-size:1.05rem;line-height:1.75;margin-bottom:32px;
+}
+.check-list{list-style:none;margin-bottom:36px}
+.check-list li{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:10px 0;color:var(--soft);font-size:.98rem;line-height:1.6;
+}
+.check-list li::before{
+  content:'✓';flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  width:24px;height:24px;border-radius:8px;
+  background:var(--accent-dim);color:var(--accent);
+  font-weight:700;font-size:13px;margin-top:1px;
+}
+
+/* Phone mockup for Players section (SMS style) */
+.phone-sms .phone-body{gap:12px;justify-content:center;padding:20px}
+.sms-invite{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:18px;
+}
+.sms-invite-header{
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;
+  color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px;
+}
+.sms-invite-detail{display:flex;justify-content:space-between;padding:6px 0;font-size:12px}
+.sms-invite-detail .label{color:var(--muted)}
+.sms-invite-detail .value{font-weight:600}
+.sms-invite-btns{display:flex;gap:8px;margin-top:14px}
+.sms-invite-btns span{
+  flex:1;text-align:center;padding:8px;border-radius:10px;
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;
+}
+.sms-btn-in{background:var(--accent);color:#0f1b2d}
+.sms-btn-maybe{background:rgba(255,210,63,0.9);color:#0f1b2d}
+.sms-btn-out{background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border)}
+
+/* ═══════════════════ FOOTER ═══════════════════ */
+.footer{
+  border-top:1px solid var(--border);padding:60px 0 40px;
+  background:linear-gradient(180deg,var(--bg),rgba(10,18,30,1));
+}
+.footer-grid{
+  display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;
+  margin-bottom:48px;
+}
+.footer-brand .nav-logo{margin-bottom:16px}
+.footer-brand p{color:var(--muted);font-size:.92rem;line-height:1.7;max-width:300px}
+.footer-col h4{
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;
+  text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);
+  margin-bottom:18px;
+}
+.footer-col a{
+  display:block;color:var(--soft);text-decoration:none;font-size:.92rem;
+  padding:5px 0;transition:color .2s;
+}
+.footer-col a:hover{color:var(--accent)}
+.footer-bottom{
+  display:flex;justify-content:space-between;align-items:center;
+  padding-top:28px;border-top:1px solid var(--border);
+  font-size:13px;color:var(--muted);
+}
+.footer-bottom a{color:var(--muted);text-decoration:none;transition:color .2s}
+.footer-bottom a:hover{color:var(--accent)}
+.footer-legal{display:flex;gap:24px}
+
+/* ═══════════════════ RESPONSIVE ═══════════════════ */
+@media(max-width:960px){
+  .features-grid{grid-template-columns:repeat(2,1fr)}
+  .split-inner{grid-template-columns:1fr;text-align:center;gap:40px}
+  .split-inner.reverse{direction:ltr}
+  .split-content{order:2}
+  .split-visual{order:1}
+  .check-list li{justify-content:center}
+  .split .btn-primary,.split .btn-outline{margin:0 auto}
+  .footer-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:720px){
+  .nav-links{
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(15,27,45,0.98);backdrop-filter:blur(20px);
+    flex-direction:column;justify-content:center;align-items:center;gap:8px;
+    padding:80px 40px;
+  }
+  .nav-links.open{display:flex}
+  .nav-links a{font-size:20px;padding:14px 24px}
+  .nav-hamburger{display:block;z-index:101}
+  .nav-hamburger.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+  .nav-hamburger.open span:nth-child(2){opacity:0}
+  .nav-hamburger.open span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px)}
+  .stats-inner{flex-direction:column;gap:4px}
+  .stat-divider{width:60px;height:1px}
+  .features-grid{grid-template-columns:1fr}
+  .footer-grid{grid-template-columns:1fr}
+  .footer-bottom{flex-direction:column;gap:16px;text-align:center}
+}
+@media(max-width:480px){
+  .hero h1{letter-spacing:-1px}
+  .hero-ctas{flex-direction:column;width:100%}
+  .btn-primary,.btn-outline{width:100%;justify-content:center}
+  .split-phone{width:240px;height:440px}
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════ NAV ════════════ -->
+<nav class="nav" id="nav">
+  <div class="container nav-inner">
+    <a href="#top" class="nav-logo">
+      <img src="/PlayPBNow/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" class="nav-logo-img">
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a href="#features">Features</a>
+      <a href="#players">For Players</a>
+      <a href="#organizers">For Organizers</a>
+      <a href="/PlayPBNow/api/privacy.html">Privacy</a>
+      <a href="/PlayPBNow/api/terms.html">Terms</a>
+      <a href="/PlayPBNow/app.html" class="nav-cta">Launch App</a>
+    </div>
+    <button class="nav-hamburger" id="hamburger" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ════════════ HERO ════════════ -->
+<section class="hero" id="top">
+  <div class="hero-bg">
+    <div class="hero-ball"></div>
+    <div class="hero-ball"></div>
+    <div class="hero-ball"></div>
+    <div class="hero-ball"></div>
+    <div class="hero-court"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-pill">
+      <span class="hero-pill-dot"></span>
+      500+ Eager Players Ready Right Now
+    </div>
+    <h1>Play Pickleball<br><span class="accent">NOW.</span></h1>
+    <p class="hero-sub" style="font-size:clamp(1.1rem,2.5vw,1.35rem);max-width:560px">
+      That's what <strong style="color:#fff">Play Pickleball NOW!</strong> means. Need a foursome filled in minutes? A tournament roster packed by tonight? This is the <em>only</em> app that puts coordinators in front of hundreds of eager players&mdash;from beginners to pros&mdash;ready to play <strong style="color:var(--accent)">right now</strong>.
+    </p>
+    <div class="hero-ctas">
+      <a href="/PlayPBNow/app.html" class="btn-primary">
+        Launch the App
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+      <a href="/PlayPBNow/player-signup.html" class="btn-outline">
+        Join the Player Pool
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ WHAT IT MEANS ════════════ -->
+<section style="padding:60px 0;background:linear-gradient(180deg,rgba(135,202,55,0.06),transparent);border-bottom:1px solid var(--border)">
+  <div class="container reveal" style="text-align:center;max-width:800px">
+    <p style="font-family:'Outfit',sans-serif;font-weight:800;font-size:clamp(1.3rem,3vw,1.7rem);line-height:1.6;letter-spacing:-.3px">
+      <span style="color:var(--accent);font-size:clamp(1.5rem,3.5vw,2rem)">Play Pickleball NOW!</span> That's what it's all about.<br>
+      <span style="color:var(--soft)">Not next week. Not when you find enough people. <strong style="color:#fff">Right now.</strong></span>
+    </p>
+    <p style="color:var(--muted);font-size:1.05rem;margin-top:20px;line-height:1.7;max-width:620px;margin-left:auto;margin-right:auto">
+      Whether you need to fill a casual foursome or pack a competitive tournament, Play Pickleball NOW! is the <em>only</em> platform where coordinators have instant access to hundreds of eager players — from first-time beginners to seasoned professionals — all ready to play at a moment's notice.
+    </p>
+  </div>
+</section>
+
+<!-- ════════════ STATS ════════════ -->
+<div class="stats">
+  <div class="container stats-inner reveal">
+    <div class="stat-item">
+      <span class="stat-icon"><img src="/PlayPBNow/api/images/pickleball_and_paddle_emoji.png" alt="Pickleball"></span>
+      <div class="stat-content">
+        <div class="stat-number">500+</div>
+        <div class="stat-label">Eager Players</div>
+      </div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <span class="stat-icon">&#9889;</span>
+      <div class="stat-content">
+        <div class="stat-number">Minutes</div>
+        <div class="stat-label">To Fill a Foursome</div>
+      </div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <span class="stat-icon">&#128205;</span>
+      <div class="stat-content">
+        <div class="stat-number">223</div>
+        <div class="stat-label">Courts</div>
+      </div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <span class="stat-icon">&#129351;</span>
+      <div class="stat-content">
+        <div class="stat-number">&#129351;&#129352;&#129353;</div>
+        <div class="stat-label">Gold Silver Bronze</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ FEATURES ════════════ -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-tag">Why Play Pickleball NOW! Changes Everything</span>
+      <h2 class="section-title">Stop Waiting. Start <span class="accent">Playing.</span></h2>
+      <p class="section-desc">No more group texts that go nowhere. No more empty courts. Play Pickleball NOW! is the only platform that connects you to eager players <em>instantly</em>.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card reveal stagger-1">
+        <div class="feature-icon">&#9889;</div>
+        <h3>Fill Courts in Minutes</h3>
+        <p>Need a foursome? Send SMS invites to hundreds of players and watch confirmations roll in. Your court is full before your coffee gets cold.</p>
+      </div>
+      <div class="feature-card reveal stagger-2">
+        <div class="feature-icon"><img src="/PlayPBNow/api/images/pickleball_and_paddle_emoji.png" class="pb-emoji-lg" alt="Pickleball"></div>
+        <h3>Beginners to Pros</h3>
+        <p>500+ players at every skill level — 2.0 to 5.0. Filter by level, city, and availability. The perfect matchup is always a tap away.</p>
+      </div>
+      <div class="feature-card reveal stagger-3">
+        <div class="feature-icon">&#128241;</div>
+        <h3>One-Tap SMS Invites</h3>
+        <p>Pick your players, hit send, done. They get a text with all the details and respond instantly. No apps to download, no accounts to create.</p>
+      </div>
+      <div class="feature-card reveal stagger-4">
+        <div class="feature-icon">&#128172;</div>
+        <h3>Invite Chat</h3>
+        <p>Real-time group chat the moment you create a match. Coordinate who's bringing what, trash-talk before you even hit the court.</p>
+      </div>
+      <div class="feature-card reveal stagger-5">
+        <div class="feature-icon">&#129351;</div>
+        <h3>Gold, Silver &amp; Bronze</h3>
+        <p>Smart round-robin scoring with automatic leaderboards. First, second, and third place earn gold, silver, and bronze — making every match feel like a real tournament.</p>
+      </div>
+      <div class="feature-card reveal stagger-6">
+        <div class="feature-icon">&#127942;</div>
+        <h3>Anyone Can Score</h3>
+        <p>Hand the device to any player — the scoring is so simple anyone can do it. Collaborative scoring means the game never stops while someone fumbles with an app.</p>
+      </div>
+      <div class="feature-card reveal stagger-7">
+        <div class="feature-icon">&#128205;</div>
+        <h3>223 Courts on Tap</h3>
+        <p>Every pickleball court in Southern California, searchable by name or city. Pick a court, get directions, and go play. It's that simple.</p>
+      </div>
+      <div class="feature-card reveal stagger-8">
+        <div class="feature-icon">&#128225;</div>
+        <h3>Map Beacons</h3>
+        <p>At a court with open spots? Drop a beacon and nearby players see it instantly. Fill your game in real-time, right from the court.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ FOR PLAYERS ════════════ -->
+<section class="split" id="players" style="background:var(--surface)">
+  <div class="container">
+    <div class="split-inner">
+      <div class="split-visual reveal-left">
+        <div class="split-phone phone-sms">
+          <div class="split-phone-screen">
+            <div class="phone-header">
+              <div class="phone-header-dot"></div>
+              <div class="phone-header-title">Match Invite</div>
+            </div>
+            <div class="phone-body">
+              <div class="sms-invite">
+                <div class="sms-invite-header">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--accent)" stroke="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                  Play Pickleball NOW! Invite
+                </div>
+                <div class="sms-invite-detail">
+                  <span class="label">Court</span>
+                  <span class="value">Laguna Niguel Regional</span>
+                </div>
+                <div class="sms-invite-detail">
+                  <span class="label">Date</span>
+                  <span class="value">Sat, Mar 15</span>
+                </div>
+                <div class="sms-invite-detail">
+                  <span class="label">Time</span>
+                  <span class="value">9:00 AM</span>
+                </div>
+                <div class="sms-invite-detail">
+                  <span class="label">Spots Left</span>
+                  <span class="value" style="color:var(--accent)">3 of 8</span>
+                </div>
+                <div class="sms-invite-btns">
+                  <span class="sms-btn-in">I'm In!</span>
+                  <span class="sms-btn-maybe">Maybe</span>
+                  <span class="sms-btn-out">Can't</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="split-glow"></div>
+      </div>
+      <div class="split-content reveal-right">
+        <span class="split-tag">For Players</span>
+        <h2 class="split-title">Want to Play <span class="accent">Right Now?</span><br>Get in the Pool.</h2>
+        <p class="split-desc">
+          Stop scrolling Facebook groups hoping someone posts a game. Join the Play Pickleball NOW! player pool and let organizers come to <em>you</em>. Your phone buzzes, you tap "I'm In," and you're playing pickleball. It's that fast.
+        </p>
+        <ul class="check-list">
+          <li>100% free — forever. No subscription, no catch.</li>
+          <li>SMS invites straight to your phone with court, date, time</li>
+          <li>One tap: "I'm In!" — that's literally all it takes</li>
+          <li>Group chat with everyone in the match before you arrive</li>
+          <li>Play at YOUR level — beginners welcome, pros challenged</li>
+        </ul>
+        <a href="/PlayPBNow/player-signup.html" class="btn-primary">
+          Join the Player Pool
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ FOR ORGANIZERS ════════════ -->
+<section class="split" id="organizers">
+  <div class="container">
+    <div class="split-inner reverse" style="direction:rtl">
+      <div class="split-visual reveal-right" style="direction:ltr">
+        <div class="split-phone">
+          <div class="split-phone-screen">
+            <div class="phone-header">
+              <div class="phone-header-dot"></div>
+              <div class="phone-header-title">Invite Chat</div>
+            </div>
+            <div class="phone-body">
+              <div class="phone-msg system" style="animation-delay:.2s">David Kim is IN!</div>
+              <div class="phone-msg in" style="animation-delay:.5s">
+                <div class="phone-msg-name">David Kim</div>
+                Awesome! Can't wait. Should I bring extra balls?
+              </div>
+              <div class="phone-msg out" style="animation-delay:.8s">
+                Yes please! See you at 9 <img src="/PlayPBNow/api/images/paddle_emoji.png" class="pb-emoji" alt="paddle">
+              </div>
+              <div class="phone-msg system" style="animation-delay:1.1s">Kim McAllister is IN!</div>
+              <div class="phone-msg in" style="animation-delay:1.4s">
+                <div class="phone-msg-name">Kim McAllister</div>
+                Count me in! Bringing water for everyone 💧
+              </div>
+            </div>
+            <div class="phone-input">
+              <div class="phone-input-field">Type a message...</div>
+              <div class="phone-input-send">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="#0f1b2d" stroke="none"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="split-glow"></div>
+      </div>
+      <div class="split-content reveal-left" style="direction:ltr">
+        <span class="split-tag">For Coordinators</span>
+        <h2 class="split-title">Fill Your Courts.<br><span class="accent">In Minutes.</span></h2>
+        <p class="split-desc">
+          This is the part that changes everything. You have access to <strong>500+ eager players</strong> who <em>want</em> to play — right now. Beginners looking for their first game. Pros looking for competition. Everyone in between. No other app gives you this. Pick your players, pick your court, send the invites, and watch your roster fill up before lunch.
+        </p>
+        <ul class="check-list">
+          <li>500+ players from 2.0 beginners to 5.0 pros — all eager</li>
+          <li>Fill a foursome or a 40-person tournament in minutes</li>
+          <li>Smart court picker — 223 courts, one tap, done</li>
+          <li>SMS goes straight to their phone — no app needed to respond</li>
+          <li>Round-robin scoring so simple anyone can run it</li>
+          <li>Gold, silver, bronze medals on the leaderboard</li>
+        </ul>
+        <a href="/PlayPBNow/app.html" class="btn-primary">
+          Launch the App
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ CTA BANNER ════════════ -->
+<section style="padding:100px 0;background:var(--surface);text-align:center;position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(135,202,55,0.06),transparent 70%)"></div>
+  <div class="container reveal" style="position:relative;z-index:1">
+    <h2 style="font-weight:900;font-size:clamp(2rem,4vw,2.8rem);letter-spacing:-1px;margin-bottom:16px;line-height:1.1">
+      Play Pickleball <span class="accent">NOW.</span><br>Not Tomorrow. <span class="accent">Now.</span>
+    </h2>
+    <p style="color:var(--muted);font-size:1.1rem;max-width:520px;margin:0 auto 36px;line-height:1.7">
+      500+ players are waiting. 223 courts are ready. The only question is — are you a player looking for a game, or a coordinator ready to fill one?
+    </p>
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+      <a href="/PlayPBNow/app.html" class="btn-primary">Launch the App</a>
+      <a href="/PlayPBNow/player-signup.html" class="btn-outline">Join the Player Pool</a>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ FOOTER ════════════ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#top" class="nav-logo" style="display:inline-flex">
+          <img src="/PlayPBNow/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" class="footer-logo-img">
+        </a>
+        <p>Play Pickleball NOW. The only app that connects coordinators with hundreds of eager players — from beginners to pros — and fills courts in minutes.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#features">Features</a>
+        <a href="/PlayPBNow/app.html">Launch App</a>
+        <a href="/PlayPBNow/player-signup.html">Player Pool</a>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <a href="#players">For Players</a>
+        <a href="#organizers">For Organizers</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="/PlayPBNow/api/privacy.html">Privacy Policy</a>
+        <a href="/PlayPBNow/api/terms.html">Terms of Service</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2026 Play Pickleball NOW! All rights reserved.</span>
+      <div class="footer-legal">
+        <a href="/PlayPBNow/api/privacy.html">Privacy</a>
+        <a href="/PlayPBNow/api/terms.html">Terms</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Nav scroll effect
+const nav=document.getElementById('nav');
+window.addEventListener('scroll',()=>{nav.classList.toggle('scrolled',window.scrollY>40)},{passive:true});
+
+// Mobile menu
+const hamburger=document.getElementById('hamburger');
+const navLinks=document.getElementById('navLinks');
+hamburger.addEventListener('click',()=>{
+  hamburger.classList.toggle('open');
+  navLinks.classList.toggle('open');
+});
+navLinks.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{
+  hamburger.classList.remove('open');
+  navLinks.classList.remove('open');
+}));
+
+// Scroll reveal
+const observer=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}});
+},{threshold:0.12,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal,.reveal-left,.reveal-right').forEach(el=>observer.observe(el));
+</script>
+</body>
+</html>

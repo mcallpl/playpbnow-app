@@ -6,12 +6,12 @@ import { useTheme } from '../context/ThemeContext';
 import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';
 
 export const TrialBanner: React.FC = () => {
-    const { isTrial, isFree, trialDaysRemaining, showPaywall, subscription } = useSubscription();
+    const { isTrial, isFree, isAdmin, trialDaysRemaining, showPaywall, subscription } = useSubscription();
     const [dismissed, setDismissed] = useState(false);
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
-    if (dismissed) return null;
+    if (dismissed || isAdmin) return null;
 
     // Show trial banner during active trial
     if (isTrial && trialDaysRemaining > 0) {

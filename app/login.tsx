@@ -7,6 +7,7 @@ import {
     Image,
     KeyboardAvoidingView,
     Linking,
+    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -35,28 +36,37 @@ export default function LoginScreen() {
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     const [mode, setMode] = useState<'login' | 'register'>('login');
-    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
-    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+
+    // Forgot password state
+    const [resetStep, setResetStep] = useState<'none' | 'phone' | 'code' | 'newpass'>('none');
+    const [resetPhone, setResetPhone] = useState('');
+    const [resetCode, setResetCode] = useState('');
+    const [resetPassword, setResetPassword] = useState('');
+    const [resetConfirm, setResetConfirm] = useState('');
+    const [resetLoading, setResetLoading] = useState(false);
 
     const handleSubmit = async () => {
-        const trimmedEmail = email.trim().toLowerCase();
+        setErrorMessage('');
 
-        if (!trimmedEmail || !password) {
-            Alert.alert('Missing Fields', 'Please enter your email and password.');
+        if (!phone.trim() || !password) {
+            setErrorMessage('Please enter your phone number and password.');
             return;
         }
 
         if (mode === 'register' && !firstName.trim()) {
-            Alert.alert('Missing Name', 'Please enter your first name.');
+            setErrorMessage('Please enter your first name.');
             return;
         }
 
         if (mode === 'register' && password.length < 6) {
-            Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+            setErrorMessage('Password must be at least 6 characters.');
             return;
         }
 
@@ -64,14 +74,14 @@ export default function LoginScreen() {
         try {
             const body: any = {
                 mode,
-                email: trimmedEmail,
+                phone: phone.trim(),
                 password,
                 device_info: Platform.OS,
             };
             if (mode === 'register') {
                 body.first_name = firstName.trim();
                 body.last_name = lastName.trim();
-                if (phone.trim()) body.phone = phone.trim();
+                if (email.trim()) body.email = email.trim();
             }
 
             const response = await fetch(`${API_URL}/email_login.php`, {
@@ -87,6 +97,7 @@ export default function LoginScreen() {
                     ['session_token', data.session_token],
                     ['user_id', data.user.id.toString()],
                 ];
+                if (data.user.phone) pairs.push(['user_phone', data.user.phone]);
                 if (data.user.email) pairs.push(['user_email', data.user.email]);
                 if (data.user.first_name) pairs.push(['user_first_name', data.user.first_name]);
                 if (data.user.last_name) pairs.push(['user_last_name', data.user.last_name]);
@@ -96,17 +107,116 @@ export default function LoginScreen() {
                 router.replace('/(tabs)/groups');
             } else {
                 setLoading(false);
-                Alert.alert('Error', data.message || 'Something went wrong. Please try again.');
+                setErrorMessage(data.message || 'Something went wrong. Please try again.');
             }
         } catch (error) {
             setLoading(false);
             console.error('Login error:', error);
-            Alert.alert('Error', 'Network error. Please check your connection and try again.');
+            setErrorMessage('Network error. Please check your connection and try again.');
         }
     };
 
     const toggleMode = () => {
         setMode(mode === 'login' ? 'register' : 'login');
+        setErrorMessage('');
+    };
+
+    const startForgotPassword = () => {
+        setResetPhone(phone.trim());
+        setResetStep('phone');
+    };
+
+    const cancelReset = () => {
+        setResetStep('none');
+        setResetPhone('');
+        setResetCode('');
+        setResetPassword('');
+        setResetConfirm('');
+    };
+
+    const handleRequestCode = async () => {
+        if (!resetPhone.trim()) {
+            Alert.alert('Error', 'Please enter your phone number.');
+            return;
+        }
+        setResetLoading(true);
+        try {
+            const res = await fetch(`${API_URL}/forgot_password.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'request_code', phone: resetPhone.trim() }),
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                setResetStep('code');
+            } else {
+                Alert.alert('Error', data.message);
+            }
+        } catch {
+            Alert.alert('Error', 'Network error. Please try again.');
+        } finally {
+            setResetLoading(false);
+        }
+    };
+
+    const handleVerifyCode = async () => {
+        if (resetCode.trim().length !== 6) {
+            Alert.alert('Error', 'Please enter the 6-digit code.');
+            return;
+        }
+        setResetLoading(true);
+        try {
+            const res = await fetch(`${API_URL}/forgot_password.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'verify_code', phone: resetPhone.trim(), code: resetCode.trim() }),
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                setResetStep('newpass');
+            } else {
+                Alert.alert('Error', data.message);
+            }
+        } catch {
+            Alert.alert('Error', 'Network error. Please try again.');
+        } finally {
+            setResetLoading(false);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (resetPassword.length < 6) {
+            Alert.alert('Error', 'Password must be at least 6 characters.');
+            return;
+        }
+        if (resetPassword !== resetConfirm) {
+            Alert.alert('Error', 'Passwords do not match.');
+            return;
+        }
+        setResetLoading(true);
+        try {
+            const res = await fetch(`${API_URL}/forgot_password.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'reset_password',
+                    phone: resetPhone.trim(),
+                    code: resetCode.trim(),
+                    new_password: resetPassword,
+                }),
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                Alert.alert('Success', 'Your password has been reset. You can now sign in.');
+                cancelReset();
+            } else {
+                Alert.alert('Error', data.message);
+            }
+        } catch {
+            Alert.alert('Error', 'Network error. Please try again.');
+        } finally {
+            setResetLoading(false);
+        }
     };
 
     return (
@@ -156,31 +266,31 @@ export default function LoginScreen() {
                                     textContentType="familyName"
                                 />
 
-                                <Text style={styles.label}>PHONE NUMBER</Text>
+                                <Text style={styles.label}>EMAIL</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="(optional)"
+                                    placeholder="Optional"
                                     placeholderTextColor={colors.inputPlaceholder}
-                                    value={phone}
-                                    onChangeText={setPhone}
-                                    keyboardType="phone-pad"
-                                    autoComplete="tel"
-                                    textContentType="telephoneNumber"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoComplete="email"
+                                    textContentType="emailAddress"
+                                    value={email}
+                                    onChangeText={setEmail}
                                 />
                             </>
                         )}
 
-                        <Text style={styles.label}>EMAIL</Text>
+                        <Text style={styles.label}>PHONE NUMBER</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="you@example.com"
+                            placeholder="(949) 735-9415"
                             placeholderTextColor={colors.inputPlaceholder}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            autoComplete="email"
-                            textContentType="emailAddress"
-                            value={email}
-                            onChangeText={setEmail}
+                            keyboardType="phone-pad"
+                            autoComplete="tel"
+                            textContentType="telephoneNumber"
+                            value={phone}
+                            onChangeText={setPhone}
                         />
 
                         <Text style={styles.label}>PASSWORD</Text>
@@ -197,6 +307,18 @@ export default function LoginScreen() {
                             returnKeyType="go"
                         />
                     </View>
+
+                    {mode === 'login' && (
+                        <TouchableOpacity style={styles.forgotBtn} onPress={startForgotPassword}>
+                            <Text style={styles.forgotText}>Forgot Password?</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {errorMessage !== '' && (
+                        <View style={styles.errorBanner}>
+                            <Text style={styles.errorText}>{errorMessage}</Text>
+                        </View>
+                    )}
 
                     <TouchableOpacity
                         style={[styles.button, loading && styles.buttonDisabled]}
@@ -236,6 +358,95 @@ export default function LoginScreen() {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            <Modal animationType="slide" transparent visible={resetStep !== 'none'} onRequestClose={cancelReset}>
+                <View style={styles.resetOverlay}>
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+                        <View style={styles.resetCard}>
+                            <Text style={styles.resetTitle}>
+                                {resetStep === 'phone' ? 'Reset Password' : resetStep === 'code' ? 'Enter Code' : 'New Password'}
+                            </Text>
+
+                            {resetStep === 'phone' && (
+                                <>
+                                    <Text style={styles.resetHint}>Enter your phone number and we'll text you a 6-digit reset code.</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="(949) 735-9415"
+                                        placeholderTextColor={colors.inputPlaceholder}
+                                        keyboardType="phone-pad"
+                                        value={resetPhone}
+                                        onChangeText={setResetPhone}
+                                    />
+                                    <TouchableOpacity
+                                        style={[styles.button, { marginTop: 16 }, resetLoading && styles.buttonDisabled]}
+                                        onPress={handleRequestCode}
+                                        disabled={resetLoading}
+                                    >
+                                        {resetLoading ? <ActivityIndicator color={colors.bg} /> : <Text style={styles.buttonText}>SEND CODE</Text>}
+                                    </TouchableOpacity>
+                                </>
+                            )}
+
+                            {resetStep === 'code' && (
+                                <>
+                                    <Text style={styles.resetHint}>Enter the 6-digit code we just texted you.</Text>
+                                    <TextInput
+                                        style={[styles.input, { textAlign: 'center', fontSize: 24, letterSpacing: 8 }]}
+                                        placeholder="000000"
+                                        placeholderTextColor={colors.inputPlaceholder}
+                                        keyboardType="number-pad"
+                                        maxLength={6}
+                                        value={resetCode}
+                                        onChangeText={setResetCode}
+                                    />
+                                    <TouchableOpacity
+                                        style={[styles.button, { marginTop: 16 }, resetLoading && styles.buttonDisabled]}
+                                        onPress={handleVerifyCode}
+                                        disabled={resetLoading}
+                                    >
+                                        {resetLoading ? <ActivityIndicator color={colors.bg} /> : <Text style={styles.buttonText}>VERIFY</Text>}
+                                    </TouchableOpacity>
+                                </>
+                            )}
+
+                            {resetStep === 'newpass' && (
+                                <>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="New password (6+ characters)"
+                                        placeholderTextColor={colors.inputPlaceholder}
+                                        secureTextEntry
+                                        value={resetPassword}
+                                        onChangeText={setResetPassword}
+                                        autoCapitalize="none"
+                                    />
+                                    <TextInput
+                                        style={[styles.input, { marginTop: 12 }]}
+                                        placeholder="Confirm new password"
+                                        placeholderTextColor={colors.inputPlaceholder}
+                                        secureTextEntry
+                                        value={resetConfirm}
+                                        onChangeText={setResetConfirm}
+                                        autoCapitalize="none"
+                                    />
+                                    <TouchableOpacity
+                                        style={[styles.button, { marginTop: 16 }, resetLoading && styles.buttonDisabled]}
+                                        onPress={handleResetPassword}
+                                        disabled={resetLoading}
+                                    >
+                                        {resetLoading ? <ActivityIndicator color={colors.bg} /> : <Text style={styles.buttonText}>RESET PASSWORD</Text>}
+                                    </TouchableOpacity>
+                                </>
+                            )}
+
+                            <TouchableOpacity style={styles.toggleBtn} onPress={cancelReset}>
+                                <Text style={styles.forgotText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -313,5 +524,56 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         color: c.accent,
         fontFamily: FONT_BODY_BOLD,
         textDecorationLine: 'underline',
+    },
+    errorBanner: {
+        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(220, 38, 38, 0.3)',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
+    },
+    errorText: {
+        color: '#dc2626',
+        fontSize: 14,
+        fontFamily: FONT_BODY_MEDIUM,
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    forgotBtn: {
+        alignItems: 'flex-end',
+        marginBottom: 16,
+        marginTop: -8,
+    },
+    forgotText: {
+        color: c.textMuted,
+        fontSize: 13,
+        fontFamily: FONT_BODY_MEDIUM,
+    },
+    resetOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    resetCard: {
+        backgroundColor: c.bg,
+        borderRadius: 20,
+        padding: 28,
+    },
+    resetTitle: {
+        fontSize: 22,
+        fontFamily: FONT_DISPLAY_BOLD,
+        color: c.text,
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    resetHint: {
+        fontSize: 14,
+        fontFamily: FONT_BODY_REGULAR,
+        color: c.textMuted,
+        marginBottom: 20,
+        textAlign: 'center',
+        lineHeight: 20,
     },
 });

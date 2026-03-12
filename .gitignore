@@ -45,6 +45,9 @@ app-example
 # Snapshots (manual backups)
 Snapshots/
 
+# Deploy scripts (contain SFTP credentials)
+deploy-*.sh
+
 # Claude Code
 .claude/
 playpbnow-api/

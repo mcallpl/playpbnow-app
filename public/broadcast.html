@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Play Pickleball NOW! — Announcement</title>
+<meta name="description" content="Play Pickleball NOW! announcement">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1b2d;--surface:#152945;--card:#1e3a5f;--accent:#87ca37;
+  --accent-dim:rgba(135,202,55,0.12);--accent-glow:rgba(135,202,55,0.25);
+  --text:#fff;--muted:rgba(255,255,255,0.55);--soft:rgba(255,255,255,0.75);
+  --border:rgba(255,255,255,0.07);--radius:20px;
+}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden;min-height:100vh}
+h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
+
+/* ═══════════════════ ANIMATIONS ═══════════════════ */
+@keyframes heroDrift{
+  0%{transform:translate(0,0) rotate(0deg)}
+  50%{transform:translate(-3%,2%) rotate(1deg)}
+  100%{transform:translate(2%,-1%) rotate(-0.5deg)}
+}
+@keyframes float1{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-20px) rotate(8deg)}}
+@keyframes float2{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(15px) rotate(-6deg)}}
+@keyframes float3{0%,100%{transform:translate(0,0)}50%{transform:translate(10px,-12px)}}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ═══════════════════ BACKGROUND ═══════════════════ */
+.page-bg{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+}
+.page-bg::before{
+  content:'';position:absolute;top:-40%;left:-30%;width:160%;height:160%;
+  background:
+    radial-gradient(ellipse 600px 500px at 25% 30%,rgba(135,202,55,0.1) 0%,transparent 70%),
+    radial-gradient(ellipse 500px 600px at 75% 70%,rgba(30,80,160,0.12) 0%,transparent 70%),
+    radial-gradient(ellipse 400px 400px at 50% 50%,rgba(135,202,55,0.04) 0%,transparent 60%);
+  animation:heroDrift 25s ease-in-out infinite alternate;
+}
+
+/* Floating pickleballs */
+.bg-ball{
+  position:fixed;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,rgba(135,202,55,0.15),rgba(135,202,55,0.03));
+  border:1px solid rgba(135,202,55,0.08);z-index:0;pointer-events:none;
+}
+.bg-ball:nth-child(2){width:120px;height:120px;top:12%;right:8%;animation:float1 12s ease-in-out infinite}
+.bg-ball:nth-child(3){width:80px;height:80px;bottom:25%;left:5%;animation:float2 15s ease-in-out infinite}
+.bg-ball:nth-child(4){width:50px;height:50px;top:55%;right:20%;animation:float3 10s ease-in-out infinite}
+.bg-ball:nth-child(5){width:140px;height:140px;bottom:8%;right:3%;animation:float1 18s ease-in-out infinite reverse;opacity:.4}
+
+/* Decorative court lines */
+.bg-court{
+  position:fixed;width:420px;height:280px;
+  border:1px solid rgba(135,202,55,0.04);border-radius:6px;
+  top:50%;left:50%;transform:translate(-50%,-50%) rotate(-8deg);
+  z-index:0;pointer-events:none;
+}
+.bg-court::before{
+  content:'';position:absolute;top:0;bottom:0;left:50%;width:1px;
+  background:rgba(135,202,55,0.04);
+}
+.bg-court::after{
+  content:'';position:absolute;left:50%;top:50%;
+  width:80px;height:80px;border:1px solid rgba(135,202,55,0.04);
+  border-radius:50%;transform:translate(-50%,-50%);
+}
+
+/* ═══════════════════ LAYOUT ═══════════════════ */
+.container{max-width:760px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+/* ═══════════════════ LOADING STATE ═══════════════════ */
+.loading-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;gap:24px;animation:fadeIn .5s ease;
+}
+.spinner{
+  width:48px;height:48px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+.loading-text{
+  font-family:'Outfit',sans-serif;font-weight:600;font-size:1rem;
+  color:var(--muted);letter-spacing:.5px;
+}
+
+/* ═══════════════════ ERROR STATE ═══════════════════ */
+.error-state{
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;gap:20px;text-align:center;padding:40px 24px;
+  animation:fadeIn .5s ease;
+}
+.error-icon{
+  width:80px;height:80px;border-radius:50%;
+  background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.2);
+  display:flex;align-items:center;justify-content:center;font-size:36px;
+}
+.error-title{
+  font-family:'Outfit',sans-serif;font-weight:800;font-size:1.5rem;
+  letter-spacing:-.5px;
+}
+.error-desc{color:var(--muted);font-size:1rem;max-width:400px;line-height:1.7}
+.error-home{
+  display:inline-flex;align-items:center;gap:8px;
+  color:var(--accent);text-decoration:none;font-family:'Outfit',sans-serif;
+  font-weight:700;font-size:.95rem;margin-top:8px;transition:opacity .2s;
+}
+.error-home:hover{opacity:.8}
+
+/* ═══════════════════ BROADCAST CONTENT ═══════════════════ */
+.broadcast{display:none;animation:fadeIn .6s ease}
+
+/* Hero */
+.broadcast-hero{
+  padding:60px 0 40px;text-align:center;
+}
+.broadcast-logo{
+  height:100px;width:auto;object-fit:contain;
+  filter:drop-shadow(0 0 16px var(--accent-glow));
+  margin-bottom:20px;
+  animation:fadeSlideIn .8s cubic-bezier(.16,1,.3,1) both;
+}
+.broadcast-brand{
+  font-family:'Outfit',sans-serif;font-weight:800;font-size:1.1rem;
+  letter-spacing:.5px;margin-bottom:16px;color:var(--soft);
+  animation:fadeSlideIn .8s cubic-bezier(.16,1,.3,1) .05s both;
+}
+.broadcast-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--accent-dim);border:1px solid rgba(135,202,55,0.2);
+  border-radius:50px;padding:6px 20px 6px 10px;margin-bottom:32px;
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;color:var(--accent);
+  letter-spacing:1.5px;text-transform:uppercase;
+  animation:fadeSlideIn .8s cubic-bezier(.16,1,.3,1) .1s both;
+}
+.broadcast-badge-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--accent);
+  animation:pulse 2s ease-in-out infinite;
+}
+.broadcast-subject{
+  font-weight:900;font-size:clamp(2rem,5.5vw,3.2rem);
+  line-height:1.1;letter-spacing:-1.5px;margin-bottom:0;
+  animation:fadeSlideIn .8s cubic-bezier(.16,1,.3,1) .2s both;
+}
+.broadcast-subject .accent{
+  background:linear-gradient(135deg,#87ca37 0%,#a8e063 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+/* Divider */
+.broadcast-divider{
+  width:60px;height:3px;margin:36px auto;border-radius:3px;
+  background:linear-gradient(90deg,var(--accent),rgba(135,202,55,0.3));
+  animation:fadeSlideIn .8s cubic-bezier(.16,1,.3,1) .3s both;
+}
+
+/* Content card */
+.broadcast-card{
+  background:rgba(30,58,95,0.55);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:var(--radius);
+  padding:clamp(28px,5vw,48px);
+  margin-bottom:48px;
+  position:relative;overflow:hidden;
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.3),
+    0 0 40px rgba(135,202,55,0.04),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.broadcast-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent),rgba(135,202,55,0.2),transparent);
+}
+/* Subtle pickleball pattern in card corner */
+.broadcast-card::after{
+  content:'';position:absolute;bottom:-30px;right:-30px;
+  width:140px;height:140px;border-radius:50%;
+  background:radial-gradient(circle at 40% 40%,rgba(135,202,55,0.06),transparent 70%);
+  border:1px solid rgba(135,202,55,0.04);
+  pointer-events:none;
+}
+
+/* Content card inner HTML styling */
+.broadcast-body{position:relative;z-index:1}
+.broadcast-body p{
+  color:var(--soft);font-size:clamp(1rem,2vw,1.1rem);
+  line-height:1.8;margin-bottom:18px;
+}
+.broadcast-body p:last-child{margin-bottom:0}
+.broadcast-body h1,.broadcast-body h2,.broadcast-body h3,
+.broadcast-body h4,.broadcast-body h5,.broadcast-body h6{
+  font-family:'Outfit',sans-serif;color:var(--text);margin-bottom:12px;margin-top:24px;
+  letter-spacing:-.3px;
+}
+.broadcast-body h1:first-child,.broadcast-body h2:first-child,.broadcast-body h3:first-child{margin-top:0}
+.broadcast-body h2{font-weight:800;font-size:1.5rem}
+.broadcast-body h3{font-weight:700;font-size:1.25rem}
+.broadcast-body a{
+  color:var(--accent);text-decoration:underline;
+  text-underline-offset:3px;text-decoration-color:rgba(135,202,55,0.4);
+  transition:text-decoration-color .2s;
+}
+.broadcast-body a:hover{text-decoration-color:var(--accent)}
+.broadcast-body ul,.broadcast-body ol{
+  color:var(--soft);padding-left:24px;margin-bottom:18px;
+  font-size:clamp(1rem,2vw,1.1rem);line-height:1.8;
+}
+.broadcast-body li{margin-bottom:6px}
+.broadcast-body strong{color:var(--text);font-weight:700}
+.broadcast-body em{color:var(--soft);font-style:italic}
+.broadcast-body blockquote{
+  border-left:3px solid var(--accent);padding:12px 20px;
+  margin:20px 0;background:rgba(135,202,55,0.05);border-radius:0 12px 12px 0;
+  color:var(--soft);font-style:italic;
+}
+.broadcast-body img{max-width:100%;border-radius:12px;margin:16px 0}
+
+/* Featured hero image */
+.broadcast-featured{
+  width:100%;max-width:760px;margin:0 auto 36px;
+  border-radius:var(--radius);overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.4),0 0 40px rgba(135,202,55,0.06);
+  border:1px solid rgba(255,255,255,0.08);
+  animation:fadeSlideIn .8s cubic-bezier(.16,1,.3,1) .25s both;
+}
+.broadcast-featured img{
+  width:100%;height:auto;display:block;
+  object-fit:cover;max-height:480px;
+}
+.broadcast-featured video{
+  width:100%;height:auto;display:block;
+  max-height:480px;background:#000;
+}
+.broadcast-body hr{
+  border:none;height:1px;background:var(--border);margin:28px 0;
+}
+
+/* ═══════════════════ CTA SECTION ═══════════════════ */
+.broadcast-cta{
+  text-align:center;padding:20px 0 48px;
+}
+.broadcast-cta-text{
+  font-family:'Outfit',sans-serif;font-weight:600;font-size:.95rem;
+  color:var(--muted);margin-bottom:20px;letter-spacing:.3px;
+}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:10px;
+  background:var(--accent);color:#0f1b2d;
+  font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;
+  padding:18px 40px;border-radius:16px;border:none;cursor:pointer;
+  letter-spacing:.8px;text-transform:uppercase;text-decoration:none;
+  box-shadow:0 4px 30px var(--accent-glow);transition:all .3s ease;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 40px rgba(135,202,55,0.4)}
+.btn-primary:active{transform:translateY(0)}
+
+/* ═══════════════════ FOOTER ═══════════════════ */
+.broadcast-footer{
+  border-top:1px solid var(--border);
+  padding:32px 0;text-align:center;
+  background:linear-gradient(180deg,transparent,rgba(10,18,30,0.5));
+}
+.footer-brand{
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:1rem;
+  letter-spacing:.3px;margin-bottom:6px;
+}
+.footer-tagline{
+  color:var(--muted);font-size:.85rem;margin-bottom:12px;
+}
+.footer-date{
+  color:var(--muted);font-size:.8rem;opacity:.7;
+}
+.footer-links{
+  margin-top:16px;display:flex;justify-content:center;gap:20px;
+}
+.footer-links a{
+  color:var(--muted);text-decoration:none;font-size:.82rem;transition:color .2s;
+}
+.footer-links a:hover{color:var(--accent)}
+
+/* ═══════════════════ RESPONSIVE ═══════════════════ */
+@media(max-width:480px){
+  .broadcast-subject{letter-spacing:-1px}
+  .broadcast-card{padding:24px 20px}
+  .btn-primary{width:100%;justify-content:center;padding:16px 32px;font-size:15px}
+  .bg-ball:nth-child(2){width:80px;height:80px}
+  .bg-ball:nth-child(5){display:none}
+  .bg-court{width:280px;height:180px}
+}
+</style>
+</head>
+<body>
+
+<!-- Background elements -->
+<div class="page-bg"></div>
+<div class="bg-ball"></div>
+<div class="bg-ball"></div>
+<div class="bg-ball"></div>
+<div class="bg-ball"></div>
+<div class="bg-court"></div>
+
+<!-- Loading State -->
+<div class="loading-state" id="loadingState">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading announcement...</div>
+</div>
+
+<!-- Error State -->
+<div class="error-state" id="errorState">
+  <div class="error-icon">!</div>
+  <h2 class="error-title">Announcement Unavailable</h2>
+  <p class="error-desc">This announcement is no longer available or the link may have expired. Check with your group coordinator for the latest updates.</p>
+  <a href="https://peoplestar.com/PlayPBNow/landing.html" class="error-home">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 5 7 7-7 7"/><path d="M5 12h14"/></svg>
+    Visit PlayPBNow
+  </a>
+</div>
+
+<!-- Broadcast Content -->
+<div class="broadcast" id="broadcastContent">
+  <div class="container">
+
+    <!-- Hero -->
+    <div class="broadcast-hero">
+      <img src="https://peoplestar.com/PlayPBNow/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" class="broadcast-logo">
+      <div class="broadcast-brand">Play Pickleball NOW!</div>
+      <div class="broadcast-badge">
+        <span class="broadcast-badge-dot"></span>
+        Announcement
+      </div>
+      <h1 class="broadcast-subject" id="broadcastSubject"></h1>
+    </div>
+
+    <!-- Featured Image (shown when broadcast has one) -->
+    <div class="broadcast-featured" id="broadcastFeatured" style="display:none"></div>
+
+    <div class="broadcast-divider"></div>
+
+    <!-- Content Card -->
+    <div class="broadcast-card reveal">
+      <div class="broadcast-body" id="broadcastBody"></div>
+    </div>
+
+    <!-- CTA -->
+    <div class="broadcast-cta reveal">
+      <p class="broadcast-cta-text">Ready to play pickleball?</p>
+      <a href="https://peoplestar.com/PlayPBNow/landing.html" class="btn-primary">
+        Download Play Pickleball NOW!
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="broadcast-footer">
+    <div class="container">
+      <div class="footer-brand">Play Pickleball NOW!</div>
+      <div class="footer-tagline">Fill Your Courts in Minutes</div>
+      <div class="footer-date" id="broadcastDate"></div>
+      <div class="footer-links">
+        <a href="https://peoplestar.com/PlayPBNow/landing.html">Home</a>
+        <a href="https://peoplestar.com/PlayPBNow/player-signup.html">Join Player Pool</a>
+        <a href="https://peoplestar.com/PlayPBNow/api/privacy.html">Privacy</a>
+        <a href="https://peoplestar.com/PlayPBNow/api/terms.html">Terms</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var loadingEl = document.getElementById('loadingState');
+  var errorEl = document.getElementById('errorState');
+  var contentEl = document.getElementById('broadcastContent');
+  var subjectEl = document.getElementById('broadcastSubject');
+  var bodyEl = document.getElementById('broadcastBody');
+  var dateEl = document.getElementById('broadcastDate');
+  var featuredEl = document.getElementById('broadcastFeatured');
+
+  // Read broadcast code from URL
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get('code');
+
+  if (!code) {
+    showError();
+    return;
+  }
+
+  // Fetch broadcast data
+  fetch('https://peoplestar.com/PlayPBNow/api/broadcast_api.php?action=view&broadcast_code=' + encodeURIComponent(code))
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (!data || data.error || !data.subject) {
+        showError();
+        return;
+      }
+      showBroadcast(data);
+    })
+    .catch(function() {
+      showError();
+    });
+
+  function showError() {
+    loadingEl.style.display = 'none';
+    errorEl.style.display = 'flex';
+  }
+
+  function showBroadcast(data) {
+    // Populate content
+    subjectEl.textContent = data.subject;
+    bodyEl.innerHTML = data.body_html || '<p>' + (data.body || 'No content available.') + '</p>';
+
+    // Show featured image/video prominently
+    if (data.featured_image) {
+      var isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(data.featured_image);
+      if (isVideo) {
+        featuredEl.innerHTML = '<video controls playsinline><source src="' + data.featured_image + '">Your browser does not support video.</video>';
+      } else {
+        featuredEl.innerHTML = '<img src="' + data.featured_image + '" alt="' + (data.subject || 'Announcement') + '">';
+      }
+      featuredEl.style.display = 'block';
+    }
+
+    // Format and show date
+    if (data.sent_at || data.created_at) {
+      var dateStr = data.sent_at || data.created_at;
+      try {
+        var d = new Date(dateStr);
+        var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateEl.textContent = 'Sent ' + d.toLocaleDateString('en-US', options);
+      } catch(e) {
+        dateEl.textContent = 'Sent ' + dateStr;
+      }
+    }
+
+    // Show content, hide loading
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'block';
+
+    // Trigger reveal animations
+    setTimeout(function() {
+      var reveals = document.querySelectorAll('.reveal');
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+            observer.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+      reveals.forEach(function(el) { observer.observe(el); });
+    }, 100);
+  }
+})();
+</script>
+</body>
+</html>

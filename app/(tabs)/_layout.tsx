@@ -4,12 +4,14 @@ import { BrandedIcon } from '../../components/BrandedIcon';
 import { PulsingTabIcon } from '../../components/PulsingTabIcon';
 import { useActiveMatch } from '../../context/ActiveMatchContext';
 import { useBeaconStatus } from '../../context/BeaconContext';
+import { useSubscription } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { FONT_DISPLAY_BOLD } from '../../constants/theme';
 
 export default function TabLayout() {
   const { activeMatch } = useActiveMatch();
   const { hasActiveBeacons } = useBeaconStatus();
+  const { isAdmin } = useSubscription();
   const { colors } = useTheme();
 
   return (
@@ -94,12 +96,32 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="invites"
+        options={{
+          title: 'INVITES',
+          tabBarIcon: ({ color }) => (
+            <BrandedIcon name="send" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="leaderboard"
         options={{
           title: 'RANKINGS',
           tabBarIcon: ({ color }) => (
             <BrandedIcon name="leaderboard" size={24} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="broadcast"
+        options={isAdmin ? {
+          title: 'ADMIN',
+          tabBarIcon: ({ color }) => (
+            <BrandedIcon name="settings" size={24} color={color} />
+          ),
+        } : {
+          href: null,
         }}
       />
     </Tabs>

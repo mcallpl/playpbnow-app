@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join the Play Pickleball NOW! Player Pool - Get Invited to Play!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0f1b2d;--surface:#152945;--card:#1e3a5f;--accent:#87ca37;
+    --accent-glow:rgba(135,202,55,0.15);--text:#fff;--muted:rgba(255,255,255,0.6);
+    --soft:rgba(255,255,255,0.7);--border:rgba(255,255,255,0.08);
+    --input-bg:#152945;--input-border:rgba(255,255,255,0.1);
+    --danger:#ff4757;--gold:#ffd23f;
+  }
+  html{scroll-behavior:smooth}
+  body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+
+  /* Hero Section */
+  .hero{
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:40px 24px;position:relative;overflow:hidden;
+  }
+  .hero::before{
+    content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;
+    background:radial-gradient(ellipse at 30% 20%,rgba(135,202,55,0.08) 0%,transparent 50%),
+               radial-gradient(ellipse at 70% 80%,rgba(108,92,231,0.06) 0%,transparent 50%);
+    animation:drift 20s ease-in-out infinite alternate;
+  }
+  @keyframes drift{0%{transform:translate(0,0)}100%{transform:translate(-5%,3%)}}
+
+  .hero-content{position:relative;z-index:1;max-width:600px}
+
+  .logo-badge{
+    display:inline-flex;align-items:center;margin-bottom:32px;
+  }
+  .logo-badge img{
+    height:114px;width:auto;object-fit:contain;
+    filter:drop-shadow(0 0 12px rgba(135,202,55,0.25));
+  }
+
+  .hero h1{
+    font-family:'Outfit',sans-serif;font-weight:900;
+    font-size:clamp(2.5rem,7vw,4rem);line-height:1.1;margin-bottom:16px;
+    letter-spacing:-1px;
+  }
+  .hero h1 .accent{color:var(--accent)}
+
+  .hero-subtitle{
+    font-size:clamp(1.05rem,2.5vw,1.25rem);color:var(--soft);max-width:480px;
+    margin:0 auto 40px;line-height:1.7;
+  }
+
+  .cta-button{
+    display:inline-flex;align-items:center;gap:10px;
+    background:var(--accent);color:#0f1b2d;
+    font-family:'Outfit',sans-serif;font-weight:800;font-size:18px;
+    padding:18px 40px;border-radius:16px;border:none;cursor:pointer;
+    letter-spacing:1px;text-transform:uppercase;
+    box-shadow:0 4px 30px rgba(135,202,55,0.3);
+    transition:all 0.3s ease;
+  }
+  .cta-button:hover{transform:translateY(-2px);box-shadow:0 8px 40px rgba(135,202,55,0.4)}
+
+  .scroll-hint{
+    position:absolute;bottom:30px;left:50%;transform:translateX(-50%);
+    color:var(--muted);font-size:13px;animation:bounce 2s infinite;
+  }
+  @keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(8px)}}
+
+  /* Stats Banner */
+  .stats-bar{
+    background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+    padding:24px;display:flex;justify-content:center;gap:48px;flex-wrap:wrap;
+  }
+  .stat{text-align:center}
+  .stat-number{font-family:'Outfit',sans-serif;font-weight:800;font-size:2rem;color:var(--accent)}
+  .stat-label{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+
+  /* Benefits Section */
+  .benefits{padding:80px 24px;max-width:900px;margin:0 auto}
+  .section-title{
+    font-family:'Outfit',sans-serif;font-weight:800;font-size:clamp(1.8rem,4vw,2.5rem);
+    text-align:center;margin-bottom:12px;letter-spacing:-0.5px;
+  }
+  .section-subtitle{text-align:center;color:var(--muted);font-size:1.05rem;margin-bottom:48px;max-width:500px;margin-left:auto;margin-right:auto}
+
+  .benefits-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
+  .benefit-card{
+    background:var(--card);border:1px solid var(--border);border-radius:20px;
+    padding:28px 24px;transition:all 0.3s ease;
+  }
+  .benefit-card:hover{border-color:rgba(135,202,55,0.3);transform:translateY(-3px)}
+  .benefit-icon{font-size:32px;margin-bottom:16px}
+  .benefit-card h3{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.15rem;margin-bottom:8px}
+  .benefit-card p{color:var(--muted);font-size:0.95rem;line-height:1.6}
+
+  /* Registration Form */
+  .form-section{
+    padding:80px 24px;
+    background:linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%);
+  }
+  .form-container{max-width:520px;margin:0 auto}
+
+  .form-card{
+    background:var(--card);border:1px solid var(--border);border-radius:24px;
+    padding:40px 32px;box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  .form-group{margin-bottom:20px}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  label{
+    display:block;font-family:'Outfit',sans-serif;font-weight:600;font-size:13px;
+    text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;
+  }
+  .required::after{content:' *';color:var(--accent)}
+  input,select{
+    width:100%;background:var(--input-bg);border:1px solid var(--input-border);
+    border-radius:12px;padding:14px 16px;font-family:'DM Sans',sans-serif;
+    font-size:16px;color:var(--text);outline:none;transition:border-color 0.2s;
+  }
+  input:focus,select:focus{border-color:var(--accent)}
+  input::placeholder{color:rgba(255,255,255,0.35)}
+  select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(255,255,255,0.5)' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center}
+  select option{background:var(--card);color:var(--text)}
+
+  .checkbox-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;
+    padding:8px 14px;font-size:14px;cursor:pointer;transition:all 0.2s;user-select:none;
+  }
+  .chip:hover{border-color:rgba(135,202,55,0.3)}
+  .chip.selected{background:rgba(135,202,55,0.15);border-color:var(--accent);color:var(--accent)}
+  .chip input{display:none}
+
+  .submit-btn{
+    width:100%;background:var(--accent);color:#0f1b2d;
+    font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;
+    padding:16px;border-radius:14px;border:none;cursor:pointer;
+    letter-spacing:1px;text-transform:uppercase;margin-top:8px;
+    transition:all 0.3s;
+  }
+  .submit-btn:hover{box-shadow:0 4px 20px rgba(135,202,55,0.3)}
+  .submit-btn:disabled{opacity:0.5;cursor:not-allowed}
+
+  .form-note{text-align:center;color:var(--muted);font-size:13px;margin-top:16px;line-height:1.6}
+
+  /* Verification Step */
+  .verify-step{display:none}
+  .verify-step.active{display:block}
+  .code-input{
+    font-size:32px;text-align:center;letter-spacing:12px;
+    font-family:'Outfit',sans-serif;font-weight:700;
+  }
+
+  /* Success State */
+  .success-card{
+    text-align:center;padding:48px 32px;display:none;
+  }
+  .success-card.active{display:block}
+  .success-icon{font-size:64px;margin-bottom:20px}
+  .success-card h2{font-family:'Outfit',sans-serif;font-weight:800;font-size:1.8rem;margin-bottom:12px}
+  .success-card p{color:var(--muted);font-size:1.05rem;line-height:1.7}
+
+  /* Alert Messages */
+  .alert{
+    padding:14px 18px;border-radius:12px;font-size:14px;margin-bottom:16px;
+    display:none;animation:fadeIn 0.3s;
+  }
+  .alert.error{display:block;background:rgba(255,71,87,0.15);border:1px solid rgba(255,71,87,0.3);color:#ff6b7a}
+  .alert.success{display:block;background:rgba(135,202,55,0.15);border:1px solid rgba(135,202,55,0.3);color:var(--accent)}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+  /* Invite Response Page */
+  .invite-view{padding:60px 24px;max-width:500px;margin:0 auto;display:none}
+  .invite-view.active{display:block}
+  .invite-card{background:var(--card);border-radius:24px;padding:32px;border:1px solid var(--border)}
+  .invite-detail{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .invite-detail:last-child{border-bottom:none}
+  .invite-detail .label{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:0.5px;min-width:80px}
+  .invite-detail .value{font-weight:600;font-size:1rem}
+  .response-buttons{display:flex;gap:12px;margin-top:24px}
+  .response-btn{
+    flex:1;padding:14px;border-radius:12px;border:none;cursor:pointer;
+    font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;
+    transition:all 0.2s;
+  }
+  .response-btn.confirm{background:var(--accent);color:#0f1b2d}
+  .response-btn.interested{background:var(--gold);color:#0f1b2d}
+  .response-btn.decline{background:rgba(255,255,255,0.08);color:var(--muted);border:1px solid var(--border)}
+
+  /* Footer */
+  footer{
+    text-align:center;padding:40px 24px;color:var(--muted);font-size:13px;
+    border-top:1px solid var(--border);
+  }
+  footer a{color:var(--accent);text-decoration:none}
+
+  /* Loading Spinner */
+  .spinner{
+    display:inline-block;width:20px;height:20px;border:3px solid rgba(15,27,45,0.3);
+    border-top-color:#0f1b2d;border-radius:50%;animation:spin 0.6s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Responsive */
+  @media(max-width:600px){
+    .form-row{grid-template-columns:1fr}
+    .form-card{padding:28px 20px}
+    .stats-bar{gap:24px}
+    .response-buttons{flex-direction:column}
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="hero-content">
+    <div class="logo-badge">
+      <img src="/PlayPBNow/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!">
+    </div>
+    <h1>Get <span class="accent">Invited</span> to Play Pickleball</h1>
+    <p class="hero-subtitle">
+      Join hundreds of players in our free talent pool. Match organizers browse the pool and
+      send you SMS invitations to play. No fees, no commitments &mdash; just more pickleball.
+    </p>
+    <button class="cta-button" onclick="document.getElementById('register').scrollIntoView({behavior:'smooth'})">
+      Join the Pool
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+  <div class="scroll-hint">Scroll to learn more</div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat">
+    <div class="stat-number" id="playerCount">500+</div>
+    <div class="stat-label">Players in Pool</div>
+  </div>
+  <div class="stat">
+    <div class="stat-number">Free</div>
+    <div class="stat-label">Always & Forever</div>
+  </div>
+  <div class="stat">
+    <div class="stat-number">SMS</div>
+    <div class="stat-label">Instant Invites</div>
+  </div>
+</div>
+
+<!-- BENEFITS -->
+<section class="benefits">
+  <h2 class="section-title">Why Join the Player Pool?</h2>
+  <p class="section-subtitle">It takes 60 seconds to sign up and opens the door to endless pickleball matches.</p>
+
+  <div class="benefits-grid">
+    <div class="benefit-card">
+      <div class="benefit-icon">&#127934;</div>
+      <h3>More Games, Less Searching</h3>
+      <p>Stop hunting for open courts and partners. Organizers find you and send invites straight to your phone.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">&#128241;</div>
+      <h3>Instant SMS Invitations</h3>
+      <p>Get a text message with all the details &mdash; when, where, who's playing, and how to respond. One tap.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">&#127942;</div>
+      <h3>Play at Your Level</h3>
+      <p>Tell us your skill level and organizers will match you with compatible players for the best experience.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">&#128176;</div>
+      <h3>100% Free Forever</h3>
+      <p>No subscription, no hidden fees. Being in the player pool is completely free. You just show up and play.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">&#128197;</div>
+      <h3>Your Schedule, Your Way</h3>
+      <p>Set your preferred days and times. Only get invited when it works for you.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">&#128205;</div>
+      <h3>Play Where You Want</h3>
+      <p>Tell us your preferred cities and courts. Get invites for matches near you.</p>
+    </div>
+  </div>
+</section>
+
+<!-- REGISTRATION FORM -->
+<section class="form-section" id="register">
+  <div class="form-container">
+    <h2 class="section-title" style="margin-bottom:8px">Join the Player Pool</h2>
+    <p class="section-subtitle" style="margin-bottom:32px">Fill in your details below. We'll verify your phone number to keep the pool legit.</p>
+
+    <!-- Step 1: Registration Form -->
+    <div class="form-card" id="step-register">
+      <div id="reg-alert" class="alert"></div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="required">First Name</label>
+          <input type="text" id="first_name" placeholder="Your first name">
+        </div>
+        <div class="form-group">
+          <label>Last Name</label>
+          <input type="text" id="last_name" placeholder="Optional">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="required">Phone Number</label>
+        <input type="tel" id="phone" placeholder="(949) 735-9415">
+      </div>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="Optional">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="required">Gender</label>
+          <select id="gender">
+            <option value="">Select gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Play Level</label>
+          <select id="play_level">
+            <option value="">Select level</option>
+            <option value="2.0">2.0 - Beginner</option>
+            <option value="2.5">2.5</option>
+            <option value="3.0">3.0 - Intermediate</option>
+            <option value="3.5">3.5</option>
+            <option value="4.0">4.0 - Advanced</option>
+            <option value="4.5">4.5</option>
+            <option value="5.0">5.0 - Pro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Days Available to Play</label>
+        <div class="checkbox-group" id="days-group">
+          <label class="chip selected" data-value="Anyday"><input type="checkbox" checked>Any Day</label>
+          <label class="chip" data-value="Monday"><input type="checkbox">Mon</label>
+          <label class="chip" data-value="Tuesday"><input type="checkbox">Tue</label>
+          <label class="chip" data-value="Wednesday"><input type="checkbox">Wed</label>
+          <label class="chip" data-value="Thursday"><input type="checkbox">Thu</label>
+          <label class="chip" data-value="Friday"><input type="checkbox">Fri</label>
+          <label class="chip" data-value="Saturday"><input type="checkbox">Sat</label>
+          <label class="chip" data-value="Sunday"><input type="checkbox">Sun</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Times Available</label>
+        <div class="checkbox-group" id="times-group">
+          <label class="chip selected" data-value="Anytime"><input type="checkbox" checked>Anytime</label>
+          <label class="chip" data-value="Morning"><input type="checkbox">Morning</label>
+          <label class="chip" data-value="Afternoon"><input type="checkbox">Afternoon</label>
+          <label class="chip" data-value="Evening"><input type="checkbox">Evening</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="required">County</label>
+        <select id="county-select">
+          <option value="">Loading counties...</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="cities-section" style="display:none">
+        <label class="required">Cities You'll Play In</label>
+        <div class="checkbox-group" id="cities-group">
+          <label class="chip" data-value="Anywhere"><input type="checkbox">Anywhere in County</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Last-Minute Invites OK?</label>
+        <div class="checkbox-group" id="notice-group">
+          <label class="chip selected" data-value="Yes"><input type="checkbox" checked>Yes, text me anytime!</label>
+          <label class="chip" data-value="No"><input type="checkbox">No, advance notice only</label>
+        </div>
+        <p style="color:var(--muted);font-size:12px;margin-top:6px">Say YES if you're open to "we need a player right now!" texts</p>
+      </div>
+
+      <div class="form-group">
+        <label>Interested in Tournaments?</label>
+        <div class="checkbox-group" id="tournament-group">
+          <label class="chip selected" data-value="Yes"><input type="checkbox" checked>Yes, invite me!</label>
+          <label class="chip" data-value="No"><input type="checkbox">Not right now</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Max Travel Time to a Court</label>
+        <select id="max_travel">
+          <option value="15">15 minutes</option>
+          <option value="30" selected>30 minutes</option>
+          <option value="45">45 minutes</option>
+          <option value="60">1 hour</option>
+          <option value="90">1.5 hours</option>
+          <option value="120">2+ hours</option>
+        </select>
+      </div>
+
+      <button class="submit-btn" id="register-btn" onclick="submitRegistration()">
+        Send Verification Code
+      </button>
+
+      <p class="form-note">We'll text you a 6-digit code to verify your number. Standard message rates may apply.</p>
+
+      <div style="text-align:center;margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+        <p style="color:var(--muted);font-size:14px;margin-bottom:8px">Already registered?</p>
+        <a href="#" onclick="showUpdateFlow();return false" style="color:var(--accent);font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;text-decoration:none">Update My Info &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Step 2: Verification -->
+    <div class="form-card verify-step" id="step-verify">
+      <div id="verify-alert" class="alert"></div>
+      <h3 style="font-family:'Outfit',sans-serif;font-weight:700;font-size:1.3rem;text-align:center;margin-bottom:8px">Enter Verification Code</h3>
+      <p style="text-align:center;color:var(--muted);margin-bottom:24px;font-size:0.95rem">
+        We sent a 6-digit code to your phone ending in <strong id="phone-last4"></strong>
+      </p>
+      <div class="form-group">
+        <input type="text" id="verify-code" class="code-input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+      </div>
+      <button class="submit-btn" id="verify-btn" onclick="submitVerification()">Verify & Join</button>
+      <p class="form-note" style="margin-top:16px">
+        Didn't get the code?
+        <a href="#" onclick="resendCode();return false" style="color:var(--accent);text-decoration:none;font-weight:600">Resend Code</a>
+      </p>
+    </div>
+
+    <!-- Step 3: Success -->
+    <div class="form-card success-card" id="step-success">
+      <div class="success-icon">&#127881;</div>
+      <h2>You're In!</h2>
+      <p>Welcome to the Play Pickleball NOW! player pool! Match organizers can now find you and send SMS invitations to play. Keep your phone handy &mdash; your next game could be just a text away!</p>
+    </div>
+
+    <!-- Update Flow: Step 1 - Phone Lookup -->
+    <div class="form-card verify-step" id="step-update-phone">
+      <div id="update-phone-alert" class="alert"></div>
+      <h3 style="font-family:'Outfit',sans-serif;font-weight:700;font-size:1.3rem;text-align:center;margin-bottom:8px">Update Your Info</h3>
+      <p style="text-align:center;color:var(--muted);margin-bottom:24px;font-size:0.95rem">
+        Enter your registered phone number. We'll send a verification code to confirm it's you.
+      </p>
+      <div class="form-group">
+        <label class="required">Phone Number</label>
+        <input type="tel" id="update-phone" placeholder="(949) 735-9415">
+      </div>
+      <button class="submit-btn" id="update-phone-btn" onclick="requestUpdateCode()">Send Verification Code</button>
+      <p class="form-note" style="margin-top:16px">
+        Not registered yet?
+        <a href="#" onclick="showRegisterFlow();return false" style="color:var(--accent);text-decoration:none;font-weight:600">Join the Pool</a>
+      </p>
+    </div>
+
+    <!-- Update Flow: Step 2 - Verify Code -->
+    <div class="form-card verify-step" id="step-update-verify">
+      <div id="update-verify-alert" class="alert"></div>
+      <h3 style="font-family:'Outfit',sans-serif;font-weight:700;font-size:1.3rem;text-align:center;margin-bottom:8px">Enter Verification Code</h3>
+      <p style="text-align:center;color:var(--muted);margin-bottom:24px;font-size:0.95rem">
+        We sent a 6-digit code to your phone ending in <strong id="update-phone-last4"></strong>
+      </p>
+      <div class="form-group">
+        <input type="text" id="update-verify-code" class="code-input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+      </div>
+      <button class="submit-btn" id="update-verify-btn" onclick="verifyUpdateCode()">Verify</button>
+      <p class="form-note" style="margin-top:16px">
+        Didn't get the code?
+        <a href="#" onclick="resendUpdateCode();return false" style="color:var(--accent);text-decoration:none;font-weight:600">Resend Code</a>
+      </p>
+    </div>
+
+    <!-- Update Flow: Step 3 - Edit Form -->
+    <div class="form-card verify-step" id="step-update-form">
+      <div id="update-form-alert" class="alert"></div>
+      <h3 style="font-family:'Outfit',sans-serif;font-weight:700;font-size:1.3rem;text-align:center;margin-bottom:8px">Edit Your Profile</h3>
+      <p style="text-align:center;color:var(--muted);margin-bottom:24px;font-size:0.95rem">
+        Update any fields below and save your changes.
+      </p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="required">First Name</label>
+          <input type="text" id="upd_first_name" placeholder="Your first name">
+        </div>
+        <div class="form-group">
+          <label>Last Name</label>
+          <input type="text" id="upd_last_name" placeholder="Optional">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="upd_email" placeholder="Optional">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="required">Gender</label>
+          <select id="upd_gender">
+            <option value="">Select gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Play Level</label>
+          <select id="upd_play_level">
+            <option value="">Select level</option>
+            <option value="2.0">2.0 - Beginner</option>
+            <option value="2.5">2.5</option>
+            <option value="3.0">3.0 - Intermediate</option>
+            <option value="3.5">3.5</option>
+            <option value="4.0">4.0 - Advanced</option>
+            <option value="4.5">4.5</option>
+            <option value="5.0">5.0 - Pro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Days Available to Play</label>
+        <div class="checkbox-group" id="upd-days-group">
+          <label class="chip selected" data-value="Anyday"><input type="checkbox" checked>Any Day</label>
+          <label class="chip" data-value="Monday"><input type="checkbox">Mon</label>
+          <label class="chip" data-value="Tuesday"><input type="checkbox">Tue</label>
+          <label class="chip" data-value="Wednesday"><input type="checkbox">Wed</label>
+          <label class="chip" data-value="Thursday"><input type="checkbox">Thu</label>
+          <label class="chip" data-value="Friday"><input type="checkbox">Fri</label>
+          <label class="chip" data-value="Saturday"><input type="checkbox">Sat</label>
+          <label class="chip" data-value="Sunday"><input type="checkbox">Sun</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Times Available</label>
+        <div class="checkbox-group" id="upd-times-group">
+          <label class="chip selected" data-value="Anytime"><input type="checkbox" checked>Anytime</label>
+          <label class="chip" data-value="Morning"><input type="checkbox">Morning</label>
+          <label class="chip" data-value="Afternoon"><input type="checkbox">Afternoon</label>
+          <label class="chip" data-value="Evening"><input type="checkbox">Evening</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="required">County</label>
+        <select id="upd-county-select">
+          <option value="">Loading counties...</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="upd-cities-section" style="display:none">
+        <label class="required">Cities You'll Play In</label>
+        <div class="checkbox-group" id="upd-cities-group">
+          <label class="chip" data-value="Anywhere"><input type="checkbox">Anywhere in County</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Last-Minute Invites OK?</label>
+        <div class="checkbox-group" id="upd-notice-group">
+          <label class="chip selected" data-value="Yes"><input type="checkbox" checked>Yes, text me anytime!</label>
+          <label class="chip" data-value="No"><input type="checkbox">No, advance notice only</label>
+        </div>
+        <p style="color:var(--muted);font-size:12px;margin-top:6px">Say YES if you're open to "we need a player right now!" texts</p>
+      </div>
+
+      <div class="form-group">
+        <label>Interested in Tournaments?</label>
+        <div class="checkbox-group" id="upd-tournament-group">
+          <label class="chip selected" data-value="Yes"><input type="checkbox" checked>Yes, invite me!</label>
+          <label class="chip" data-value="No"><input type="checkbox">No, advance notice only</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Max Travel Time to a Court</label>
+        <select id="upd_max_travel">
+          <option value="15">15 minutes</option>
+          <option value="30" selected>30 minutes</option>
+          <option value="45">45 minutes</option>
+          <option value="60">1 hour</option>
+          <option value="90">1.5 hours</option>
+          <option value="120">2+ hours</option>
+        </select>
+      </div>
+
+      <button class="submit-btn" id="update-save-btn" onclick="saveUpdate()">Save Changes</button>
+    </div>
+
+    <!-- Update Flow: Step 4 - Success -->
+    <div class="form-card success-card" id="step-update-success">
+      <div class="success-icon">&#9989;</div>
+      <h2>Profile Updated!</h2>
+      <p>Your information has been saved. Match organizers will see your updated profile when browsing the player pool.</p>
+    </div>
+  </div>
+</section>
+
+<!-- INVITE RESPONSE VIEW (shown when ?code=XXXXX is in URL) -->
+<section class="invite-view" id="invite-view">
+  <div style="text-align:center;margin-bottom:24px">
+    <div class="logo-badge" style="display:inline-flex">
+      <img src="/PlayPBNow/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!">
+    </div>
+  </div>
+  <h2 class="section-title" style="margin-bottom:8px">You're Invited!</h2>
+  <p style="text-align:center;color:var(--muted);font-size:1rem;margin-bottom:24px">A match organizer wants you to play. Check the details and respond below.</p>
+
+  <div class="invite-card">
+    <div id="invite-alert" class="alert"></div>
+    <div id="invite-details"></div>
+    <div class="response-buttons" id="response-buttons" style="display:none">
+      <button class="response-btn confirm" onclick="respondToInvite('confirmed')">I'm In!</button>
+      <button class="response-btn interested" onclick="respondToInvite('interested')">Interested</button>
+      <button class="response-btn decline" onclick="respondToInvite('declined')">Can't Make It</button>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:24px;padding:20px;background:var(--surface);border-radius:16px;border:1px solid var(--border)">
+    <p style="color:var(--muted);font-size:13px;margin-bottom:8px">Wrong person or want to change your availability?</p>
+    <a href="player-signup.html#register" onclick="event.preventDefault();goToUpdateProfile()" style="color:var(--accent);font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;text-decoration:none">Update My Profile &rarr;</a>
+  </div>
+</section>
+
+<footer>
+  <p>&copy; 2026 Play Pickleball NOW! All rights reserved.<br>
+  <a href="https://peoplestar.com/PlayPBNow/">Open the App</a></p>
+</footer>
+
+<script>
+const API = 'https://peoplestar.com/PlayPBNow/api';
+let registeredPhone = '';
+
+// Smart chip toggle logic with auto-collapse
+const ALL_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const ALL_TIMES = ['Morning','Afternoon','Evening'];
+
+function initChipGroup(group) {
+  group.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', function(e) {
+      e.preventDefault();
+      const val = this.dataset.value;
+      const isAny = val === 'Anyday' || val === 'Anytime' || val === 'Anywhere';
+
+      if (isAny) {
+        // Click "Any" -> deselect all others, select "Any"
+        group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+        this.classList.add('selected');
+      } else {
+        // Deselect the "Any" chip
+        const anyChip = group.querySelector('.chip[data-value="Anyday"],.chip[data-value="Anytime"],.chip[data-value="Anywhere"]');
+        if (anyChip) anyChip.classList.remove('selected');
+
+        this.classList.toggle('selected');
+
+        // If nothing selected, go back to "Any"
+        if (!group.querySelector('.chip.selected')) {
+          if (anyChip) anyChip.classList.add('selected');
+        }
+
+        // Auto-collapse: if all specific items selected, switch to "Any"
+        const groupId = group.id;
+        if (groupId === 'days-group') {
+          const selectedDays = Array.from(group.querySelectorAll('.chip.selected')).map(c => c.dataset.value);
+          if (ALL_DAYS.every(d => selectedDays.includes(d))) {
+            group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            group.querySelector('.chip[data-value="Anyday"]').classList.add('selected');
+          }
+        } else if (groupId === 'times-group') {
+          const selectedTimes = Array.from(group.querySelectorAll('.chip.selected')).map(c => c.dataset.value);
+          if (ALL_TIMES.every(t => selectedTimes.includes(t))) {
+            group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            group.querySelector('.chip[data-value="Anytime"]').classList.add('selected');
+          }
+        } else if (groupId === 'cities-group') {
+          const selectedCities = Array.from(group.querySelectorAll('.chip.selected')).map(c => c.dataset.value);
+          const allCityChips = Array.from(group.querySelectorAll('.chip')).map(c => c.dataset.value).filter(v => v !== 'Anywhere');
+          if (allCityChips.length > 0 && allCityChips.every(c => selectedCities.includes(c))) {
+            group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            group.querySelector('.chip[data-value="Anywhere"]').classList.add('selected');
+          }
+        }
+      }
+    });
+  });
+}
+
+// Binary toggle chip groups (only one can be selected)
+function initBinaryChipGroup(group) {
+  group.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', function(e) {
+      e.preventDefault();
+      group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+      this.classList.add('selected');
+    });
+  });
+}
+
+document.querySelectorAll('.checkbox-group').forEach(group => {
+  const id = group.id;
+  if (id === 'notice-group' || id === 'tournament-group' || id === 'upd-notice-group' || id === 'upd-tournament-group') {
+    initBinaryChipGroup(group);
+  } else {
+    initChipGroup(group);
+  }
+});
+
+// Load counties and cities dynamically
+let countyData = {};
+
+async function loadCounties() {
+  try {
+    const res = await fetch(`${API}/court_cities.php`);
+    const data = await res.json();
+    if (data.status === 'success' && data.counties) {
+      countyData = data.counties;
+      const select = document.getElementById('county-select');
+      const countyNames = Object.keys(countyData).sort();
+
+      if (countyNames.length === 1) {
+        // Single county: auto-select it, but keep cities hidden until they interact
+        select.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = countyNames[0];
+        opt.textContent = countyNames[0];
+        select.appendChild(opt);
+        select.value = countyNames[0];
+        // Pre-build the city chips (hidden)
+        buildCityChips(countyNames[0]);
+      } else {
+        select.innerHTML = '<option value="">Select your county</option>';
+        countyNames.forEach(county => {
+          const opt = document.createElement('option');
+          opt.value = county;
+          opt.textContent = county + ' (' + countyData[county].length + ' cities)';
+          select.appendChild(opt);
+        });
+      }
+
+      select.addEventListener('change', function() {
+        if (this.value) {
+          buildCityChips(this.value);
+          document.getElementById('cities-section').style.display = 'block';
+        } else {
+          document.getElementById('cities-section').style.display = 'none';
+        }
+      });
+
+      // When county dropdown is clicked/focused and there's a value, show cities
+      select.addEventListener('focus', function() {
+        if (this.value && document.getElementById('cities-section').style.display === 'none') {
+          document.getElementById('cities-section').style.display = 'block';
+        }
+      });
+    }
+  } catch (e) {
+    document.getElementById('county-select').innerHTML = '<option value="">All Areas</option>';
+  }
+}
+
+function buildCityChips(county) {
+  const group = document.getElementById('cities-group');
+
+  // Reset: clear all chips, re-add "Anywhere"
+  group.innerHTML = '';
+  const anyChip = document.createElement('label');
+  anyChip.className = 'chip';
+  anyChip.dataset.value = 'Anywhere';
+  anyChip.innerHTML = '<input type="checkbox">Anywhere in County';
+  group.appendChild(anyChip);
+
+  // Add city chips
+  if (countyData[county]) {
+    countyData[county].forEach(city => {
+      const chip = document.createElement('label');
+      chip.className = 'chip';
+      chip.dataset.value = city;
+      chip.innerHTML = `<input type="checkbox">${city}`;
+      group.appendChild(chip);
+    });
+  }
+
+  initChipGroup(group);
+}
+
+loadCounties();
+
+function getChipValues(groupId) {
+  const selected = document.querySelectorAll(`#${groupId} .chip.selected`);
+  return Array.from(selected).map(c => c.dataset.value).join(', ');
+}
+
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  el.className = 'alert ' + type;
+  el.textContent = msg;
+}
+
+function clearAlert(id) {
+  document.getElementById(id).className = 'alert';
+}
+
+function setLoading(btn, loading) {
+  if (loading) {
+    btn.disabled = true;
+    btn.dataset.text = btn.textContent;
+    btn.innerHTML = '<span class="spinner"></span>';
+  } else {
+    btn.disabled = false;
+    btn.textContent = btn.dataset.text;
+  }
+}
+
+async function submitRegistration() {
+  clearAlert('reg-alert');
+  const btn = document.getElementById('register-btn');
+  const data = {
+    action: 'register',
+    first_name: document.getElementById('first_name').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    last_name: document.getElementById('last_name').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    gender: document.getElementById('gender').value || null,
+    play_level: document.getElementById('play_level').value || null,
+    days_to_play: getChipValues('days-group'),
+    times_to_play: getChipValues('times-group'),
+    cities_to_play: getChipValues('cities-group'),
+    short_notice: getChipValues('notice-group'),
+    tournament_interest: getChipValues('tournament-group'),
+    max_travel_minutes: document.getElementById('max_travel').value,
+  };
+
+  if (!data.first_name) { showAlert('reg-alert', 'Please enter your first name.', 'error'); return; }
+  if (!data.phone) { showAlert('reg-alert', 'Please enter your phone number.', 'error'); return; }
+  if (!data.gender) { showAlert('reg-alert', 'Please select your gender.', 'error'); return; }
+  if (!document.getElementById('county-select').value) { showAlert('reg-alert', 'Please select your county.', 'error'); return; }
+  const citiesSection = document.getElementById('cities-section');
+  if (citiesSection.style.display === 'none') {
+    citiesSection.style.display = 'block';
+    showAlert('reg-alert', 'Please select at least one city where you\'d like to play.', 'error');
+    return;
+  }
+  if (!data.cities_to_play || data.cities_to_play === '') { showAlert('reg-alert', 'Please select at least one city where you\'d like to play.', 'error'); return; }
+
+  setLoading(btn, true);
+  try {
+    const res = await fetch(`${API}/player_register.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (result.status === 'success') {
+      registeredPhone = data.phone;
+      document.getElementById('phone-last4').textContent = result.phone_last4;
+      document.getElementById('step-register').style.display = 'none';
+      document.getElementById('step-verify').classList.add('active');
+      document.getElementById('verify-code').focus();
+    } else {
+      showAlert('reg-alert', result.message, 'error');
+    }
+  } catch (e) {
+    showAlert('reg-alert', 'Network error. Please try again.', 'error');
+  }
+  setLoading(btn, false);
+}
+
+async function submitVerification() {
+  clearAlert('verify-alert');
+  const btn = document.getElementById('verify-btn');
+  const code = document.getElementById('verify-code').value.trim();
+  if (!code || code.length < 6) { showAlert('verify-alert', 'Please enter the 6-digit code.', 'error'); return; }
+
+  setLoading(btn, true);
+  try {
+    const res = await fetch(`${API}/player_register.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'verify', phone: registeredPhone, code }),
+    });
+    const result = await res.json();
+    if (result.status === 'success') {
+      document.getElementById('step-verify').classList.remove('active');
+      document.getElementById('step-success').classList.add('active');
+    } else {
+      showAlert('verify-alert', result.message, 'error');
+    }
+  } catch (e) {
+    showAlert('verify-alert', 'Network error. Please try again.', 'error');
+  }
+  setLoading(btn, false);
+}
+
+async function resendCode() {
+  clearAlert('verify-alert');
+  try {
+    const res = await fetch(`${API}/player_register.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'resend', phone: registeredPhone }),
+    });
+    const result = await res.json();
+    showAlert('verify-alert', result.message, result.status === 'success' ? 'success' : 'error');
+  } catch (e) {
+    showAlert('verify-alert', 'Failed to resend. Please try again.', 'error');
+  }
+}
+
+// Load player count
+async function loadPlayerCount() {
+  try {
+    const res = await fetch(`${API}/pool_players_api.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'count' }),
+    });
+    const data = await res.json();
+    if (data.count) {
+      document.getElementById('playerCount').textContent = data.count + '+';
+    }
+  } catch (e) {}
+}
+
+// Invite Response (if ?code=XXX in URL)
+async function checkInviteCode() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const playerId = params.get('player_id');
+  if (!code) return;
+
+  // Hide registration, show invite view
+  document.querySelector('.hero').style.display = 'none';
+  document.querySelector('.stats-bar').style.display = 'none';
+  document.querySelector('.benefits').style.display = 'none';
+  document.querySelector('.form-section').style.display = 'none';
+  document.getElementById('invite-view').classList.add('active');
+
+  try {
+    const res = await fetch(`${API}/invite_respond.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'view', match_code: code }),
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      const inv = data.invite;
+      const date = new Date(inv.match_date + 'T' + inv.match_time);
+      const dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+      // Build Google Maps link for directions
+      const mapsQuery = inv.court_address
+        ? encodeURIComponent(inv.court_name + ', ' + inv.court_address)
+        : encodeURIComponent(inv.court_name);
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+
+      document.getElementById('invite-details').innerHTML = `
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font-size:40px;margin-bottom:8px">&#127934;</div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.4rem;color:var(--accent)">${dateStr}</div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:1.1rem;color:var(--text);margin-top:4px">${timeStr}</div>
+        </div>
+        <div class="invite-detail">
+          <span class="label">&#127967; Court</span>
+          <span class="value">${inv.court_name || 'TBD'}</span>
+        </div>
+        ${inv.court_address ? `
+        <div class="invite-detail">
+          <span class="label">&#128205; Address</span>
+          <span class="value">
+            <a href="${mapsUrl}" target="_blank" style="color:var(--accent);text-decoration:none">${inv.court_address} &#8599;</a>
+          </span>
+        </div>` : ''}
+        <div class="invite-detail">
+          <span class="label">&#127942; Type</span>
+          <span class="value">${inv.match_type}</span>
+        </div>
+        <div class="invite-detail">
+          <span class="label">&#128176; Cost</span>
+          <span class="value">${inv.cost}</span>
+        </div>
+        <div class="invite-detail">
+          <span class="label">&#128101; Spots</span>
+          <span class="value" style="color:${inv.spots_left > 0 ? 'var(--accent)' : 'var(--danger)'}">${inv.spots_left > 0 ? inv.spots_left + ' of ' + inv.max_spots + ' available' : 'FULL'}</span>
+        </div>
+        ${inv.message_body ? `
+        <div style="margin-top:20px;padding:16px;background:var(--input-bg);border-radius:14px;border-left:3px solid var(--accent)">
+          <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;font-family:'Outfit',sans-serif;font-weight:600">Message from organizer</div>
+          <div style="color:var(--soft);font-size:0.95rem;line-height:1.7">${inv.message_body}</div>
+        </div>` : ''}
+      `;
+      if (playerId) {
+        document.getElementById('response-buttons').style.display = 'flex';
+        window._inviteCode = code;
+        window._playerId = playerId;
+      }
+    } else {
+      showAlert('invite-alert', data.message || 'Invite not found.', 'error');
+    }
+  } catch (e) {
+    showAlert('invite-alert', 'Could not load invite details.', 'error');
+  }
+}
+
+async function respondToInvite(status) {
+  const buttons = document.querySelectorAll('.response-btn');
+  buttons.forEach(b => b.disabled = true);
+
+  try {
+    const res = await fetch(`${API}/invite_respond.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'respond',
+        match_code: window._inviteCode,
+        player_id: window._playerId,
+        status: status,
+      }),
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      const icon = status === 'confirmed' ? '&#9989;' : status === 'interested' ? '&#128161;' : '&#128075;';
+      const msg = status === 'confirmed' ? "You're confirmed! See you on the court!" :
+            status === 'interested' ? "The organizer knows you're interested. They may follow up!" :
+            "No worries! We'll save your spot in the pool for next time.";
+      document.getElementById('response-buttons').innerHTML =
+        `<div style="text-align:center;padding:24px">
+          <div style="font-size:48px;margin-bottom:12px">${icon}</div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.2rem;color:var(--accent);margin-bottom:8px">
+            ${status === 'confirmed' ? "You're In!" : status === 'interested' ? "Noted!" : "Maybe Next Time"}
+          </div>
+          <div style="color:var(--muted);font-size:0.95rem;line-height:1.6">${msg}</div>
+        </div>`;
+    } else {
+      showAlert('invite-alert', data.message, 'error');
+      buttons.forEach(b => b.disabled = false);
+    }
+  } catch (e) {
+    showAlert('invite-alert', 'Network error. Please try again.', 'error');
+    buttons.forEach(b => b.disabled = false);
+  }
+}
+
+// ── Update Flow ──────────────────────────────────────────
+let updatePhone = '';
+let updatePlayerId = null;
+
+function showUpdateFlow() {
+  document.getElementById('step-register').style.display = 'none';
+  document.getElementById('step-update-phone').classList.add('active');
+  document.getElementById('update-phone').focus();
+}
+
+function showRegisterFlow() {
+  document.getElementById('step-update-phone').classList.remove('active');
+  document.getElementById('step-register').style.display = 'block';
+}
+
+async function requestUpdateCode() {
+  clearAlert('update-phone-alert');
+  const btn = document.getElementById('update-phone-btn');
+  const phone = document.getElementById('update-phone').value.trim();
+
+  if (!phone) { showAlert('update-phone-alert', 'Please enter your phone number.', 'error'); return; }
+
+  setLoading(btn, true);
+  try {
+    const res = await fetch(`${API}/player_register.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'request_update', phone }),
+    });
+    const result = await res.json();
+    if (result.status === 'success') {
+      updatePhone = phone;
+      document.getElementById('update-phone-last4').textContent = result.phone_last4;
+      document.getElementById('step-update-phone').classList.remove('active');
+      document.getElementById('step-update-verify').classList.add('active');
+      document.getElementById('update-verify-code').focus();
+    } else {
+      showAlert('update-phone-alert', result.message, 'error');
+    }
+  } catch (e) {
+    showAlert('update-phone-alert', 'Network error. Please try again.', 'error');
+  }
+  setLoading(btn, false);
+}
+
+async function verifyUpdateCode() {
+  clearAlert('update-verify-alert');
+  const btn = document.getElementById('update-verify-btn');
+  const code = document.getElementById('update-verify-code').value.trim();
+  if (!code || code.length < 6) { showAlert('update-verify-alert', 'Please enter the 6-digit code.', 'error'); return; }
+
+  setLoading(btn, true);
+  try {
+    const res = await fetch(`${API}/player_register.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'verify_update', phone: updatePhone, code }),
+    });
+    const result = await res.json();
+    if (result.status === 'success') {
+      updatePlayerId = result.player.id;
+      // Pre-fill the update form
+      prefillUpdateForm(result.player);
+      document.getElementById('step-update-verify').classList.remove('active');
+      document.getElementById('step-update-form').classList.add('active');
+    } else {
+      showAlert('update-verify-alert', result.message, 'error');
+    }
+  } catch (e) {
+    showAlert('update-verify-alert', 'Network error. Please try again.', 'error');
+  }
+  setLoading(btn, false);
+}
+
+async function resendUpdateCode() {
+  clearAlert('update-verify-alert');
+  try {
+    const res = await fetch(`${API}/player_register.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'request_update', phone: updatePhone }),
+    });
+    const result = await res.json();
+    showAlert('update-verify-alert', result.status === 'success' ? 'New code sent.' : result.message, result.status === 'success' ? 'success' : 'error');
+  } catch (e) {
+    showAlert('update-verify-alert', 'Failed to resend. Please try again.', 'error');
+  }
+}
+
+function prefillUpdateForm(player) {
+  document.getElementById('upd_first_name').value = player.first_name || '';
+  document.getElementById('upd_last_name').value = player.last_name || '';
+  document.getElementById('upd_email').value = player.email || '';
+  document.getElementById('upd_gender').value = player.gender || '';
+  document.getElementById('upd_play_level').value = player.play_level || '';
+
+  // Set days chips
+  setChipGroupValues('upd-days-group', player.days_to_play || 'Anyday');
+  // Set times chips
+  setChipGroupValues('upd-times-group', player.times_to_play || 'Anytime');
+
+  // Set new fields
+  setBinaryChipValue('upd-notice-group', player.short_notice || 'Yes');
+  setBinaryChipValue('upd-tournament-group', player.tournament_interest || 'Yes');
+  document.getElementById('upd_max_travel').value = player.max_travel_minutes || '30';
+
+  // Init chip groups for update form
+  initChipGroup(document.getElementById('upd-days-group'));
+  initChipGroup(document.getElementById('upd-times-group'));
+  initBinaryChipGroup(document.getElementById('upd-notice-group'));
+  initBinaryChipGroup(document.getElementById('upd-tournament-group'));
+
+  // Set up county dropdown for update form
+  setupUpdateCountyDropdown(player.cities_to_play || 'Anywhere');
+}
+
+function setBinaryChipValue(groupId, value) {
+  const group = document.getElementById(groupId);
+  group.querySelectorAll('.chip').forEach(chip => {
+    chip.classList.toggle('selected', chip.dataset.value === value);
+  });
+}
+
+function setChipGroupValues(groupId, valueStr) {
+  const group = document.getElementById(groupId);
+  const values = valueStr.split(',').map(v => v.trim());
+
+  group.querySelectorAll('.chip').forEach(chip => {
+    chip.classList.remove('selected');
+    if (values.includes(chip.dataset.value)) {
+      chip.classList.add('selected');
+    }
+  });
+
+  // If nothing selected, select the "Any" option
+  if (!group.querySelector('.chip.selected')) {
+    const anyChip = group.querySelector('.chip[data-value="Anyday"],.chip[data-value="Anytime"],.chip[data-value="Anywhere"]');
+    if (anyChip) anyChip.classList.add('selected');
+  }
+}
+
+function setupUpdateCountyDropdown(citiesStr) {
+  const select = document.getElementById('upd-county-select');
+  const countyNames = Object.keys(countyData).sort();
+
+  if (countyNames.length === 0) {
+    select.innerHTML = '<option value="">All Areas</option>';
+    return;
+  }
+
+  // Figure out which county the player's cities belong to
+  let playerCounty = '';
+  const playerCities = citiesStr.split(',').map(v => v.trim());
+
+  if (playerCities.includes('Anywhere')) {
+    playerCounty = countyNames[0]; // default to first
+  } else {
+    // Find county that contains the player's cities
+    for (const county of countyNames) {
+      if (playerCities.some(c => countyData[county].includes(c))) {
+        playerCounty = county;
+        break;
+      }
+    }
+  }
+
+  if (countyNames.length === 1) {
+    select.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = countyNames[0];
+    opt.textContent = countyNames[0];
+    select.appendChild(opt);
+    select.value = countyNames[0];
+  } else {
+    select.innerHTML = '<option value="">Select your county</option>';
+    countyNames.forEach(county => {
+      const opt = document.createElement('option');
+      opt.value = county;
+      opt.textContent = county + ' (' + countyData[county].length + ' cities)';
+      select.appendChild(opt);
+    });
+    if (playerCounty) select.value = playerCounty;
+  }
+
+  // Build city chips and show
+  if (select.value) {
+    buildUpdateCityChips(select.value, playerCities);
+    document.getElementById('upd-cities-section').style.display = 'block';
+  }
+
+  select.addEventListener('change', function() {
+    if (this.value) {
+      buildUpdateCityChips(this.value, []);
+      document.getElementById('upd-cities-section').style.display = 'block';
+    } else {
+      document.getElementById('upd-cities-section').style.display = 'none';
+    }
+  });
+}
+
+function buildUpdateCityChips(county, selectedCities) {
+  const group = document.getElementById('upd-cities-group');
+  group.innerHTML = '';
+
+  const anyChip = document.createElement('label');
+  anyChip.className = 'chip' + (selectedCities.includes('Anywhere') ? ' selected' : '');
+  anyChip.dataset.value = 'Anywhere';
+  anyChip.innerHTML = '<input type="checkbox">Anywhere in County';
+  group.appendChild(anyChip);
+
+  if (countyData[county]) {
+    countyData[county].forEach(city => {
+      const chip = document.createElement('label');
+      chip.className = 'chip' + (selectedCities.includes(city) ? ' selected' : '');
+      chip.dataset.value = city;
+      chip.innerHTML = `<input type="checkbox">${city}`;
+      group.appendChild(chip);
+    });
+  }
+
+  // If nothing selected, default to Anywhere
+  if (!group.querySelector('.chip.selected')) {
+    anyChip.classList.add('selected');
+  }
+
+  initChipGroup(group);
+}
+
+async function saveUpdate() {
+  clearAlert('update-form-alert');
+  const btn = document.getElementById('update-save-btn');
+  const data = {
+    action: 'save_update',
+    player_id: updatePlayerId,
+    phone: updatePhone,
+    first_name: document.getElementById('upd_first_name').value.trim(),
+    last_name: document.getElementById('upd_last_name').value.trim(),
+    email: document.getElementById('upd_email').value.trim(),
+    gender: document.getElementById('upd_gender').value || null,
+    play_level: document.getElementById('upd_play_level').value || null,
+    days_to_play: getChipValues('upd-days-group'),
+    times_to_play: getChipValues('upd-times-group'),
+    cities_to_play: getChipValues('upd-cities-group'),
+    short_notice: getChipValues('upd-notice-group'),
+    tournament_interest: getChipValues('upd-tournament-group'),
+    max_travel_minutes: document.getElementById('upd_max_travel').value,
+  };
+
+  if (!data.first_name) { showAlert('update-form-alert', 'Please enter your first name.', 'error'); return; }
+  if (!data.gender) { showAlert('update-form-alert', 'Please select your gender.', 'error'); return; }
+  if (!document.getElementById('upd-county-select').value) { showAlert('update-form-alert', 'Please select your county.', 'error'); return; }
+  if (!data.cities_to_play || data.cities_to_play === '') { showAlert('update-form-alert', 'Please select at least one city.', 'error'); return; }
+
+  setLoading(btn, true);
+  try {
+    const res = await fetch(`${API}/player_register.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (result.status === 'success') {
+      document.getElementById('step-update-form').classList.remove('active');
+      document.getElementById('step-update-success').classList.add('active');
+    } else {
+      showAlert('update-form-alert', result.message, 'error');
+    }
+  } catch (e) {
+    showAlert('update-form-alert', 'Network error. Please try again.', 'error');
+  }
+  setLoading(btn, false);
+}
+
+function goToUpdateProfile() {
+  // Strip query params so the registration page shows (not the invite view)
+  window.location.href = 'player-signup.html#register';
+  // Show update flow
+  document.getElementById('invite-view').classList.remove('active');
+  document.querySelector('.hero').style.display = 'none';
+  document.querySelector('.stats-bar').style.display = 'none';
+  document.querySelector('.benefits').style.display = 'none';
+  document.querySelector('.form-section').style.display = 'block';
+  document.getElementById('step-register').style.display = 'none';
+  document.getElementById('step-update-phone').classList.add('active');
+  document.getElementById('update-phone').focus();
+  document.getElementById('register').scrollIntoView({behavior:'smooth'});
+}
+
+// Init
+loadPlayerCount();
+checkInviteCode();
+</script>
+</body>
+</html>

@@ -34,12 +34,14 @@ export interface SubscriptionData {
     trialDaysRemaining: number;
     trialExpired: boolean;
     isPro: boolean;
+    isAdmin: boolean;
     features: SubscriptionFeatures;
 }
 
 interface SubscriptionContextType {
     subscription: SubscriptionData | null;
     isPro: boolean;
+    isAdmin: boolean;
     isTrial: boolean;
     isFree: boolean;
     trialDaysRemaining: number;
@@ -71,6 +73,7 @@ const DEFAULT_FEATURES: SubscriptionFeatures = {
 const SubscriptionContext = createContext<SubscriptionContextType>({
     subscription: null,
     isPro: false,
+    isAdmin: false,
     isTrial: false,
     isFree: true,
     trialDaysRemaining: 0,
@@ -150,6 +153,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     trialDaysRemaining: data.subscription.trialDaysRemaining,
                     trialExpired: data.subscription.trialExpired,
                     isPro: data.subscription.isPro,
+                    isAdmin: data.subscription.isAdmin ?? false,
                     features: {
                         canGenerateCleanReports: data.features.canGenerateCleanReports,
                         canEditMatches: data.features.canEditMatches,
@@ -206,6 +210,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, [fetchSubscription]);
 
     const isPro = subscription?.isPro ?? false;
+    const isAdmin = subscription?.isAdmin ?? false;
     const isTrial = subscription?.subscriptionStatus === 'trial';
     const isFree = !isPro;
     const trialDaysRemaining = subscription?.trialDaysRemaining ?? 0;
@@ -374,6 +379,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         <SubscriptionContext.Provider value={{
             subscription,
             isPro,
+            isAdmin,
             isTrial,
             isFree,
             trialDaysRemaining,

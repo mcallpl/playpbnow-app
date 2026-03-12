@@ -1,0 +1,626 @@
+[
+  {
+    "name": "Griffith Park Recreation Center",
+    "address": "3401 Riverside Dr",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Rancho Park",
+    "address": "10460 W Pico Blvd",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Balboa Sports Complex",
+    "address": "17015 Burbank Blvd",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Montecito Heights Recreation Center",
+    "address": "4545 Homer St",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Wolf & Bear Pickleball",
+    "address": "14911 Calvert St",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "PIKL Los Angeles",
+    "address": "639 S La Brea Ave",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Pickle Alley Los Angeles",
+    "address": "350 S Anderson St",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Xisle Sports",
+    "address": "1118 S La Cienega Blvd",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "LA Tennis Club",
+    "address": "5851 Clinton St",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Westchester LA Pickleball",
+    "address": "7000 W Manchester Ave",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Tarzana Recreation Center",
+    "address": "5655 Vanalden Ave",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Woodland Hills Recreation Center",
+    "address": "5858 Shoup Ave",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Encino Community Center",
+    "address": "4935 Balboa Blvd",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Northridge Recreation Center",
+    "address": "18300 Lemarsh St",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Venice Beach Pickleball Courts",
+    "address": "1800 Ocean Front Walk",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Pan Pacific Recreation Center",
+    "address": "7600 Beverly Blvd",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Mix Park",
+    "address": "18150 Saticoy St",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Culver West Alexander Park",
+    "address": "4162 Wade St",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "Santa Monica Pickleball Center",
+    "address": "1330 4th St",
+    "city": "Santa Monica",
+    "state": "CA"
+  },
+  {
+    "name": "Memorial Park (Santa Monica)",
+    "address": "1401 Olympic Blvd",
+    "city": "Santa Monica",
+    "state": "CA"
+  },
+  {
+    "name": "Pickle Pop (Third Street Promenade)",
+    "address": "1231 3rd St",
+    "city": "Santa Monica",
+    "state": "CA"
+  },
+  {
+    "name": "Plummer Park",
+    "address": "1200 N Vista St",
+    "city": "West Hollywood",
+    "state": "CA"
+  },
+  {
+    "name": "West Hollywood Park",
+    "address": "647 N San Vicente Blvd",
+    "city": "West Hollywood",
+    "state": "CA"
+  },
+  {
+    "name": "La Peer Hotel Rooftop Pickleball",
+    "address": "627 N La Peer Dr",
+    "city": "West Hollywood",
+    "state": "CA"
+  },
+  {
+    "name": "Roxbury Park Tennis & Pickleball Courts",
+    "address": "401 S Roxbury Dr",
+    "city": "Beverly Hills",
+    "state": "CA"
+  },
+  {
+    "name": "Syd Kronenthal Park",
+    "address": "3459 McManus Ave",
+    "city": "Culver City",
+    "state": "CA"
+  },
+  {
+    "name": "Veterans Park",
+    "address": "101 E 28th St",
+    "city": "Long Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Marina Vista Park",
+    "address": "5355 E Eliot St",
+    "city": "Long Beach",
+    "state": "CA"
+  },
+  {
+    "name": "El Dorado Tennis Center",
+    "address": "2800 N Studebaker Rd",
+    "city": "Long Beach",
+    "state": "CA"
+  },
+  {
+    "name": "LBCC Tennis & Pickleball Courts",
+    "address": "4901 E Carson St",
+    "city": "Long Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Pickleball Badminton Center",
+    "address": "4989 E Pacific Coast Hwy",
+    "city": "Long Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Heartwell Park",
+    "address": "6700 E Carson St",
+    "city": "Long Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Whaley Park",
+    "address": "5620 Atherton St",
+    "city": "Long Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Scherer Park",
+    "address": "4600 Long Beach Blvd",
+    "city": "Long Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Silverado Park",
+    "address": "1545 W 31st St",
+    "city": "Long Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Sports Basement Long Beach",
+    "address": "6191 E Pacific Coast Hwy",
+    "city": "Long Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Scholl Canyon Golf & Tennis Club",
+    "address": "3800 E Glenoaks Blvd",
+    "city": "Glendale",
+    "state": "CA"
+  },
+  {
+    "name": "Pacific Community Center & Park",
+    "address": "501 S Pacific Ave",
+    "city": "Glendale",
+    "state": "CA"
+  },
+  {
+    "name": "Smash Dink",
+    "address": "4400 San Fernando Rd",
+    "city": "Glendale",
+    "state": "CA"
+  },
+  {
+    "name": "Verdugo Park",
+    "address": "2801 N Verdugo Rd",
+    "city": "Glendale",
+    "state": "CA"
+  },
+  {
+    "name": "Robinson Park (Jackie Robinson Memorial)",
+    "address": "1081 N Fair Oaks Ave",
+    "city": "Pasadena",
+    "state": "CA"
+  },
+  {
+    "name": "Vina Vieja Park",
+    "address": "3026 E Orange Grove Blvd",
+    "city": "Pasadena",
+    "state": "CA"
+  },
+  {
+    "name": "East Washington Park",
+    "address": "1000 E Mountain Ave",
+    "city": "Pasadena",
+    "state": "CA"
+  },
+  {
+    "name": "Victory Park",
+    "address": "2575 Paloma St",
+    "city": "Pasadena",
+    "state": "CA"
+  },
+  {
+    "name": "Washington Park",
+    "address": "700 E Washington Blvd",
+    "city": "Pasadena",
+    "state": "CA"
+  },
+  {
+    "name": "San Pasqual Park",
+    "address": "300 E San Pasqual St",
+    "city": "Pasadena",
+    "state": "CA"
+  },
+  {
+    "name": "Villa Parke Community Center",
+    "address": "363 E Villa St",
+    "city": "Pasadena",
+    "state": "CA"
+  },
+  {
+    "name": "iPickle Arroyo Seco Racquet Club",
+    "address": "920 Lohman Ln",
+    "city": "South Pasadena",
+    "state": "CA"
+  },
+  {
+    "name": "Burbank Tennis Center",
+    "address": "3715 Pacific Ave",
+    "city": "Burbank",
+    "state": "CA"
+  },
+  {
+    "name": "Olive Recreation Center",
+    "address": "1111 W Olive Ave",
+    "city": "Burbank",
+    "state": "CA"
+  },
+  {
+    "name": "iPickle Arcadia",
+    "address": "1420 S 6th Ave",
+    "city": "Arcadia",
+    "state": "CA"
+  },
+  {
+    "name": "Sur La Brea Park",
+    "address": "3855 W 242nd St",
+    "city": "Torrance",
+    "state": "CA"
+  },
+  {
+    "name": "Walteria Park",
+    "address": "2400 Jefferson St",
+    "city": "Torrance",
+    "state": "CA"
+  },
+  {
+    "name": "Charles H. Wilson Park",
+    "address": "2200 Crenshaw Blvd",
+    "city": "Torrance",
+    "state": "CA"
+  },
+  {
+    "name": "South Bay Tennis & Pickleball Center",
+    "address": "25924 Rolling Hills Rd",
+    "city": "Torrance",
+    "state": "CA"
+  },
+  {
+    "name": "El Camino College",
+    "address": "16007 Crenshaw Blvd",
+    "city": "Torrance",
+    "state": "CA"
+  },
+  {
+    "name": "Dee Hardison Sports Center",
+    "address": "25924 Rolling Hills Rd",
+    "city": "Torrance",
+    "state": "CA"
+  },
+  {
+    "name": "Alta Vista Park",
+    "address": "801 Camino Real",
+    "city": "Redondo Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Franklin Park",
+    "address": "1900 Voorhees Ave",
+    "city": "Redondo Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Glenn M. Anderson Park",
+    "address": "401 S Broadway",
+    "city": "Redondo Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Manhattan Heights Park",
+    "address": "1600 Manhattan Beach Blvd",
+    "city": "Manhattan Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Live Oak Park",
+    "address": "1901 Valley Dr",
+    "city": "Manhattan Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Kelly Courts",
+    "address": "861 Valley Dr",
+    "city": "Hermosa Beach",
+    "state": "CA"
+  },
+  {
+    "name": "Peninsula Racquet Club",
+    "address": "30850 Hawthorne Blvd",
+    "city": "Rancho Palos Verdes",
+    "state": "CA"
+  },
+  {
+    "name": "Point Vicente County Park",
+    "address": "30940 Hawthorne Blvd",
+    "city": "Rancho Palos Verdes",
+    "state": "CA"
+  },
+  {
+    "name": "Hemingway Park",
+    "address": "700 E Gardena Blvd",
+    "city": "Carson",
+    "state": "CA"
+  },
+  {
+    "name": "PowerPlay Pickleball",
+    "address": "19401 S Main St",
+    "city": "Carson",
+    "state": "CA"
+  },
+  {
+    "name": "Darby Park",
+    "address": "3400 W Arbor Vitae St",
+    "city": "Inglewood",
+    "state": "CA"
+  },
+  {
+    "name": "California Smash",
+    "address": "815 N Nash St",
+    "city": "El Segundo",
+    "state": "CA"
+  },
+  {
+    "name": "Independence Park",
+    "address": "12334 Bellflower Blvd",
+    "city": "Downey",
+    "state": "CA"
+  },
+  {
+    "name": "Liberty Park",
+    "address": "19211 Studebaker Rd",
+    "city": "Cerritos",
+    "state": "CA"
+  },
+  {
+    "name": "Don Knabe Community Regional Park",
+    "address": "19700 Bloomfield Ave",
+    "city": "Cerritos",
+    "state": "CA"
+  },
+  {
+    "name": "iTennis Cerritos (Cerritos Tennis Center)",
+    "address": "19700 Bloomfield Ave",
+    "city": "Cerritos",
+    "state": "CA"
+  },
+  {
+    "name": "La Mirada Community Regional Park",
+    "address": "13701 Adelfa Dr",
+    "city": "La Mirada",
+    "state": "CA"
+  },
+  {
+    "name": "Bolivar Park",
+    "address": "3300 Del Amo Blvd",
+    "city": "Lakewood",
+    "state": "CA"
+  },
+  {
+    "name": "Mayfair Park",
+    "address": "5720 Clark Ave",
+    "city": "Lakewood",
+    "state": "CA"
+  },
+  {
+    "name": "Norwalk Arts & Sports Complex",
+    "address": "13000 Clarkdale Ave",
+    "city": "Norwalk",
+    "state": "CA"
+  },
+  {
+    "name": "iPickle Whittier Narrows",
+    "address": "1201 Potrero Ave",
+    "city": "South El Monte",
+    "state": "CA"
+  },
+  {
+    "name": "Hollenbeck Park",
+    "address": "1250 N Hollenbeck Ave",
+    "city": "Covina",
+    "state": "CA"
+  },
+  {
+    "name": "Covina Park",
+    "address": "301 N Fourth Ave",
+    "city": "Covina",
+    "state": "CA"
+  },
+  {
+    "name": "Cameron Community Center",
+    "address": "1305 E Cameron Ave",
+    "city": "West Covina",
+    "state": "CA"
+  },
+  {
+    "name": "Del Norte Park",
+    "address": "1500 W Rowland Ave",
+    "city": "West Covina",
+    "state": "CA"
+  },
+  {
+    "name": "Palomares Park Community Center",
+    "address": "499 E Arrow Hwy",
+    "city": "Pomona",
+    "state": "CA"
+  },
+  {
+    "name": "Maple Hill Park",
+    "address": "1355 Maple Hill Rd",
+    "city": "Diamond Bar",
+    "state": "CA"
+  },
+  {
+    "name": "Wheeler Park",
+    "address": "626 Vista Dr",
+    "city": "Claremont",
+    "state": "CA"
+  },
+  {
+    "name": "Las Flores Park",
+    "address": "3175 Bolling Ave",
+    "city": "La Verne",
+    "state": "CA"
+  },
+  {
+    "name": "Via Verde Country Club",
+    "address": "1410 Avenida Entrada",
+    "city": "San Dimas",
+    "state": "CA"
+  },
+  {
+    "name": "Ruth R. Caruthers Park",
+    "address": "10500 Flora Vista St",
+    "city": "Bellflower",
+    "state": "CA"
+  },
+  {
+    "name": "Calabasas Pickleball Club",
+    "address": "5155 Old Scandia Ln",
+    "city": "Calabasas",
+    "state": "CA"
+  },
+  {
+    "name": "Bouquet Canyon Park",
+    "address": "28127 Wellston Dr",
+    "city": "Santa Clarita",
+    "state": "CA"
+  },
+  {
+    "name": "Vista Canyon Park",
+    "address": "16950 Lost Canyon Rd",
+    "city": "Santa Clarita",
+    "state": "CA"
+  },
+  {
+    "name": "George A. Caravalho Santa Clarita Sports Complex",
+    "address": "20850 Centre Pointe Pkwy",
+    "city": "Santa Clarita",
+    "state": "CA"
+  },
+  {
+    "name": "The Paseo Club",
+    "address": "27650 Dickason Dr",
+    "city": "Santa Clarita",
+    "state": "CA"
+  },
+  {
+    "name": "Skyline Park",
+    "address": "24125 Newhall Ave",
+    "city": "Santa Clarita",
+    "state": "CA"
+  },
+  {
+    "name": "Sgt. Steve Owen Memorial Park",
+    "address": "43063 10th St W",
+    "city": "Lancaster",
+    "state": "CA"
+  },
+  {
+    "name": "William J. McAdam Park",
+    "address": "38115 30th St E",
+    "city": "Palmdale",
+    "state": "CA"
+  },
+  {
+    "name": "Marie Kerr Park",
+    "address": "39700 30th St W",
+    "city": "Palmdale",
+    "state": "CA"
+  },
+  {
+    "name": "Pura Padel LA",
+    "address": "12501 S Wilmington Ave",
+    "city": "Compton",
+    "state": "CA"
+  },
+  {
+    "name": "Monrovia Recreation Park",
+    "address": "620 S Shamrock Ave",
+    "city": "Monrovia",
+    "state": "CA"
+  },
+  {
+    "name": "LA Galaxy Park (Dignity Health Sports Park)",
+    "address": "18400 S Avalon Blvd",
+    "city": "Carson",
+    "state": "CA"
+  },
+  {
+    "name": "Sherman Oaks Tennis & Pickleball (Van Nuys Sherman Oaks Rec Center)",
+    "address": "14201 Huston St",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "name": "El Segundo Parks & Recreation",
+    "address": "339 Sheldon St",
+    "city": "El Segundo",
+    "state": "CA"
+  },
+  {
+    "name": "Pasadena (1130 S Marengo)",
+    "address": "1130 S Marengo Ave",
+    "city": "Pasadena",
+    "state": "CA"
+  },
+  {
+    "name": "Diamond Point Club",
+    "address": "536 Navajo Springs Rd",
+    "city": "Diamond Bar",
+    "state": "CA"
+  }
+]

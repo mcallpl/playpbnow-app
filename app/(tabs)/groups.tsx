@@ -61,10 +61,15 @@ export default function HomeScreen() {
   const router = useRouter();
   const { colors, isDark, toggleTheme } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
-  const { isPro, isFree, isTrial, trialDaysRemaining, showPaywall, features, subscription, refreshSubscription, restorePurchases, purchaseLoading } = useSubscription();
+  const { isPro, isFree, isTrial, isAdmin, trialDaysRemaining, showPaywall, features, subscription, refreshSubscription, restorePurchases, purchaseLoading } = useSubscription();
   const [groups, setGroups] = useState<Group[]>([]);
   const [joinModalVisible, setJoinModalVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [changePasswordVisible, setChangePasswordVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
@@ -137,7 +142,7 @@ export default function HomeScreen() {
   };
 
   const openCreateModal = () => {
-    if (isFree && groups.length >= features.maxGroups) {
+    if (isFree && !isAdmin && groups.length >= features.maxGroups) {
       showPaywall(`You've reached the free limit of ${features.maxGroups} groups. Upgrade to Pro for unlimited groups!`);
       return;
     }
@@ -276,6 +281,43 @@ export default function HomeScreen() {
   const tierColor = isPro ? colors.accent : isTrial ? colors.secondary : '#ff6b35';
 
   const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'All fields are required');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'New password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
+    setPasswordLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/change_password.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, current_password: currentPassword, new_password: newPassword }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        Alert.alert('Success', 'Password updated successfully');
+        setChangePasswordVisible(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        Alert.alert('Error', data.message || 'Failed to change password');
+      }
+    } catch {
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const totalPlayers = groups.reduce((sum, g) => sum + (g.count || 0), 0);
 
@@ -481,7 +523,7 @@ export default function HomeScreen() {
 
       <TrialBanner />
 
-      {isFree && (
+      {isFree && !isAdmin && (
         <Text style={styles.groupCountLabel}>{groups.length}/{features.maxGroups} Groups</Text>
       )}
 
@@ -543,7 +585,8 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* Subscription */}
+            {/* Subscription — hidden for admins */}
+            {!isAdmin && (
             <View style={styles.settingsSection}>
               <Text style={styles.settingsSectionTitle}>SUBSCRIPTION</Text>
               <View style={styles.settingsActionRow}>
@@ -580,10 +623,15 @@ export default function HomeScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+            )}
 
             {/* Account */}
             <View style={styles.settingsSection}>
               <Text style={styles.settingsSectionTitle}>ACCOUNT</Text>
+              <TouchableOpacity style={styles.settingsActionRow} onPress={() => setChangePasswordVisible(true)}>
+                <BrandedIcon name="lock" size={20} color={colors.text} />
+                <Text style={styles.settingsActionText}>Change Password</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.settingsActionRow} onPress={handleLogout}>
                 <BrandedIcon name="logout" size={20} color={colors.danger} />
                 <Text style={[styles.settingsActionText, { color: colors.danger }]}>Log Out</Text>
@@ -591,6 +639,60 @@ export default function HomeScreen() {
             </View>
 
             <Text style={styles.appVersion}>PlayPBNow v1.3.0</Text>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal animationType="slide" transparent visible={changePasswordVisible} onRequestClose={() => setChangePasswordVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24 }}>
+            <Text style={{ fontFamily: FONT_DISPLAY_BOLD, fontSize: 20, color: colors.text, marginBottom: 20 }}>Change Password</Text>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Current password"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              autoCapitalize="none"
+            />
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="New password"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+              autoCapitalize="none"
+            />
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Confirm new password"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              autoCapitalize="none"
+            />
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: colors.border, alignItems: 'center' }}
+                onPress={() => { setChangePasswordVisible(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}
+              >
+                <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: colors.text }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: colors.accent, alignItems: 'center', opacity: passwordLoading ? 0.6 : 1 }}
+                onPress={handleChangePassword}
+                disabled={passwordLoading}
+              >
+                {passwordLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: '#fff' }}>Update</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -840,6 +942,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   },
   settingsActionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
   settingsActionText: { color: c.text, fontSize: 15, fontFamily: FONT_BODY_SEMIBOLD },
+  passwordInput: { backgroundColor: c.bg, borderRadius: 10, padding: 14, fontSize: 15, fontFamily: FONT_BODY_REGULAR, color: c.text, marginBottom: 12 },
   tierBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   tierBadgeText: { color: 'white', fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 11, letterSpacing: 1 },
   upgradeBtn: { backgroundColor: '#ff6b35', padding: 12, borderRadius: 12, alignItems: 'center', marginVertical: 8 },

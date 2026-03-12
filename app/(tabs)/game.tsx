@@ -142,7 +142,7 @@ export default function GameScreen() {
   });
 
   const { setActiveMatch, clearActiveMatch } = useActiveMatch();
-  const { isPro, isTrial, isFree, showPaywall, features } = useSubscription();
+  const { isPro, isTrial, isFree, isAdmin, showPaywall, features } = useSubscription();
 
   const [isMatchScored, setIsMatchScored] = useState(false);
   const [generatingImg, setGeneratingImg] = useState(false);
@@ -194,15 +194,42 @@ export default function GameScreen() {
   useEffect(() => {
       if (params.isCollaborator === 'true' && params.shareCode && params.sessionId) {
           setIsCollaborator(true);
+          setIsMatchScored(true); // Immediately show scoring UI
           const code = params.shareCode as string;
           const sid = params.sessionId as string;
           setShareCode(code);
           setSessionId(sid);
 
-          // DON'T load collabScores from params — pull from server instead
-          // This ensures Unit B gets exactly what Unit A pushed
-          console.log('Unit B: will pull scores from server...');
-          joinAndSync(code);
+          // Pre-seed scores from join API data for instant display
+          if (navCollabScores && typeof navCollabScores === 'object' && Object.keys(navCollabScores).length > 0) {
+              console.log('Unit B: pre-seeding scores from join data...');
+              setScores(navCollabScores);
+          }
+
+          // Then pull from server to get the absolute latest
+          console.log('Unit B: pulling latest scores from server...');
+          joinAndSync(code).then((serverScores) => {
+              // Scroll to the first round that still needs scores
+              if (schedule.length > 0 && serverScores) {
+                  let targetRound = 0;
+                  for (let rIdx = 0; rIdx < schedule.length; rIdx++) {
+                      const round = schedule[rIdx];
+                      const allGamesScored = round.games.every((_: any, gIdx: number) => {
+                          const k1 = `${rIdx}_${gIdx}_t1`;
+                          const k2 = `${rIdx}_${gIdx}_t2`;
+                          return serverScores[k1] && serverScores[k2];
+                      });
+                      if (!allGamesScored) { targetRound = rIdx; break; }
+                      targetRound = rIdx; // If all scored, stay at last round
+                  }
+                  if (targetRound > 0) {
+                      setTimeout(() => {
+                          flatListRef.current?.scrollToIndex({ index: targetRound, animated: true });
+                      }, 300);
+                  }
+              }
+          });
+
           setActiveMatch({
               shareCode: code,
               sessionId: sid,
@@ -378,8 +405,8 @@ export default function GameScreen() {
       });
       setReportModalVisible(false);
 
-      // Post-share nudge for free users
-      if (isFree && !isTrial) {
+      // Post-share nudge for free users (admins bypass)
+      if (isFree && !isTrial && !isAdmin) {
           setTimeout(() => {
               Alert.alert(
                   'Upgrade to Pro',
@@ -722,7 +749,7 @@ export default function GameScreen() {
             <View style={styles.modalOverlay}><View style={styles.modalContent}>
                 <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>GENERATE HD REPORT</Text>
-                {isFree && !isTrial && (
+                {isFree && !isTrial && !isAdmin && (
                     <TouchableOpacity onPress={() => showPaywall('Upgrade to Pro for clean, watermark-free reports!')} style={styles.watermarkBadge}>
                         <BrandedIcon name="lock" size={12} color="#ff6b35" />
                         <Text style={styles.watermarkBadgeText}>FREE — Reports include watermark</Text>
