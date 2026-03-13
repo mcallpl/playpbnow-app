@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+// Shared beacon API — used by both DinkConnections and PlayPBNow
+const SHARED_BEACON_URL = 'https://peoplestar.com/shared/beacon/api';
 
 export interface BeaconResponse {
   user_id: string;

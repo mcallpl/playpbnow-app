@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Play Now — Beacons</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/beacon/beacon-sdk.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: #0f1b2d;
+    color: #fff;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
+
+/* PlayPBNow theme overrides for Beacon SDK */
+.beacon-sdk {
+    --beacon-primary: #87ca37;
+    --beacon-accent: #5ba31a;
+    --beacon-navy: #0f1b2d;
+    --beacon-coral: #87ca37;
+    --beacon-soft-coral: rgba(135, 202, 55, 0.12);
+    --beacon-slate: rgba(255, 255, 255, 0.55);
+    --beacon-light-gray: #152945;
+    --beacon-white: #fff;
+    --beacon-radius: 16px;
+    --beacon-text-primary: #fff;
+    --beacon-text-secondary: rgba(255, 255, 255, 0.75);
+    --beacon-text-light: rgba(255, 255, 255, 0.55);
+    --beacon-error: #ff4444;
+    --beacon-font: 'DM Sans', system-ui, sans-serif;
+    background: #0f1b2d;
+    min-height: 100vh;
+}
+
+/* Dark theme card overrides */
+.beacon-sdk .beacon-card,
+.beacon-sdk .beacon-court-card {
+    background: #1e3a5f;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.beacon-sdk .beacon-my-card {
+    background: linear-gradient(135deg, #1e3a5f 0%, #152945 100%);
+    border: 2px solid #87ca37;
+}
+.beacon-sdk .beacon-toggle-group { background: #152945; }
+.beacon-sdk .beacon-toggle-btn.active { background: #87ca37; color: #0f1b2d; }
+.beacon-sdk .beacon-toggle-btn { color: rgba(255, 255, 255, 0.55); }
+.beacon-sdk .beacon-location-warn { background: #152945; border-color: #87ca37; }
+.beacon-sdk .beacon-empty { color: rgba(255, 255, 255, 0.55); }
+.beacon-sdk .beacon-live-count { background: #87ca37; color: #0f1b2d; }
+
+/* Create form dark theme */
+.beacon-sdk .beacon-create-overlay { background: #0f1b2d; }
+.beacon-sdk .beacon-court-search input,
+.beacon-sdk .beacon-field select,
+.beacon-sdk .beacon-field input,
+.beacon-sdk .beacon-field textarea {
+    background: #152945;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+.beacon-sdk .beacon-create-btn {
+    background: #87ca37;
+    color: #0f1b2d;
+    font-weight: 700;
+}
+
+/* Detail overlay dark theme */
+.beacon-sdk .beacon-detail-overlay { background: #0f1b2d; }
+.beacon-sdk .beacon-chat-input-row input {
+    background: #152945;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+.beacon-sdk .beacon-chat-send-btn { background: #87ca37; color: #0f1b2d; }
+.beacon-sdk .beacon-detail-actions .btn-respond { background: #87ca37; color: #0f1b2d; }
+
+/* Header */
+.ppb-header {
+    background: linear-gradient(135deg, #152945 0%, #1e3a5f 100%);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.ppb-header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #87ca37;
+}
+.ppb-header .back-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+}
+
+/* Toast */
+.ppb-toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: #87ca37; color: #0f1b2d; padding: 12px 24px;
+    border-radius: 12px; font-weight: 600; font-size: 14px;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 1000;
+}
+.ppb-toast.visible { opacity: 1; }
+
+/* Loading state */
+.ppb-loading {
+    display: flex; justify-content: center; align-items: center;
+    min-height: 200px; color: rgba(255, 255, 255, 0.55);
+}
+
+/* Hide the SDK's built-in create button — we'll add our own header button */
+#bsdk_createBtn { bottom: 20px !important; right: 20px !important; }
+</style>
+</head>
+<body>
+
+<div class="ppb-header">
+    <button class="back-btn" onclick="history.back()">&larr;</button>
+    <h1>Play Now</h1>
+</div>
+
+<div id="beaconContainer"></div>
+<div id="ppbToast" class="ppb-toast"></div>
+
+<script src="/shared/beacon/beacon-sdk.js"></script>
+<script>
+(function() {
+    var API_URL = 'https://peoplestar.com/PlayPBNow/api';
+    var SHARED_BEACON_URL = 'https://peoplestar.com/shared/beacon/api';
+
+    // Get user info from URL params or localStorage
+    var params = new URLSearchParams(window.location.search);
+    var userId = params.get('user_id') || localStorage.getItem('ppb_user_id') || '';
+    var userName = params.get('user_name') || localStorage.getItem('ppb_user_name') || 'Player';
+    var userPhoto = params.get('user_photo') || localStorage.getItem('ppb_user_photo') || '';
+
+    if (userId) {
+        localStorage.setItem('ppb_user_id', userId);
+        localStorage.setItem('ppb_user_name', userName);
+        if (userPhoto) localStorage.setItem('ppb_user_photo', userPhoto);
+    }
+
+    if (!userId) {
+        document.getElementById('beaconContainer').innerHTML =
+            '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.55)">' +
+            '<p>Please open this page from the Play PB Now app.</p></div>';
+        return;
+    }
+
+    function showToast(msg) {
+        var t = document.getElementById('ppbToast');
+        t.textContent = msg;
+        t.classList.add('visible');
+        setTimeout(function() { t.classList.remove('visible'); }, 3000);
+    }
+
+    BeaconSDK.init({
+        container: '#beaconContainer',
+        apiUrl: SHARED_BEACON_URL,
+        mapsKey: 'AIzaSyBkBl7cWQUTFyrxsl8tNzjQu84MXvoUOoM',
+        userId: parseInt(userId),
+        userPhoto: userPhoto,
+        userName: userName,
+        membershipTier: 'top_spin',  // PlayPBNow users get full beacon access
+        appId: 'play_pb_now',
+        notificationsEnabled: true,
+        notificationIcon: 'https://peoplestar.com/PlayPBNow/assets/assets/images/icon.png',
+        icons: {
+            pickleball: 'https://peoplestar.com/DinkConnections/api/images/pickleball_emoji.png',
+            paddleAndBall: 'https://peoplestar.com/DinkConnections/api/images/pickleball_and_paddle_emoji.png'
+        },
+        onBeaconCountChange: function(count) {
+            document.title = count > 0 ? 'Play Now (' + count + ')' : 'Play Now';
+        },
+        onUpgrade: function() {
+            showToast('You already have full access!');
+        },
+        onShowToast: function(msg) {
+            showToast(msg);
+        },
+        onVibrate: function() {
+            try { if (navigator.vibrate) navigator.vibrate([100, 50, 100]); } catch(e) {}
+        }
+    });
+
+    BeaconSDK.load();
+})();
+</script>
+</body>
+</html>
