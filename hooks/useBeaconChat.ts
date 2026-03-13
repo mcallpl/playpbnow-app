@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { playChatPing } from '../utils/sounds';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://peoplestar.com/PlayPBNow/api';
+const SHARED_BEACON_URL = 'https://peoplestar.com/shared/beacon/api';
 const POLL_INTERVAL = 3000;
 
 export interface ChatMessage {
@@ -9,6 +10,7 @@ export interface ChatMessage {
   beacon_id: number;
   user_id: string;
   user_name: string;
+  sender_name?: string;
   message: string;
   created_at: string;
 }
@@ -23,18 +25,47 @@ export function useBeaconChat() {
   const currentUserIdRef = useRef<string>('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollInProgressRef = useRef(false);
+  // Track whether this beacon is on the shared API or local
+  const useSharedApiRef = useRef(true);
 
   const fetchMessages = useCallback(async (beaconId: number, afterId?: number, isInitial = false) => {
     try {
-      let url = `${API_URL}/beacon_chat_poll.php?beacon_id=${beaconId}`;
-      if ((afterId ?? 0) > 0) {
-        url += `&after_id=${afterId}`;
-      }
       abortControllerRef.current?.abort();
       abortControllerRef.current = new AbortController();
-      const res = await fetch(url, { signal: abortControllerRef.current.signal });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+
+      let data: any;
+
+      if (useSharedApiRef.current) {
+        // Shared beacon API (POST with JSON body)
+        const res = await fetch(`${SHARED_BEACON_URL}/chat_poll.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            beacon_id: beaconId,
+            since_id: (afterId ?? 0) > 0 ? afterId : 0,
+          }),
+          signal: abortControllerRef.current.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+        // Normalize shared API response to match expected format
+        if (data.messages) {
+          data.messages = data.messages.map((m: any) => ({
+            ...m,
+            user_name: m.sender_name || m.user_name || 'Player',
+          }));
+        }
+      } else {
+        // Local PlayPBNow API (GET with query params)
+        let url = `${API_URL}/beacon_chat_poll.php?beacon_id=${beaconId}`;
+        if ((afterId ?? 0) > 0) {
+          url += `&after_id=${afterId}`;
+        }
+        const res = await fetch(url, { signal: abortControllerRef.current.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+      }
+
       if (data.status === 'success' && data.messages) {
         if (!isInitial) {
           // Incremental — append new messages, deduplicating
@@ -45,7 +76,7 @@ export function useBeaconChat() {
               if (newMsgs.length > 0) {
                 // Play ping if any new message is from someone else
                 const hasOtherMessages = newMsgs.some(
-                  (m: ChatMessage) => m.user_id !== currentUserIdRef.current
+                  (m: ChatMessage) => String(m.user_id) !== currentUserIdRef.current
                 );
                 if (hasOtherMessages) {
                   playChatPing();
@@ -88,7 +119,7 @@ export function useBeaconChat() {
     pollInProgressRef.current = false;
   }, [clearPollingInterval]);
 
-  const startPolling = useCallback((beaconId: number, currentUserId?: string) => {
+  const startPolling = useCallback((beaconId: number, currentUserId?: string, isSharedBeacon = true) => {
     // Clear any existing polling
     clearPollingInterval();
     abortControllerRef.current?.abort();
@@ -96,6 +127,7 @@ export function useBeaconChat() {
     lastIdRef.current = 0;
     initialFetchDoneRef.current = false;
     pollInProgressRef.current = false;
+    useSharedApiRef.current = isSharedBeacon;
     if (currentUserId) currentUserIdRef.current = currentUserId;
     setMessages([]);
     setIsLoading(true);
@@ -125,28 +157,67 @@ export function useBeaconChat() {
     text: string,
   ): Promise<boolean> => {
     try {
-      const res = await fetch(`${API_URL}/beacon_chat_send.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          beacon_id: beaconId,
-          user_id: userId,
-          user_name: userName,
-          message: text,
-        }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.status === 'success' && (data.message || data.data)) {
-        const msg = data.data || data.message;
-        // Append immediately for instant feedback, skip if already present
-        setMessages(prev => {
-          if (prev.some(m => m.id === msg.id)) return prev;
-          return [...prev, msg];
+      let data: any;
+
+      if (useSharedApiRef.current) {
+        // Shared beacon API
+        const res = await fetch(`${SHARED_BEACON_URL}/chat_send.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            beacon_id: beaconId,
+            user_id: parseInt(userId) || 0,
+            message: text,
+            sender_name: userName,
+            sender_photo: '',
+          }),
         });
-        lastIdRef.current = msg.id;
-        return true;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+
+        if (data.status === 'success' && data.message_id) {
+          // Create local message for instant feedback
+          const localMsg: ChatMessage = {
+            id: data.message_id,
+            beacon_id: beaconId,
+            user_id: userId,
+            user_name: userName,
+            sender_name: userName,
+            message: text,
+            created_at: new Date().toISOString(),
+          };
+          setMessages(prev => {
+            if (prev.some(m => m.id === localMsg.id)) return prev;
+            return [...prev, localMsg];
+          });
+          lastIdRef.current = data.message_id;
+          return true;
+        }
+      } else {
+        // Local PlayPBNow API
+        const res = await fetch(`${API_URL}/beacon_chat_send.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            beacon_id: beaconId,
+            user_id: userId,
+            user_name: userName,
+            message: text,
+          }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+        if (data.status === 'success' && (data.message || data.data)) {
+          const msg = data.data || data.message;
+          setMessages(prev => {
+            if (prev.some(m => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+          lastIdRef.current = msg.id;
+          return true;
+        }
       }
+
       return false;
     } catch {
       return false;

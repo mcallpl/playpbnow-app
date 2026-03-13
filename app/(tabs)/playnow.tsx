@@ -351,7 +351,7 @@ export default function PlayNowTab() {
       userId
     ) {
       setExpandedChatId(selectedBeacon.id);
-      startChatPolling(selectedBeacon.id, userId);
+      startChatPolling(selectedBeacon.id, userId, selectedBeacon.beacon_type === 'casual');
     }
   }, [selectedBeacon?.id]);
 
@@ -1159,7 +1159,7 @@ export default function PlayNowTab() {
                           stopChatPolling();
                         } else {
                           setExpandedChatId(selectedBeacon.id);
-                          startChatPolling(selectedBeacon.id, userId);
+                          startChatPolling(selectedBeacon.id, userId, selectedBeacon.beacon_type === 'casual');
                         }
                       }}
                     >

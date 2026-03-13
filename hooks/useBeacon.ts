@@ -8,6 +8,7 @@ const SHARED_BEACON_URL = 'https://peoplestar.com/shared/beacon/api';
 export interface BeaconResponse {
   user_id: string;
   first_name: string;
+  responder_name?: string;
   response_type: 'on_my_way' | 'interested';
   created_at: string;
 }
@@ -25,10 +26,12 @@ export interface Beacon {
   player_count: number;
   skill_level: string | null;
   message: string | null;
+  creator_name: string;
+  creator_photo?: string | null;
+  app_id?: string;
   status: string;
   expires_at: string;
   created_at: string;
-  creator_name: string;
   reliability_pct: number;
   is_mine: boolean;
   chat_count: number;
@@ -49,6 +52,9 @@ export interface Beacon {
   // Structured mode fields
   active_lobby_id: number | null;
   lobby_member_count: number;
+  // Shared API fields
+  message_count?: number;
+  my_response?: string | null;
 }
 
 export interface LobbyMember {
@@ -106,6 +112,19 @@ export interface Court {
   state?: string;
 }
 
+// Helper to get user info from AsyncStorage
+async function getUserInfo() {
+  const [userId, firstName, lastName] = await Promise.all([
+    AsyncStorage.getItem('user_id'),
+    AsyncStorage.getItem('user_first_name'),
+    AsyncStorage.getItem('user_last_name'),
+  ]);
+  return {
+    userId: userId || '',
+    userName: [firstName || '', lastName || ''].join(' ').trim() || 'Player',
+  };
+}
+
 export function useBeacon() {
   const [beacons, setBeacons] = useState<Beacon[]>([]);
   const [history, setHistory] = useState<Beacon[]>([]);
@@ -124,7 +143,7 @@ export function useBeacon() {
     return await AsyncStorage.getItem('user_id') || '';
   };
 
-  // --- Create/Update Beacon ---
+  // --- Create/Update Beacon (SHARED API) ---
   const createBeacon = useCallback(async (
     courtId: number,
     playerCount: number,
@@ -136,18 +155,42 @@ export function useBeacon() {
     setLoading(true);
     setError(null);
     try {
-      const userId = await getUserId();
-      const res = await fetch(`${API_URL}/beacon_upsert.php`, {
+      const { userId, userName } = await getUserInfo();
+
+      if (beaconType === 'structured') {
+        // Structured beacons still use PlayPBNow's own backend (lobby system)
+        const res = await fetch(`${API_URL}/beacon_upsert.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            beacon_type: beaconType,
+            court_id: courtId,
+            player_count: playerCount,
+            skill_level: skillLevel || null,
+            message: message || null,
+            duration_minutes: durationMinutes,
+          }),
+        });
+        const data = await res.json();
+        if (data.status === 'success') return data.beacon;
+        setError(data.message || 'Failed to create beacon');
+        return null;
+      }
+
+      // Casual beacons use the shared API (visible across all apps)
+      const res = await fetch(`${SHARED_BEACON_URL}/create.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
-          beacon_type: beaconType,
           court_id: courtId,
-          player_count: playerCount,
           skill_level: skillLevel || null,
           message: message || null,
           duration_minutes: durationMinutes,
+          creator_name: userName,
+          creator_photo: '',
+          app_id: 'play_pb_now',
         }),
       });
       const data = await res.json();
@@ -162,26 +205,76 @@ export function useBeacon() {
     }
   }, []);
 
-  // --- Fetch Beacon Feed ---
+  // --- Fetch Beacon Feed (SHARED API + PlayPBNow structured beacons) ---
   const fetchFeed = useCallback(async (courtId?: number, lat?: number, lng?: number) => {
     setLoading(true);
     setError(null);
     try {
       const userId = await getUserId();
-      let url = `${API_URL}/beacon_feed.php?user_id=${userId}&include_history=1`;
-      if (courtId) url += `&court_id=${courtId}`;
+
+      // Fetch from shared beacon API (all cross-app casual beacons)
+      const sharedBody: Record<string, any> = { user_id: parseInt(userId) || 0 };
       if (lat !== undefined && lng !== undefined) {
-        url += `&lat=${lat}&lng=${lng}`;
+        sharedBody.lat = lat;
+        sharedBody.lng = lng;
+        sharedBody.radius = 50;
       }
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.status === 'success') {
-        setBeacons(data.beacons || []);
-        setCourts(data.courts || []);
-        setHistory(data.history || []);
-      } else {
-        setError(data.message || 'Failed to load feed');
-      }
+
+      const [sharedRes, localRes] = await Promise.all([
+        fetch(`${SHARED_BEACON_URL}/feed.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sharedBody),
+        }),
+        // Also fetch structured beacons from PlayPBNow's own backend
+        fetch(`${API_URL}/beacon_feed.php?user_id=${userId}&include_history=1${
+          courtId ? `&court_id=${courtId}` : ''
+        }${lat !== undefined ? `&lat=${lat}&lng=${lng}` : ''}`),
+      ]);
+
+      const sharedData = await sharedRes.json();
+      const localData = await localRes.json();
+
+      // Merge beacons: shared casual + local structured
+      const sharedBeacons: Beacon[] = (sharedData.beacons || []).map((b: any) => ({
+        ...b,
+        beacon_type: 'casual' as const,
+        creator_name: b.creator_name || 'Player',
+        reliability_pct: 100,
+        is_mine: String(b.user_id) === userId,
+        chat_count: b.message_count || 0,
+        needs_replacement: false,
+        replacement_info: null,
+        responses: [],
+        user_responded: !!b.my_response,
+        active_lobby_id: null,
+        lobby_member_count: 0,
+      }));
+
+      // Local structured beacons (from PlayPBNow backend)
+      const localBeacons: Beacon[] = (localData.beacons || []).filter(
+        (b: any) => b.beacon_type === 'structured'
+      );
+
+      // Combine and sort by distance if available, else by created_at
+      const allBeacons = [...sharedBeacons, ...localBeacons].sort((a, b) => {
+        if (a.distance_miles != null && b.distance_miles != null) {
+          return a.distance_miles - b.distance_miles;
+        }
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      setBeacons(allBeacons);
+      setCourts(localData.courts || []);
+      setHistory([
+        ...(sharedData.past_beacons || []).map((b: any) => ({
+          ...b,
+          beacon_type: 'casual' as const,
+          creator_name: b.creator_name || 'Player',
+          is_mine: String(b.user_id) === userId,
+        })),
+        ...(localData.history || []),
+      ]);
     } catch (e) {
       setError('Network error');
     } finally {
@@ -189,10 +282,25 @@ export function useBeacon() {
     }
   }, []);
 
-  // --- Cancel Beacon ---
+  // --- Cancel Beacon (SHARED API for casual, local for structured) ---
   const cancelBeacon = useCallback(async (beaconId: number) => {
     try {
       const userId = await getUserId();
+
+      // Try shared API first (casual beacons), then local (structured)
+      const sharedRes = await fetch(`${SHARED_BEACON_URL}/cancel.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beacon_id: beaconId, user_id: parseInt(userId) || 0 }),
+      });
+      const sharedData = await sharedRes.json();
+
+      if (sharedData.status === 'success') {
+        await fetchFeed();
+        return true;
+      }
+
+      // Fallback to local API (structured beacons)
       const res = await fetch(`${API_URL}/beacon_cancel.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -211,10 +319,25 @@ export function useBeacon() {
     }
   }, [fetchFeed]);
 
-  // --- Extend Beacon ---
+  // --- Extend Beacon (SHARED API for casual, local for structured) ---
   const extendBeacon = useCallback(async (beaconId: number, additionalMinutes: number) => {
     try {
       const userId = await getUserId();
+
+      // Try shared API first
+      const sharedRes = await fetch(`${SHARED_BEACON_URL}/extend.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beacon_id: beaconId, user_id: parseInt(userId) || 0, extra_minutes: additionalMinutes }),
+      });
+      const sharedData = await sharedRes.json();
+
+      if (sharedData.status === 'success') {
+        await fetchFeed();
+        return true;
+      }
+
+      // Fallback to local API
       const res = await fetch(`${API_URL}/beacon_extend.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -233,7 +356,7 @@ export function useBeacon() {
     }
   }, [fetchFeed]);
 
-  // --- Create Lobby ---
+  // --- Create Lobby (PlayPBNow only — structured mode) ---
   const createLobby = useCallback(async (
     beaconId: number,
     targetPlayers: number,
@@ -268,7 +391,7 @@ export function useBeacon() {
     }
   }, []);
 
-  // --- Join Lobby ---
+  // --- Join Lobby (PlayPBNow only) ---
   const joinLobby = useCallback(async (
     lobbyId: number,
     playerInfo: { player_id?: number; first_name: string; last_name: string; gender: string },
@@ -298,7 +421,7 @@ export function useBeacon() {
     }
   }, []);
 
-  // --- Confirm in Lobby ---
+  // --- Confirm in Lobby (PlayPBNow only) ---
   const confirmInLobby = useCallback(async (lobbyId: number) => {
     try {
       const userId = await getUserId();
@@ -314,7 +437,7 @@ export function useBeacon() {
     }
   }, []);
 
-  // --- Lock Lobby (host only) ---
+  // --- Lock Lobby (PlayPBNow only, host only) ---
   const lockLobby = useCallback(async (lobbyId: number) => {
     setLoading(true);
     setError(null);
@@ -340,7 +463,7 @@ export function useBeacon() {
     }
   }, []);
 
-  // --- Start Match (host only) ---
+  // --- Start Match (PlayPBNow only, host only) ---
   const startMatch = useCallback(async (lobbyId: number) => {
     setLoading(true);
     setError(null);
@@ -366,10 +489,31 @@ export function useBeacon() {
     }
   }, []);
 
-  // --- Respond to casual beacon ("On My Way!") ---
+  // --- Respond to casual beacon (SHARED API) ---
   const respondToBeacon = useCallback(async (beaconId: number, responseType: string = 'on_my_way') => {
     try {
-      const userId = await getUserId();
+      const { userId, userName } = await getUserInfo();
+
+      // Try shared API first (casual beacons)
+      const sharedRes = await fetch(`${SHARED_BEACON_URL}/respond.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          beacon_id: beaconId,
+          user_id: parseInt(userId) || 0,
+          response_type: responseType,
+          responder_name: userName,
+          responder_photo: '',
+        }),
+      });
+      const sharedData = await sharedRes.json();
+
+      if (sharedData.status === 'success') {
+        await fetchFeed();
+        return true;
+      }
+
+      // Fallback to local API
       const res = await fetch(`${API_URL}/beacon_respond.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -388,7 +532,7 @@ export function useBeacon() {
     }
   }, [fetchFeed]);
 
-  // --- Unrespond from casual beacon ---
+  // --- Unrespond from casual beacon (PlayPBNow local only for now) ---
   const unrespondToBeacon = useCallback(async (beaconId: number) => {
     try {
       const userId = await getUserId();
@@ -408,7 +552,7 @@ export function useBeacon() {
     }
   }, [fetchFeed]);
 
-  // --- Request Replacement ("Can't Make It") ---
+  // --- Request Replacement (PlayPBNow only) ---
   const requestReplacement = useCallback(async (lobbyId: number) => {
     try {
       const userId = await getUserId();
@@ -427,7 +571,7 @@ export function useBeacon() {
     }
   }, []);
 
-  // --- Accept Replacement ("Fill This Spot") ---
+  // --- Accept Replacement (PlayPBNow only) ---
   const acceptReplacement = useCallback(async (
     requestId: number,
     playerInfo: { player_id?: number; first_name: string; last_name: string; gender: string },
@@ -460,7 +604,7 @@ export function useBeacon() {
     }
   }, []);
 
-  // --- Cancel Replacement ("I Can Make It!") ---
+  // --- Cancel Replacement (PlayPBNow only) ---
   const cancelReplacement = useCallback(async (requestId: number) => {
     try {
       const userId = await getUserId();
@@ -479,7 +623,7 @@ export function useBeacon() {
     }
   }, []);
 
-  // --- Poll Lobby ---
+  // --- Poll Lobby (PlayPBNow only) ---
   const pollLobby = useCallback(async (lobbyId: number) => {
     try {
       const userId = await getUserId();
