@@ -26,6 +26,8 @@ export interface GameState {
   setGeneratingImg: (val: boolean) => void;
   generatedImageUrl: string | null;
   setGeneratedImageUrl: (val: string | null) => void;
+  generatedImageShareUrl: string | null;
+  setGeneratedImageShareUrl: (val: string | null) => void;
   newPlayerName: string;
   setNewPlayerName: (val: string) => void;
   searchResults: any[];
@@ -53,6 +55,7 @@ export function useGameState(params: any): GameState {
   const [saveTitle, setSaveTitle] = useState(groupName || '');
   const [generatingImg, setGeneratingImg] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [generatedImageShareUrl, setGeneratedImageShareUrl] = useState<string | null>(null);
   const [newPlayerName, setNewPlayerName] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -115,6 +118,7 @@ export function useGameState(params: any): GameState {
     selectedDate, setSelectedDate,
     generatingImg, setGeneratingImg,
     generatedImageUrl, setGeneratedImageUrl,
+    generatedImageShareUrl, setGeneratedImageShareUrl,
     newPlayerName, setNewPlayerName,
     searchResults, setSearchResults,
     isSearching, setIsSearching,

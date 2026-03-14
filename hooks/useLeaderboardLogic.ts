@@ -145,21 +145,21 @@ export const useLeaderboardLogic = (
     };
 
     // --- 4. API ACTIONS ---
-    const fetchUniversalSessions = async (uid: string, globalMode: boolean) => {
+    const fetchUniversalSessions = async (uid: string, globalMode: boolean): Promise<UniversalSession[]> => {
         try {
             const userParam = globalMode ? '' : uid;
             const res = await fetch(`${API_URL}/get_universal_sessions.php?user_id=${encodeURIComponent(userParam)}&is_global=${globalMode}`);
             const responseText = await res.text();
             console.log('📥 Sessions response:', responseText);
-            const data = JSON.parse(responseText);            
+            const data = JSON.parse(responseText);
             if (data.status === 'success') {
                 const sessions = data.sessions || [];
-                
+
                 const finalSessions = sessions.map((s: any) => ({
                     ...s,
                     isYours: globalMode ? (s.isYours || false) : true
                 }));
-                
+
                 setUniversalSessions(finalSessions);
 
                 if (!groupName && finalSessions.length > 0) {
@@ -168,8 +168,10 @@ export const useLeaderboardLogic = (
                     await AsyncStorage.setItem('active_group_name', latest.group);
                     fetchLeaderboard(latest.group, uid, globalMode, 'all');
                 }
+                return finalSessions;
             }
         } catch (e) { console.error("Session fetch error", e); }
+        return [];
     };
 
     const fetchLeaderboard = async (targetGroup: string, uid: string, globalMode: boolean, explicitBatchId?: string) => {

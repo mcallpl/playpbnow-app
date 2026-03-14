@@ -93,43 +93,58 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
         if (localHistory && localHistory.length > 0) return;
 
         const init = async () => {
-            // If coming from a finished match, force global mode and select that session
             const forceGlobal = params.forceGlobal === 'true';
             const incomingSessionId = params.sessionId as string;
 
-            if (forceGlobal && !isGlobal) {
-                setSkipBatchReset(true);
-                setIsGlobal(true);
-                await AsyncStorage.setItem('leaderboard_mode', 'global');
-            }
-
-            const useGlobal = forceGlobal || isGlobal;
-
-            let activeGroup = params.groupName as string;
-            if (!activeGroup) {
-                const storageKey = useGlobal ? 'active_group_name_global' : 'active_group_name';
-                activeGroup = await AsyncStorage.getItem(storageKey) || '';
-            }
-            if (activeGroup) {
-                setGroupName(activeGroup);
-                const storageKey = useGlobal ? 'active_group_name_global' : 'active_group_name';
-                await AsyncStorage.setItem(storageKey, activeGroup);
-            }
-
-            // If a specific session was passed, use it; otherwise reset to 'all'
-            const batchToUse = incomingSessionId || 'all';
-            setSelectedBatchId(batchToUse);
-
-            if (activeGroup && deviceId) {
-                fetchLeaderboard(activeGroup, deviceId, useGlobal, batchToUse);
-                fetchUniversalSessions(deviceId, useGlobal);
-            } else if (deviceId) {
-                // No group name — in global mode, still fetch with empty group
-                if (useGlobal) {
-                    fetchLeaderboard('', deviceId, true, batchToUse);
+            if (forceGlobal) {
+                // CASE: Coming from a finished match — show that specific session in MINE mode
+                if (isGlobal) {
+                    setSkipBatchReset(true);
+                    setIsGlobal(false);
+                    await AsyncStorage.setItem('leaderboard_mode', 'mine');
                 }
-                fetchUniversalSessions(deviceId, useGlobal);
-                if (!useGlobal) setLoading(false);
+
+                let activeGroup = params.groupName as string;
+                if (!activeGroup) {
+                    activeGroup = await AsyncStorage.getItem('active_group_name') || '';
+                }
+                if (activeGroup) {
+                    setGroupName(activeGroup);
+                    await AsyncStorage.setItem('active_group_name', activeGroup);
+                }
+
+                const batchToUse = incomingSessionId || 'all';
+                setSelectedBatchId(batchToUse);
+
+                if (deviceId) {
+                    fetchLeaderboard(activeGroup || '', deviceId, false, batchToUse);
+                    fetchUniversalSessions(deviceId, false);
+                }
+            } else if (deviceId) {
+                // CASE: Rankings tab click — check if user has their own sessions
+                setSelectedBatchId('all');
+                const mineSessions = await fetchUniversalSessions(deviceId, false);
+
+                if (mineSessions.length > 0) {
+                    // User has matches → MINE + ALL TIME
+                    setSkipBatchReset(true);
+                    setIsGlobal(false);
+                    await AsyncStorage.setItem('leaderboard_mode', 'mine');
+
+                    let activeGroup = await AsyncStorage.getItem('active_group_name') || '';
+                    if (activeGroup) setGroupName(activeGroup);
+                    fetchLeaderboard(activeGroup, deviceId, false, 'all');
+                } else {
+                    // New user (no matches) → GLOBAL + ALL TIME
+                    setSkipBatchReset(true);
+                    setIsGlobal(true);
+                    await AsyncStorage.setItem('leaderboard_mode', 'global');
+
+                    let activeGroup = await AsyncStorage.getItem('active_group_name_global') || '';
+                    if (activeGroup) setGroupName(activeGroup);
+                    fetchLeaderboard(activeGroup || '', deviceId, true, 'all');
+                    fetchUniversalSessions(deviceId, true);
+                }
             }
         };
         init();

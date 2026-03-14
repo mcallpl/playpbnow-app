@@ -147,6 +147,8 @@ export default function GameScreen() {
   const [isMatchScored, setIsMatchScored] = useState(false);
   const [generatingImg, setGeneratingImg] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [generatedImageShareUrl, setGeneratedImageShareUrl] = useState<string | null>(null);
+  const [dateTimeConfirmed, setDateTimeConfirmed] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [reportTitle, setReportTitle] = useState(groupName || 'Pickleball Match');
@@ -336,7 +338,7 @@ export default function GameScreen() {
   };
 
   const handleGenerateReport = async () => {
-    setGeneratingImg(true); setGeneratedImageUrl(null);
+    setGeneratingImg(true); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null);
     try {
         const uid = await getDeviceId();
         const response = await fetch(`${API_URL}/generate_report_image.php`, {
@@ -344,13 +346,17 @@ export default function GameScreen() {
             body: JSON.stringify({ schedule, group_name: reportTitle, date_str: getFormattedDateStr(selectedDate), court_name: courtName, user_id: uid })
         });
         const data = await response.json(); setGeneratingImg(false);
-        if (data.status === 'success') setGeneratedImageUrl(data.url);
-        else Alert.alert("Error", "Failed to generate image.");
+        if (data.status === 'success') {
+            setGeneratedImageUrl(data.image || data.url);
+            setGeneratedImageShareUrl(data.url);
+        } else Alert.alert("Error", "Failed to generate image.");
     } catch (e) { setGeneratingImg(false); Alert.alert("Error", "Network error."); }
   };
 
   const handleShareImage = async () => {
       if (!generatedImageUrl) { Alert.alert("No Image", "Please generate the preview first."); return; }
+      if (!dateTimeConfirmed) { Alert.alert("Date & Time Required", "Please set the date and time of the match before sharing."); return; }
+      const shareUrl = generatedImageShareUrl || generatedImageUrl;
       try {
           // Format date with ordinal suffix (e.g. "Friday, February 20th")
           const day = selectedDate.getDate();
@@ -358,20 +364,20 @@ export default function GameScreen() {
           const dateLabel = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + suffix;
           const timeLabel = selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
           const courtInfo = courtName ? ` at ${courtName}` : '';
-          const shareMessage = `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtInfo}\n${generatedImageUrl}`;
+          const shareMessage = `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtInfo}\n${shareUrl}`;
 
           if (Platform.OS === 'web') {
               // Web: Use Web Share API if available, otherwise open in new tab
               if (navigator.share) {
-                  await navigator.share({ title: `Match Schedule - ${reportTitle}`, text: shareMessage, url: generatedImageUrl });
+                  await navigator.share({ title: `Match Schedule - ${reportTitle}`, text: shareMessage, url: shareUrl });
               } else {
-                  window.open(generatedImageUrl, '_blank');
+                  window.open(shareUrl, '_blank');
               }
           } else {
               // Native: Download image to local cache and share the actual image
-              const filename = generatedImageUrl.split('/').pop() || 'match_report.png';
+              const filename = shareUrl.split('/').pop() || 'match_report.png';
               const localUri = FileSystem.cacheDirectory + filename;
-              const download = await FileSystem.downloadAsync(generatedImageUrl, localUri);
+              const download = await FileSystem.downloadAsync(shareUrl, localUri);
 
               if (Platform.OS === 'ios') {
                   await Share.share({ message: shareMessage, url: download.uri });
@@ -388,9 +394,9 @@ export default function GameScreen() {
           const timeLabel = selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
           const courtFallback = courtName ? ` at ${courtName}` : '';
           if (Platform.OS === 'web') {
-              window.open(generatedImageUrl, '_blank');
+              window.open(shareUrl, '_blank');
           } else {
-              await Share.share({ message: `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtFallback}\n${generatedImageUrl}`, url: generatedImageUrl });
+              await Share.share({ message: `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtFallback}\n${shareUrl}`, url: shareUrl });
           }
       }
       // Save the match snapshot so the LIVE tab can restore it
@@ -421,7 +427,7 @@ export default function GameScreen() {
   };
 
   const handleFinish = () => setSaveModalVisible(true);
-  const handleTextMatchPress = () => { setReportModalVisible(true); handleGenerateReport(); };
+  const handleTextMatchPress = () => { setDateTimeConfirmed(false); setReportModalVisible(true); handleGenerateReport(); };
   const handleGatekeeperSuccess = (newId: string) => setUserId(newId);
 
   // CREATE COLLAB SESSION (only when in scoring mode)
@@ -756,18 +762,18 @@ export default function GameScreen() {
                     </TouchableOpacity>
                 )}
                 <Text style={styles.label}>Match Title</Text>
-                <TextInput style={styles.modalInput} value={reportTitle} onChangeText={(t) => { setReportTitle(t); setGeneratedImageUrl(null); }} placeholder="Enter Title" placeholderTextColor={colors.inputPlaceholder} />
+                <TextInput style={styles.modalInput} value={reportTitle} onChangeText={(t) => { setReportTitle(t); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} placeholder="Enter Title" placeholderTextColor={colors.inputPlaceholder} />
                 <Text style={styles.label}>Date & Time</Text>
                 <View style={styles.datePickerContainer}>
                     <View style={styles.dateRow}>
-                        <TouchableOpacity onPress={() => { adjustDate(-1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => { adjustDate(-1); setDateTimeConfirmed(true); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
                         <Text style={styles.dateValue}>{selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-                        <TouchableOpacity onPress={() => { adjustDate(1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => { adjustDate(1); setDateTimeConfirmed(true); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
                     </View>
                     <View style={styles.dateRow}>
-                        <TouchableOpacity onPress={() => { adjustTime(-1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => { adjustTime(-1); setDateTimeConfirmed(true); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
                         <Text style={styles.dateValue}>{selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</Text>
-                        <TouchableOpacity onPress={() => { adjustTime(1); setGeneratedImageUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => { adjustTime(1); setDateTimeConfirmed(true); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
                     </View>
                 </View>
                 <Text style={styles.previewText}>{getFormattedDateStr(selectedDate)}</Text>
