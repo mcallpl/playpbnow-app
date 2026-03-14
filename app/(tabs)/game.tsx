@@ -822,7 +822,7 @@ export default function GameScreen() {
         <Modal visible={modalVisible} transparent animationType="fade">
             <View style={styles.modalOverlay}><View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>Add Player</Text>
-                <TextInput style={styles.modalInput} placeholder="Type name to search..." value={newPlayerName} onChangeText={setNewPlayerName} autoFocus placeholderTextColor={colors.inputPlaceholder} />
+                <TextInput style={styles.modalInput} placeholder="Type name to search..." value={newPlayerName} onChangeText={(t) => setNewPlayerName(t.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '))} autoFocus autoCapitalize="words" placeholderTextColor={colors.inputPlaceholder} />
                 {isSearching && <ActivityIndicator color={colors.accent} />}
                 {searchResults.length > 0 && (
                     <View style={styles.searchResultsContainer}><Text style={styles.searchLabel}>Found Global Players:</Text>
