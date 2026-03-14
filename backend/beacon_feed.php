@@ -16,7 +16,7 @@ $user_id = $_GET['user_id'] ?? null;
 $include_history = $_GET['include_history'] ?? null;
 $user_lat = isset($_GET['lat']) ? (float)$_GET['lat'] : null;
 $user_lng = isset($_GET['lng']) ? (float)$_GET['lng'] : null;
-$radius_miles = isset($_GET['radius']) ? (float)$_GET['radius'] : 10;
+$radius_miles = isset($_GET['radius']) ? (float)$_GET['radius'] : 999;
 
 if (!$user_id) {
     echo json_encode(['status' => 'error', 'message' => 'user_id is required']);
@@ -124,18 +124,36 @@ foreach ($beacons as $i => $beacon) {
     // is_mine
     $beacons[$i]['is_mine'] = ($beacon['user_id'] === $user_id);
 
-    // Creator name — check user_profiles first, then beacon_lobby_members, then fall back to 'Player'
+    // Creator name — check users table first (authoritative), then user_profiles, then beacon_lobby_members
     $beacons[$i]['creator_name'] = 'Player';
-    $profileResult = $conn->query(
-        "SELECT first_name, last_name FROM user_profiles WHERE user_id = '$uid' LIMIT 1"
+
+    // Try users table first (login/auth — most reliable source of truth)
+    $userResult = @$conn->query(
+        "SELECT first_name, last_name FROM users WHERE id = '$uid' LIMIT 1"
     );
-    if ($profileResult) {
-        $profile = $profileResult->fetch_assoc();
-        if ($profile && $profile['first_name']) {
-            $beacons[$i]['creator_name'] = trim($profile['first_name'] . ' ' . $profile['last_name']);
+    if ($userResult) {
+        $u = $userResult->fetch_assoc();
+        if ($u && !empty($u['first_name'])) {
+            $beacons[$i]['creator_name'] = trim($u['first_name'] . ' ' . ($u['last_name'] ?? ''));
         }
-        $profileResult->free();
+        $userResult->free();
     }
+
+    // Fall back to user_profiles
+    if ($beacons[$i]['creator_name'] === 'Player') {
+        $profileResult = $conn->query(
+            "SELECT first_name, last_name FROM user_profiles WHERE user_id = '$uid' LIMIT 1"
+        );
+        if ($profileResult) {
+            $profile = $profileResult->fetch_assoc();
+            if ($profile && $profile['first_name']) {
+                $beacons[$i]['creator_name'] = trim($profile['first_name'] . ' ' . $profile['last_name']);
+            }
+            $profileResult->free();
+        }
+    }
+
+    // Fall back to beacon_lobby_members
     if ($beacons[$i]['creator_name'] === 'Player') {
         $nameResult = $conn->query(
             "SELECT first_name, last_name FROM beacon_lobby_members WHERE user_id = '$uid' ORDER BY id DESC LIMIT 1"
@@ -267,15 +285,25 @@ if ($include_history) {
         while ($row = $histResult->fetch_assoc()) {
             $uid = $conn->real_escape_string($row['user_id']);
 
-            // Creator name
+            // Creator name — check users table first
             $row['creator_name'] = 'Player';
-            $pResult = $conn->query("SELECT first_name, last_name FROM user_profiles WHERE user_id = '$uid' LIMIT 1");
-            if ($pResult) {
-                $p = $pResult->fetch_assoc();
-                if ($p && $p['first_name']) {
-                    $row['creator_name'] = trim($p['first_name'] . ' ' . $p['last_name']);
+            $uResult = @$conn->query("SELECT first_name, last_name FROM users WHERE id = '$uid' LIMIT 1");
+            if ($uResult) {
+                $u = $uResult->fetch_assoc();
+                if ($u && !empty($u['first_name'])) {
+                    $row['creator_name'] = trim($u['first_name'] . ' ' . ($u['last_name'] ?? ''));
                 }
-                $pResult->free();
+                $uResult->free();
+            }
+            if ($row['creator_name'] === 'Player') {
+                $pResult = $conn->query("SELECT first_name, last_name FROM user_profiles WHERE user_id = '$uid' LIMIT 1");
+                if ($pResult) {
+                    $p = $pResult->fetch_assoc();
+                    if ($p && $p['first_name']) {
+                        $row['creator_name'] = trim($p['first_name'] . ' ' . $p['last_name']);
+                    }
+                    $pResult->free();
+                }
             }
 
             $row['is_mine'] = ($row['user_id'] === $user_id);

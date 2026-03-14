@@ -222,7 +222,7 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
           <View style={styles.mapCardCreatorRow}>
             <Text style={styles.mapCardCreator}>{beacon.creator_name}</Text>
             {beacon.distance_miles != null && (
-              <Text style={styles.mapCardDistance}>{beacon.distance_miles} mi away</Text>
+              <Text style={styles.mapCardDistance}>{parseFloat(String(beacon.distance_miles)).toFixed(1)} mi away</Text>
             )}
           </View>
         </View>
@@ -254,11 +254,20 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.dangerButton}
-            onPress={() => onCancel(beacon.id)}
+            onPress={() => {
+              Alert.alert(
+                'Delete Beacon',
+                'Are you sure you want to delete this beacon?',
+                [
+                  { text: 'Never Mind', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: () => onCancel(beacon.id) },
+                ]
+              );
+            }}
             disabled={actionLoading}
           >
             <BrandedIcon name="close" size={14} color={colors.danger} />
-            <Text style={[styles.secondaryButtonText, { color: colors.danger }]}>Cancel</Text>
+            <Text style={[styles.secondaryButtonText, { color: colors.danger }]}>Delete</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -307,6 +316,7 @@ export default function PlayNowTab() {
   const [createCourts, setCreateCourts] = useState<Court[]>([]);
   const [loadingCourts, setLoadingCourts] = useState(false);
   const [courtDropdownOpen, setCourtDropdownOpen] = useState(false);
+  const [courtSearchText, setCourtSearchText] = useState('');
 
   // Chat state
   const [expandedChatId, setExpandedChatId] = useState<number | null>(null);
@@ -861,12 +871,16 @@ export default function PlayNowTab() {
                 <BrandedIcon name="location" size={56} color={colors.textMuted} />
                 <Text style={styles.emptyTitle}>No active beacons nearby</Text>
                 <Text style={styles.emptySubtitle}>
-                  Start a beacon to let others know you're looking to play!
+                  {phoneVerified && profileComplete
+                    ? 'Start a beacon to let others know you\'re looking to play!'
+                    : 'Check back later or log in to create your own beacon.'}
                 </Text>
-                <TouchableOpacity style={styles.emptyCreateButton} onPress={handleOpenCreateView}>
-                  <BrandedIcon name="add" size={20} color="#ffffff" />
-                  <Text style={styles.emptyCreateButtonText}>Create Beacon</Text>
-                </TouchableOpacity>
+                {phoneVerified && profileComplete && (
+                  <TouchableOpacity style={styles.emptyCreateButton} onPress={handleOpenCreateView}>
+                    <BrandedIcon name="add" size={20} color="#ffffff" />
+                    <Text style={styles.emptyCreateButtonText}>Create Beacon</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -912,11 +926,13 @@ export default function PlayNowTab() {
           </ScrollView>
         )}
 
-        {/* FAB */}
-        <TouchableOpacity style={styles.fab} onPress={handleOpenCreateView}>
-          <BrandedIcon name="add" size={24} color="#ffffff" />
-          <Text style={styles.fabText}>Create Beacon</Text>
-        </TouchableOpacity>
+        {/* FAB — only show if user is phone-verified and profile is complete */}
+        {phoneVerified && profileComplete && (
+          <TouchableOpacity style={styles.fab} onPress={handleOpenCreateView}>
+            <BrandedIcon name="add" size={24} color="#ffffff" />
+            <Text style={styles.fabText}>Create Beacon</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Beacon Detail Modal */}
         {selectedBeacon && (
@@ -954,7 +970,7 @@ export default function PlayNowTab() {
                         <Text style={styles.reliabilityText}>{selectedBeacon.reliability_pct}%</Text>
                       </View>
                       {selectedBeacon.distance_miles != null && (
-                        <Text style={styles.detailDistance}>{selectedBeacon.distance_miles} mi away</Text>
+                        <Text style={styles.detailDistance}>{parseFloat(String(selectedBeacon.distance_miles)).toFixed(1)} mi away</Text>
                       )}
                     </View>
 
@@ -1045,10 +1061,23 @@ export default function PlayNowTab() {
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={[styles.dangerButton, { flex: 1, justifyContent: 'center' }]}
-                              onPress={() => { handleCancelBeacon(selectedBeacon.id); setSelectedBeacon(null); }}
+                              onPress={() => {
+                                Alert.alert(
+                                  'Delete Beacon',
+                                  'Are you sure you want to delete this beacon? This cannot be undone.',
+                                  [
+                                    { text: 'Never Mind', style: 'cancel' },
+                                    {
+                                      text: 'Delete',
+                                      style: 'destructive',
+                                      onPress: () => { handleCancelBeacon(selectedBeacon.id); setSelectedBeacon(null); },
+                                    },
+                                  ]
+                                );
+                              }}
                             >
                               <BrandedIcon name="close" size={14} color={colors.danger} />
-                              <Text style={[styles.secondaryButtonText, { color: colors.danger }]}>Cancel</Text>
+                              <Text style={[styles.secondaryButtonText, { color: colors.danger }]}>Delete</Text>
                             </TouchableOpacity>
                           </View>
                         </>
@@ -1361,8 +1390,18 @@ export default function PlayNowTab() {
             </TouchableOpacity>
             {courtDropdownOpen && (
               <View style={styles.dropdownList}>
-                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                  {createCourts.map((court) => (
+                <TextInput
+                  style={[styles.textInput, { marginHorizontal: 8, marginTop: 8, marginBottom: 4 }]}
+                  placeholder="Search courts..."
+                  placeholderTextColor={colors.inputPlaceholder}
+                  value={courtSearchText}
+                  onChangeText={setCourtSearchText}
+                  autoFocus
+                />
+                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                  {createCourts
+                    .filter(c => c.name.toLowerCase().includes(courtSearchText.toLowerCase()))
+                    .map((court) => (
                     <TouchableOpacity
                       key={court.id}
                       style={[
@@ -1372,6 +1411,7 @@ export default function PlayNowTab() {
                       onPress={() => {
                         setCreateCourtId(court.id);
                         setCourtDropdownOpen(false);
+                        setCourtSearchText('');
                       }}
                     >
                       <Text
@@ -1487,8 +1527,18 @@ export default function PlayNowTab() {
             </TouchableOpacity>
             {courtDropdownOpen && (
               <View style={styles.dropdownList}>
-                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                  {createCourts.map((court) => (
+                <TextInput
+                  style={[styles.textInput, { marginHorizontal: 8, marginTop: 8, marginBottom: 4 }]}
+                  placeholder="Search courts..."
+                  placeholderTextColor={colors.inputPlaceholder}
+                  value={courtSearchText}
+                  onChangeText={setCourtSearchText}
+                  autoFocus
+                />
+                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                  {createCourts
+                    .filter(c => c.name.toLowerCase().includes(courtSearchText.toLowerCase()))
+                    .map((court) => (
                     <TouchableOpacity
                       key={court.id}
                       style={[
@@ -1498,6 +1548,7 @@ export default function PlayNowTab() {
                       onPress={() => {
                         setCreateCourtId(court.id);
                         setCourtDropdownOpen(false);
+                        setCourtSearchText('');
                       }}
                     >
                       <Text

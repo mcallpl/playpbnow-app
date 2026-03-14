@@ -213,12 +213,23 @@ export function useBeacon() {
       const userId = await getUserId();
 
       // Fetch from shared beacon API (all cross-app casual beacons)
+      const { userName: currentUserName } = await getUserInfo();
       const sharedBody: Record<string, any> = { user_id: parseInt(userId) || 0 };
       if (lat !== undefined && lng !== undefined) {
         sharedBody.lat = lat;
         sharedBody.lng = lng;
-        sharedBody.radius = 50;
+        // No radius filter — show all beacons to everyone for now
       }
+
+      // Update creator_name on any existing beacon belonging to this user
+      // (fixes stale names from previous sessions)
+      try {
+        await fetch(`${SHARED_BEACON_URL}/update_name.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: parseInt(userId) || 0, creator_name: currentUserName }),
+        });
+      } catch { /* best effort */ }
 
       const [sharedRes, localRes] = await Promise.all([
         fetch(`${SHARED_BEACON_URL}/feed.php`, {
@@ -235,21 +246,27 @@ export function useBeacon() {
       const sharedData = await sharedRes.json();
       const localData = await localRes.json();
 
+      // Get the current user's name for overriding stale creator_name on own beacons
+      const { userName } = await getUserInfo();
+
       // Merge beacons: shared casual + local structured
-      const sharedBeacons: Beacon[] = (sharedData.beacons || []).map((b: any) => ({
-        ...b,
-        beacon_type: 'casual' as const,
-        creator_name: b.creator_name || 'Player',
-        reliability_pct: 100,
-        is_mine: String(b.user_id) === userId,
-        chat_count: b.message_count || 0,
-        needs_replacement: false,
-        replacement_info: null,
-        responses: [],
-        user_responded: !!b.my_response,
-        active_lobby_id: null,
-        lobby_member_count: 0,
-      }));
+      const sharedBeacons: Beacon[] = (sharedData.beacons || []).map((b: any) => {
+        const isMine = String(b.user_id) === userId;
+        return {
+          ...b,
+          beacon_type: 'casual' as const,
+          creator_name: isMine ? userName : (b.creator_name || 'Player'),
+          reliability_pct: 100,
+          is_mine: isMine,
+          chat_count: b.message_count || 0,
+          needs_replacement: false,
+          replacement_info: null,
+          responses: [],
+          user_responded: !!b.my_response,
+          active_lobby_id: null,
+          lobby_member_count: 0,
+        };
+      });
 
       // Local structured beacons (from PlayPBNow backend)
       const localBeacons: Beacon[] = (localData.beacons || []).filter(
