@@ -259,7 +259,7 @@ if ($include_history) {
                 FROM beacons b
                 LEFT JOIN courts c ON b.court_id = c.id
                 WHERE b.status IN ('expired', 'cancelled')
-                  AND b.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                  AND b.expires_at >= DATE_SUB(NOW(), INTERVAL 4 HOUR)
                 ORDER BY b.created_at DESC
                 LIMIT 20";
     $histResult = $conn->query($histSql);

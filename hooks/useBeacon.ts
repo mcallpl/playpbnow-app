@@ -256,17 +256,26 @@ export function useBeacon() {
         (b: any) => b.beacon_type === 'structured'
       );
 
-      // Combine and sort by distance if available, else by created_at
-      const allBeacons = [...sharedBeacons, ...localBeacons].sort((a, b) => {
+      // Filter out beacons whose expires_at has passed (don't trust API status alone)
+      const now = Date.now();
+      const activeBeacons = [...sharedBeacons, ...localBeacons].filter(
+        (b) => new Date(b.expires_at).getTime() > now
+      );
+
+      // Sort by distance if available, else by created_at
+      activeBeacons.sort((a, b) => {
         if (a.distance_miles != null && b.distance_miles != null) {
           return a.distance_miles - b.distance_miles;
         }
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
-      setBeacons(allBeacons);
+      setBeacons(activeBeacons);
       setCourts(localData.courts || []);
-      setHistory([
+
+      // History: only show beacons expired within the last 4 hours
+      const fourHoursAgo = now - (4 * 60 * 60 * 1000);
+      const allHistory = [
         ...(sharedData.past_beacons || []).map((b: any) => ({
           ...b,
           beacon_type: 'casual' as const,
@@ -274,7 +283,8 @@ export function useBeacon() {
           is_mine: String(b.user_id) === userId,
         })),
         ...(localData.history || []),
-      ]);
+      ].filter((b) => new Date(b.expires_at || b.created_at).getTime() > fourHoursAgo);
+      setHistory(allHistory);
     } catch (e) {
       setError('Network error');
     } finally {
