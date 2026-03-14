@@ -48,6 +48,7 @@ import { useBeaconChat } from '../../hooks/useBeaconChat';
 import { haptic } from '../../utils/haptics';
 
 const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const SHARED_BEACON_URL = 'https://peoplestar.com/shared/beacon/api';
 
 type BeaconView = 'feed' | 'mode_select' | 'create_casual' | 'create_structured' | 'lobby' | 'locked';
 
@@ -229,7 +230,7 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={isCasual ? styles.mapCardBadgeCasual : styles.mapCardBadgeStructured}>
             <Text style={isCasual ? styles.mapCardBadgeCasualText : styles.mapCardBadgeStructuredText}>
-              {isCasual ? (beacon.is_mine ? 'Come Join Me' : 'Casual') : 'Spot To Fill'}
+              {isCasual ? (beacon.is_mine ? 'My Beacon' : 'More Info') : 'Spot To Fill'}
             </Text>
           </View>
           {beacon.is_mine && beacon.chat_count > 0 && (
@@ -629,20 +630,40 @@ export default function PlayNowTab() {
     setView('mode_select');
   }, [phoneVerified, profileComplete, router]);
 
-  const loadCourtsForCreate = useCallback(async () => {
+  const loadCourtsForCreate = useCallback(async (useSharedApi: boolean = false) => {
     setLoadingCourts(true);
     try {
-      const res = await fetch(`${API_URL}/get_courts.php`);
-      const data = await res.json();
-      if (data.status === 'success') {
-        setCreateCourts(data.courts || []);
+      if (useSharedApi) {
+        // Casual beacons use the shared beacon API's courts table
+        const body: Record<string, any> = {};
+        if (location?.latitude && location?.longitude) {
+          body.lat = location.latitude;
+          body.lng = location.longitude;
+          body.radius = 50;
+        }
+        const res = await fetch(`${SHARED_BEACON_URL}/courts.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          setCreateCourts(data.courts || []);
+        }
+      } else {
+        // Structured beacons use PlayPBNow's local courts
+        const res = await fetch(`${API_URL}/get_courts.php`);
+        const data = await res.json();
+        if (data.status === 'success') {
+          setCreateCourts(data.courts || []);
+        }
       }
     } catch {
       setCreateCourts(courts);
     } finally {
       setLoadingCourts(false);
     }
-  }, [courts]);
+  }, [courts, location]);
 
   const handleGoLive = useCallback(async () => {
     if (!createCourtId) {
@@ -1002,7 +1023,7 @@ export default function PlayNowTab() {
                       </View>
                       <View style={selectedBeacon.beacon_type === 'casual' ? styles.casualBadge : styles.structuredBadge}>
                         <Text style={selectedBeacon.beacon_type === 'casual' ? styles.casualBadgeText : styles.structuredBadgeText}>
-                          {selectedBeacon.beacon_type === 'casual' ? (selectedBeacon.is_mine ? 'Come Join Me' : 'Casual') : 'Spot To Fill'}
+                          {selectedBeacon.beacon_type === 'casual' ? (selectedBeacon.is_mine ? 'My Beacon' : 'More Info') : 'Spot To Fill'}
                         </Text>
                       </View>
                     </View>
@@ -1330,17 +1351,17 @@ export default function PlayNowTab() {
         <Text style={styles.sectionTitle}>Create Beacon</Text>
         <Text style={styles.sectionSubtitle}>What kind of beacon do you want to create?</Text>
 
-        {/* Come Join Me */}
+        {/* Casual Beacon */}
         <TouchableOpacity
           style={[styles.modeCard, styles.modeCardCasual]}
           onPress={async () => {
             setView('create_casual');
             setCourtDropdownOpen(false);
-            await loadCourtsForCreate();
+            await loadCourtsForCreate(true);
           }}
         >
           <BrandedIcon name="live" size={32} color={colors.accent} />
-          <Text style={styles.modeCardTitle}>Come Join Me</Text>
+          <Text style={styles.modeCardTitle}>More Info</Text>
           <Text style={styles.modeCardSubtitle}>
             I'm already at the court. Looking for people to come play!
           </Text>
@@ -1383,7 +1404,7 @@ export default function PlayNowTab() {
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
 
-        <Text style={styles.sectionTitle}>Come Join Me</Text>
+        <Text style={styles.sectionTitle}>Casual Beacon</Text>
 
         {/* Court Selector */}
         <Text style={styles.fieldLabel}>Select Court</Text>
