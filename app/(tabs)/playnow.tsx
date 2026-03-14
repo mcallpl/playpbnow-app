@@ -229,7 +229,7 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={isCasual ? styles.mapCardBadgeCasual : styles.mapCardBadgeStructured}>
             <Text style={isCasual ? styles.mapCardBadgeCasualText : styles.mapCardBadgeStructuredText}>
-              {isCasual ? 'Come Join Me' : 'Spot To Fill'}
+              {isCasual ? (beacon.is_mine ? 'Come Join Me' : 'Casual') : 'Spot To Fill'}
             </Text>
           </View>
           {beacon.is_mine && beacon.chat_count > 0 && (
@@ -240,6 +240,24 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
           )}
         </View>
       </View>
+
+      {/* Beacon message preview */}
+      {beacon.message && !beacon.is_mine && (
+        <View style={{ paddingHorizontal: SPACING.cardPadding, paddingBottom: 8 }}>
+          <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 13, color: colors.textMuted, fontStyle: 'italic' }} numberOfLines={2}>
+            "{beacon.message}"
+          </Text>
+        </View>
+      )}
+
+      {/* Tap to respond — visible CTA for non-creators */}
+      {!beacon.is_mine && !isExpired && (
+        <View style={styles.mapCardTapBar}>
+          <BrandedIcon name="chat" size={16} color="#ffffff" />
+          <Text style={styles.mapCardTapBarText}>Tap to Join or Chat</Text>
+          <BrandedIcon name="enter" size={14} color="#ffffff" />
+        </View>
+      )}
 
       {/* Creator actions */}
       {beacon.is_mine && (
@@ -984,7 +1002,7 @@ export default function PlayNowTab() {
                       </View>
                       <View style={selectedBeacon.beacon_type === 'casual' ? styles.casualBadge : styles.structuredBadge}>
                         <Text style={selectedBeacon.beacon_type === 'casual' ? styles.casualBadgeText : styles.structuredBadgeText}>
-                          {selectedBeacon.beacon_type === 'casual' ? 'Come Join Me' : 'Spot To Fill'}
+                          {selectedBeacon.beacon_type === 'casual' ? (selectedBeacon.is_mine ? 'Come Join Me' : 'Casual') : 'Spot To Fill'}
                         </Text>
                       </View>
                     </View>
@@ -2258,6 +2276,22 @@ const createStyles = (c: ThemeColors) =>
       fontFamily: FONT_BODY_BOLD,
       fontSize: 11,
       color: c.accent,
+    },
+    mapCardTapBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: c.accent,
+      paddingVertical: 12,
+      borderBottomLeftRadius: 16,
+      borderBottomRightRadius: 16,
+    },
+    mapCardTapBarText: {
+      fontFamily: FONT_DISPLAY_BOLD,
+      fontSize: 14,
+      color: '#ffffff',
+      letterSpacing: 0.5,
     },
     mapCardCreatorActions: {
       flexDirection: 'row',
