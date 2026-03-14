@@ -48,7 +48,6 @@ import { useBeaconChat } from '../../hooks/useBeaconChat';
 import { haptic } from '../../utils/haptics';
 
 const API_URL = 'https://peoplestar.com/PlayPBNow/api';
-const SHARED_BEACON_URL = 'https://peoplestar.com/shared/beacon/api';
 
 type BeaconView = 'feed' | 'mode_select' | 'create_casual' | 'create_structured' | 'lobby' | 'locked';
 
@@ -630,40 +629,20 @@ export default function PlayNowTab() {
     setView('mode_select');
   }, [phoneVerified, profileComplete, router]);
 
-  const loadCourtsForCreate = useCallback(async (useSharedApi: boolean = false) => {
+  const loadCourtsForCreate = useCallback(async () => {
     setLoadingCourts(true);
     try {
-      if (useSharedApi) {
-        // Casual beacons use the shared beacon API's courts table
-        const body: Record<string, any> = {};
-        if (location?.latitude && location?.longitude) {
-          body.lat = location.latitude;
-          body.lng = location.longitude;
-          body.radius = 50;
-        }
-        const res = await fetch(`${SHARED_BEACON_URL}/courts.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        if (data.status === 'success') {
-          setCreateCourts(data.courts || []);
-        }
-      } else {
-        // Structured beacons use PlayPBNow's local courts
-        const res = await fetch(`${API_URL}/get_courts.php`);
-        const data = await res.json();
-        if (data.status === 'success') {
-          setCreateCourts(data.courts || []);
-        }
+      const res = await fetch(`${API_URL}/get_courts.php`);
+      const data = await res.json();
+      if (data.status === 'success') {
+        setCreateCourts(data.courts || []);
       }
     } catch {
       setCreateCourts(courts);
     } finally {
       setLoadingCourts(false);
     }
-  }, [courts, location]);
+  }, [courts]);
 
   const handleGoLive = useCallback(async () => {
     if (!createCourtId) {
@@ -1357,7 +1336,7 @@ export default function PlayNowTab() {
           onPress={async () => {
             setView('create_casual');
             setCourtDropdownOpen(false);
-            await loadCourtsForCreate(true);
+            await loadCourtsForCreate();
           }}
         >
           <BrandedIcon name="live" size={32} color={colors.accent} />
