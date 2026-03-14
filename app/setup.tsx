@@ -178,8 +178,9 @@ export default function SetupScreen() {
   }, [players]);
 
   const handleNameChange = (text: string) => {
-      setNewPlayerName(text);
-      searchGlobalPlayers(text);
+      const capitalized = text.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      setNewPlayerName(capitalized);
+      searchGlobalPlayers(capitalized);
   };
 
   const addExistingPlayer = async (result: SearchResult) => {
@@ -553,7 +554,7 @@ export default function SetupScreen() {
                     placeholderTextColor={colors.inputPlaceholder}
                     value={newPlayerName} onChangeText={handleNameChange}
                     onSubmitEditing={isAdding ? undefined : addNewPlayer} returnKeyType="done" blurOnSubmit={false}
-                    editable={!isAdding} />
+                    editable={!isAdding} autoCapitalize="words" />
                 <Pressable style={[styles.genderBtn, newPlayerGender === 'male' ? styles.maleActive : styles.femaleActive]}
                     onPress={() => { setNewPlayerGender(newPlayerGender === 'male' ? 'female' : 'male'); }}
                     disabled={isAdding}>
