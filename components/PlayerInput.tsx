@@ -32,12 +32,13 @@ export function PlayerInput({ onAddPlayer }: PlayerInputProps) {
                     ref={inputRef}
                     style={styles.input}
                     value={playerName}
-                    onChangeText={setPlayerName}
+                    onChangeText={(t) => setPlayerName(t.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '))}
                     placeholder="Enter Player Name"
                     placeholderTextColor={colors.inputPlaceholder}
                     onSubmitEditing={handleAdd}
                     returnKeyType="next"
                     blurOnSubmit={false}
+                    autoCapitalize="words"
                 />
                 <TouchableOpacity
                     style={[styles.genderBtn, gender === 'male' && styles.genderMale]}
@@ -60,11 +61,11 @@ export function PlayerInput({ onAddPlayer }: PlayerInputProps) {
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
-    inputArea: { padding: 15, backgroundColor: c.card, borderBottomWidth: 1, borderColor: c.border },
-    inputRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-    input: { flex: 1, backgroundColor: c.inputBg, borderRadius: 25, paddingHorizontal: 20, paddingVertical: 12, fontSize: 16, fontFamily: FONT_BODY_REGULAR, borderWidth: 1, borderColor: c.border, color: c.inputText },
-    genderBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.textMuted, justifyContent: 'center', alignItems: 'center' },
+    inputArea: { paddingHorizontal: 10, paddingVertical: 12, backgroundColor: c.card, borderBottomWidth: 1, borderColor: c.border },
+    inputRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+    input: { flex: 1, minWidth: 0, backgroundColor: c.inputBg, borderRadius: 25, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, fontFamily: FONT_BODY_REGULAR, borderWidth: 1, borderColor: c.border, color: c.inputText },
+    genderBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: c.textMuted, justifyContent: 'center', alignItems: 'center' },
     genderMale: { backgroundColor: c.male },
     genderFemale: { backgroundColor: c.female },
-    addBtn: { padding: 5 },
+    addBtn: { padding: 4 },
 });

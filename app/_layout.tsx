@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Modal, StyleSheet, Text, TextInput, Touchable
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Outfit_400Regular,
@@ -230,13 +231,29 @@ export default function RootLayout() {
     DMSans_700Bold,
   });
 
+  // On web, fonts load via CSS @font-face but useFonts may not resolve.
+  // Use a timeout fallback so the app doesn't stay blank forever.
+  const [fontTimeout, setFontTimeout] = useState(false);
   useEffect(() => {
-    if (fontsLoaded) {
+    if (Platform.OS === 'web') {
+      const timer = setTimeout(() => setFontTimeout(true), 2000);
+      // Prevent horizontal overflow on mobile web browsers
+      const style = document.createElement('style');
+      style.textContent = 'html,body,#root{max-width:100vw;overflow-x:hidden}';
+      document.head.appendChild(style);
+      return () => { clearTimeout(timer); document.head.removeChild(style); };
+    }
+  }, []);
+
+  const ready = fontsLoaded || fontTimeout;
+
+  useEffect(() => {
+    if (ready) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [ready]);
 
-  if (!fontsLoaded) {
+  if (!ready) {
     return null;
   }
 
