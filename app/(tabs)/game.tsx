@@ -306,8 +306,10 @@ export default function GameScreen() {
       let newP: Player;
       if (existingPlayer) { newP = { id: existingPlayer.id, first_name: existingPlayer.name }; }
       else {
-          if (newPlayerName.trim().toLowerCase() === 'unknown') { Alert.alert("Invalid Name", "You cannot name a player 'Unknown'."); return; }
-          newP = { id: Date.now().toString(), first_name: newPlayerName.trim() };
+          const trimmed = newPlayerName.trim();
+          if (trimmed.toLowerCase() === 'unknown') { Alert.alert("Invalid Name", "You cannot name a player 'Unknown'."); return; }
+          const capitalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+          newP = { id: Date.now().toString(), first_name: capitalized };
       }
       setCurrentRoster([...currentRoster, newP]);
       const saveRoster = async () => {
