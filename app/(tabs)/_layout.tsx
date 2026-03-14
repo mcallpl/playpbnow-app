@@ -10,7 +10,7 @@ import { FONT_DISPLAY_BOLD } from '../../constants/theme';
 
 export default function TabLayout() {
   const { activeMatch } = useActiveMatch();
-  const { hasActiveBeacons } = useBeaconStatus();
+  const { hasActiveBeacons, activeBeaconCount } = useBeaconStatus();
   const { isAdmin } = useSubscription();
   const { colors } = useTheme();
 
@@ -60,6 +60,7 @@ export default function TabLayout() {
               color={color}
               active={hasActiveBeacons}
               glowColor={colors.accent}
+              count={activeBeaconCount}
             />
           ),
         }}
