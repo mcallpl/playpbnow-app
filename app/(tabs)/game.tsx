@@ -608,13 +608,21 @@ export default function GameScreen() {
     }
   };
 
-  // FIXED: Uses ScoreChangeResult — syncs FINAL values after auto-fill
+  // Syncs FINAL values after auto-fill — uses refs for rock-solid FlatList compatibility
   const handleScoreChangeWithSync = (rIdx: number, gIdx: number, team: 't1' | 't2', value: string) => {
       const result = handleScoreChange(rIdx, gIdx, team, value);
       if (sessionId && result && result.changed) {
           syncScoreToServer(result.roundIdx, result.gameIdx, result.s1, result.s2);
       }
   };
+
+  // Ref-backed handler — FlatList cells may cache old closures, but
+  // this ref ALWAYS points to the latest function. The onChangeText
+  // callbacks in renderGame call through this ref, never a stale closure.
+  const syncHandlerRef = React.useRef(handleScoreChangeWithSync);
+  React.useEffect(() => {
+      syncHandlerRef.current = handleScoreChangeWithSync;
+  });
 
   const renderPlayerBox = (player: Player | undefined, rIdx: number, gIdx: number, tIdx: number, pIdx: number, isTeamConflict: boolean) => {
     if (!player) return <View style={styles.emptyBox} />;
@@ -652,7 +660,7 @@ export default function GameScreen() {
                     style={styles.scoreInput} keyboardType="numeric" placeholder="-"
                     placeholderTextColor={colors.textMuted}
                     value={scores[`${rIdx}_${gIdx}_t1`] || ''}
-                    onChangeText={(t) => handleScoreChangeWithSync(rIdx, gIdx, 't1', t)} returnKeyType="next" />
+                    onChangeText={(t) => syncHandlerRef.current(rIdx, gIdx, 't1', t)} returnKeyType="next" />
             </View>
         )}
         <View style={styles.teamWrapper}><View style={styles.teamContainer}>
@@ -673,7 +681,7 @@ export default function GameScreen() {
                     style={styles.scoreInput} keyboardType="numeric" placeholder="-"
                     placeholderTextColor={colors.textMuted}
                     value={scores[`${rIdx}_${gIdx}_t2`] || ''}
-                    onChangeText={(t) => handleScoreChangeWithSync(rIdx, gIdx, 't2', t)} returnKeyType="next" />
+                    onChangeText={(t) => syncHandlerRef.current(rIdx, gIdx, 't2', t)} returnKeyType="next" />
             </View>
         )}
       </View>
@@ -748,6 +756,7 @@ export default function GameScreen() {
         </View>
 
         <FlatList ref={flatListRef} data={schedule} keyExtractor={(item) => item.id}
+          extraData={scores}
           alwaysBounceHorizontal={false}
           contentContainerStyle={styles.listContent}
           onScrollToIndexFailed={(info) => { setTimeout(() => flatListRef.current?.scrollToIndex({ index: info.index, animated: true }), 500); }}

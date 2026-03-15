@@ -2,20 +2,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const POLL_INTERVAL = 2000;
+const PROTECTION_WINDOW = 3000;
+const MAX_RETRIES = 3;
 
 /**
- * useCollaborativeScoring V3 — UNIT A IS BOSS
- * 
- * RULES:
- * 1. When Unit A creates session, ALL of Unit A's current scores 
- *    get pushed to the server immediately. Server = Unit A's state.
- * 2. When Unit B joins, it does a FULL PULL from server, completely
- *    replacing whatever it had locally. Now both match Unit A.
- * 3. From that point, both poll every 3s. Either can make changes.
- *    Server is the single source of truth.
- * 4. NEVER send empty strings as real values. If a box is empty,
- *    don't send it. If a box has "0", that's a real score.
- * 5. NEVER overwrite a local value you just typed (4s protection window).
+ * useCollaborativeScoring V4 — ROCK SOLID
+ *
+ * CHANGES FROM V3:
+ * - All session-dependent functions use REFS, never closure values
+ * - Retry logic on all syncs (3 attempts)
+ * - Server response is validated
+ * - Full pull on every poll (since=0) — no timestamp-based misses
+ * - Functional setState for all merges — no race conditions
+ * - Exposes a ref-backed sync handler for FlatList cell stability
  */
 
 interface CollabConfig {
@@ -41,37 +41,63 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     const [finishedSessionId, setFinishedSessionId] = useState<string | null>(null);
 
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const pollForUpdatesRef = useRef<(() => void) | null>(null);
     const localUpdatesRef = useRef<Set<string>>(new Set());
-    const lastSyncTimeRef = useRef(0);
-    // scoresRef is now provided by useSmartScoring — always synchronously up-to-date
+
+    // ── ALL session values as refs — immune to stale closures ──
+    const sessionIdRef = useRef(sessionId);
+    const shareCodeRef = useRef(shareCode);
+    const initialSyncDoneRef = useRef(initialSyncDone);
+    useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+    useEffect(() => { shareCodeRef.current = shareCode; }, [shareCode]);
+    useEffect(() => { initialSyncDoneRef.current = initialSyncDone; }, [initialSyncDone]);
+
+    // ── RETRY FETCH helper ─────────────────────────────────────
+    const fetchWithRetry = useCallback(async (
+        url: string,
+        options: RequestInit,
+        retries: number = MAX_RETRIES
+    ): Promise<any> => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                const res = await fetch(url, options);
+                const data = await res.json();
+                if (data.status === 'success') return data;
+                console.error(`Server error (attempt ${attempt}/${retries}):`, data.message);
+                if (attempt === retries) return data; // return error on final attempt
+            } catch (err) {
+                console.error(`Network error (attempt ${attempt}/${retries}):`, err);
+                if (attempt < retries) {
+                    await new Promise(r => setTimeout(r, 300 * attempt)); // backoff
+                }
+            }
+        }
+        return { status: 'error', message: 'All retries failed' };
+    }, []);
 
     // ── PUSH ALL: Unit A sends every score to server ─────────────
     const pushAllScoresToServer = useCallback(async (
-        code: string, 
-        sid: string, 
+        code: string,
+        sid: string,
         currentScores: { [key: string]: string }
     ) => {
-        // Group by game
         const gameMap: { [key: string]: { s1: string; s2: string; rIdx: number; gIdx: number } } = {};
-        
+
         for (const [key, val] of Object.entries(currentScores)) {
             if (!val || val === '') continue;
-            const parts = key.split('_'); // "0_0_t1"
+            const parts = key.split('_');
             if (parts.length !== 3) continue;
             const rIdx = parseInt(parts[0]);
             const gIdx = parseInt(parts[1]);
             const team = parts[2];
             const gameKey = `${rIdx}_${gIdx}`;
-            
+
             if (!gameMap[gameKey]) gameMap[gameKey] = { s1: '', s2: '', rIdx, gIdx };
             if (team === 't1') gameMap[gameKey].s1 = val;
             if (team === 't2') gameMap[gameKey].s2 = val;
         }
-        
-        // Push each game
-        const promises = Object.values(gameMap).map(game => 
-            fetch(`${API_URL}/collab_sync_scores.php`, {
+
+        const promises = Object.values(gameMap).map(game =>
+            fetchWithRetry(`${API_URL}/collab_sync_scores.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -83,12 +109,12 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                     s2_str: game.s2,
                     updated_at: Date.now()
                 })
-            }).catch(err => console.error('Push error:', err))
+            })
         );
-        
+
         await Promise.all(promises);
         console.log(`📤 Pushed ${Object.keys(gameMap).length} games to server`);
-    }, []);
+    }, [fetchWithRetry]);
 
     // ── PULL ALL: Get every score from server, REPLACE local ─────
     const pullAllScoresFromServer = useCallback(async (code: string): Promise<{ [key: string]: string } | null> => {
@@ -101,9 +127,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             if (data.status === 'success') {
                 setConnectedUsers(data.connected_users || 0);
 
-                // Build a CLEAN scores object from server data only
                 const serverScores: { [key: string]: string } = {};
-
                 if (data.updates && data.updates.length > 0) {
                     for (const update of data.updates) {
                         const s1 = update.s1_str ?? '';
@@ -113,14 +137,9 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                     }
                 }
 
-                // REPLACE local scores entirely with server state
-                // (Full pull on join — this is intentionally a replace, not merge)
+                // Full replace on join — intentional
                 setScores(serverScores);
-                console.log(`📥 Pulled ${Object.keys(serverScores).length} values from server — local replaced`);
-
-                if (data.latest_timestamp) {
-                    lastSyncTimeRef.current = data.latest_timestamp;
-                }
+                console.log(`📥 Pulled ${Object.keys(serverScores).length} values from server`);
                 return serverScores;
             }
         } catch (err) {
@@ -129,11 +148,14 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         return null;
     }, [setScores]);
 
-    // ── PUSH ONE GAME: Send a single game's scores ───────────────
+    // ── PUSH ONE GAME: Uses REFS — works even from stale closures ──
     const syncScoreToServer = useCallback(async (
         roundIdx: number, gameIdx: number, s1Val: string, s2Val: string
     ) => {
-        if (!sessionId || !shareCode) return;
+        // Read from REFS, not closure — immune to stale FlatList cells
+        const sid = sessionIdRef.current;
+        const code = shareCodeRef.current;
+        if (!sid || !code) return;
 
         // Protect these keys from being overwritten by next poll
         const key1 = `${roundIdx}_${gameIdx}_t1`;
@@ -143,40 +165,28 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         setTimeout(() => {
             localUpdatesRef.current.delete(key1);
             localUpdatesRef.current.delete(key2);
-        }, 4000);
+        }, PROTECTION_WINDOW);
 
-        try {
-            await fetch(`${API_URL}/collab_sync_scores.php`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    share_code: shareCode,
-                    session_id: sessionId,
-                    round_idx: roundIdx,
-                    game_idx: gameIdx,
-                    s1_str: s1Val,
-                    s2_str: s2Val,
-                    updated_at: Date.now()
-                })
-            });
-            // After pushing our score, immediately poll for any collaborator changes
-            // This cuts effective sync delay from 2s to near-instant
-            setTimeout(() => pollForUpdatesRef.current?.(), 500);
-        } catch (err) {
-            console.error('Score sync failed:', err);
+        const result = await fetchWithRetry(`${API_URL}/collab_sync_scores.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                share_code: code,
+                session_id: sid,
+                round_idx: roundIdx,
+                game_idx: gameIdx,
+                s1_str: s1Val,
+                s2_str: s2Val,
+                updated_at: Date.now()
+            })
+        });
+
+        if (result.status !== 'success') {
+            console.error(`⚠️ SYNC FAILED for game ${roundIdx}_${gameIdx}: ${result.message}`);
         }
-    }, [sessionId, shareCode]);
+    }, [fetchWithRetry]); // NO sessionId/shareCode deps — uses refs
 
-    // ── POLL: Check for new changes from the other unit ──────────
-    // Uses refs for sessionId/shareCode/initialSyncDone to avoid
-    // recreating the callback and restarting the interval constantly.
-    const sessionIdRef = useRef(sessionId);
-    const shareCodeRef = useRef(shareCode);
-    const initialSyncDoneRef = useRef(initialSyncDone);
-    useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
-    useEffect(() => { shareCodeRef.current = shareCode; }, [shareCode]);
-    useEffect(() => { initialSyncDoneRef.current = initialSyncDone; }, [initialSyncDone]);
-
+    // ── POLL: FULL PULL every time — no timestamp gaps ──────────
     const pollForUpdates = useCallback(async () => {
         const sid = sessionIdRef.current;
         const code = shareCodeRef.current;
@@ -185,18 +195,17 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         try {
             const userId = await AsyncStorage.getItem('user_id') || '';
             const res = await fetch(
-                `${API_URL}/collab_get_scores.php?share_code=${code}&since=${lastSyncTimeRef.current}&user_id=${userId}`
+                `${API_URL}/collab_get_scores.php?share_code=${code}&since=0&user_id=${userId}`
             );
             const data = await res.json();
 
             if (data.status === 'success') {
                 // Check if the match was finished by another device
                 if (data.session_status === 'finished') {
-                    console.log('🏁 Match finished by collaborator! Redirecting to podium...');
+                    console.log('🏁 Match finished by collaborator!');
                     setFinishedGroupName(data.group_name || null);
                     setFinishedSessionId(data.saved_session_id ? String(data.saved_session_id) : null);
                     setMatchFinishedByRemote(true);
-                    // Stop polling immediately
                     if (pollIntervalRef.current) {
                         clearInterval(pollIntervalRef.current);
                         pollIntervalRef.current = null;
@@ -207,7 +216,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 setConnectedUsers(data.connected_users || 0);
 
                 if (data.updates && data.updates.length > 0) {
-                    // Compute changes against the synchronous ref
+                    // Compare server state against our synchronous ref
                     const changes: { [key: string]: string } = {};
                     const current = scoresRef.current;
 
@@ -231,23 +240,16 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                     }
 
                     if (Object.keys(changes).length > 0) {
-                        // Use functional setState to MERGE — never overwrite concurrent local edits
+                        // Functional setState — MERGES, never overwrites local edits
                         setScores(prev => ({ ...prev, ...changes }));
                         setToastMessage('Scores updated from collaborator');
                     }
-                }
-
-                if (data.latest_timestamp) {
-                    lastSyncTimeRef.current = data.latest_timestamp;
                 }
             }
         } catch (err) {
             console.error('Poll failed:', err);
         }
     }, [setScores]);
-
-    // Keep a ref to pollForUpdates so syncScoreToServer can trigger immediate polls
-    useEffect(() => { pollForUpdatesRef.current = pollForUpdates; }, [pollForUpdates]);
 
     // ── LIFECYCLE: Start polling after initial sync ──────────────
     useEffect(() => {
@@ -259,8 +261,8 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             return;
         }
 
-        // Start polling every 2 seconds for faster sync
-        pollIntervalRef.current = setInterval(pollForUpdates, 2000);
+        // Start polling
+        pollIntervalRef.current = setInterval(pollForUpdates, POLL_INTERVAL);
 
         return () => {
             if (pollIntervalRef.current) {
@@ -274,12 +276,10 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     useEffect(() => {
         if (!sessionId || !shareCode) {
             setInitialSyncDone(false);
-            lastSyncTimeRef.current = 0;
         }
     }, [sessionId, shareCode]);
 
     // ── CREATE SESSION (Unit A) ──────────────────────────────────
-    // Creates session AND pushes all current scores to server
     const createCollabSession = useCallback(async (
         batchId: string,
         groupName: string,
@@ -294,7 +294,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                     batch_id: batchId,
                     group_name: groupName,
                     schedule: scheduleData,
-                    scores: {} // Don't send scores in snapshot — we push them separately
+                    scores: {}
                 })
             });
             const data = await res.json();
@@ -302,13 +302,13 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             if (data.status === 'success') {
                 const code = data.share_code;
                 const sid = data.session_id.toString();
-                
-                // NOW push all current scores to the server
+
+                // Push all current scores to the server
                 await pushAllScoresToServer(code, sid, scoresRef.current);
-                
+
                 // Mark initial sync done so polling can start
                 setInitialSyncDone(true);
-                
+
                 return { shareCode: code, sessionId: sid };
             } else {
                 console.error('Create session failed:', data.message);
@@ -323,8 +323,6 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     }, [pushAllScoresToServer]);
 
     // ── JOIN SESSION (Unit B) ────────────────────────────────────
-    // Called after Unit B navigates to game screen with collab params
-    // Returns the pulled scores so the caller can use them (e.g. for scrolling)
     const joinAndSync = useCallback(async (code: string): Promise<{ [key: string]: string } | null> => {
         console.log('🔗 Unit B joining session, pulling scores...');
         const serverScores = await pullAllScoresFromServer(code);
