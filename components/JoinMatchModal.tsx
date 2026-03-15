@@ -4,7 +4,6 @@ import React, { useMemo, useState } from 'react';
 import { storeNavData } from '../utils/navData';
 import {
     ActivityIndicator,
-    Alert,
     Modal,
     StyleSheet,
     Text,
@@ -29,11 +28,13 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
     const styles = useMemo(() => createStyles(colors), [colors]);
     const [shareCode, setShareCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const handleJoin = async () => {
+        setErrorMessage('');
         const code = shareCode.trim().toUpperCase();
         if (code.length !== 6) {
-            Alert.alert('Invalid Code', 'Please enter a 6-character share code');
+            setErrorMessage('Please enter a 6-character share code.');
             return;
         }
 
@@ -56,6 +57,7 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
             if (data.status === 'success') {
                 onClose();
                 setShareCode('');
+                setErrorMessage('');
 
                 // Navigate to the game screen with full schedule from the collab session
                 const navId = await storeNavData({
@@ -74,11 +76,11 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                     }
                 });
             } else {
-                Alert.alert('Error', data.message || 'Could not join match');
+                setErrorMessage('That share code does not exist. Please try another code.');
             }
         } catch (error) {
             console.error('Join error:', error);
-            Alert.alert('Error', 'Network error. Please try again.');
+            setErrorMessage('Could not connect to the server. Please check your connection and try again.');
         } finally {
             setLoading(false);
         }
@@ -90,7 +92,7 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                 <View style={styles.container}>
                     <View style={styles.header}>
                         <Text style={styles.title}>JOIN LIVE MATCH</Text>
-                        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                        <TouchableOpacity onPress={() => { setErrorMessage(''); onClose(); }} style={styles.closeBtn}>
                             <BrandedIcon name="close" size={28} color={colors.textMuted} />
                         </TouchableOpacity>
                     </View>
@@ -101,15 +103,18 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
 
                     <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, errorMessage ? { borderColor: '#ff4444' } : null]}
                             placeholder="ABC123"
                             placeholderTextColor={colors.inputPlaceholder}
                             value={shareCode}
-                            onChangeText={(text) => setShareCode(text.toUpperCase())}
+                            onChangeText={(text) => { setShareCode(text.toUpperCase()); setErrorMessage(''); }}
                             autoCapitalize="characters"
                             maxLength={6}
                             autoFocus
                         />
+                        {errorMessage ? (
+                            <Text style={styles.errorText}>{errorMessage}</Text>
+                        ) : null}
                     </View>
 
                     <TouchableOpacity
@@ -182,6 +187,13 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     },
     inputContainer: {
         marginBottom: 20,
+    },
+    errorText: {
+        color: '#ff4444',
+        fontSize: 14,
+        fontFamily: FONT_BODY_SEMIBOLD,
+        textAlign: 'center',
+        marginTop: 10,
     },
     input: {
         backgroundColor: c.inputBg,
