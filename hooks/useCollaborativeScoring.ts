@@ -23,6 +23,7 @@ interface CollabConfig {
     shareCode: string | null;
     isCollaborator: boolean;
     schedule: any[];
+    setSchedule?: (schedule: any[]) => void;
     scores: { [key: string]: string };
     setScores: (scores: { [key: string]: string } | ((prev: { [key: string]: string }) => { [key: string]: string })) => void;
     scoresRef: React.MutableRefObject<{ [key: string]: string }>;
@@ -30,7 +31,7 @@ interface CollabConfig {
 }
 
 export const useCollaborativeScoring = (config: CollabConfig) => {
-    const { sessionId, shareCode, isCollaborator, schedule, scores, setScores, scoresRef, inputRefs } = config;
+    const { sessionId, shareCode, isCollaborator, schedule, setSchedule, scores, setScores, scoresRef, inputRefs } = config;
 
     const [isSyncing, setSyncing] = useState(false);
     const [connectedUsers, setConnectedUsers] = useState(0);
@@ -186,6 +187,9 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         }
     }, [fetchWithRetry]); // NO sessionId/shareCode deps — uses refs
 
+    // ── Track server schedule hash to detect changes ──────────
+    const serverScheduleHashRef = useRef<string>('');
+
     // ── POLL: FULL PULL every time — no timestamp gaps ──────────
     const pollForUpdates = useCallback(async () => {
         const sid = sessionIdRef.current;
@@ -214,6 +218,33 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 }
 
                 setConnectedUsers(data.connected_users || 0);
+
+                // ── Sync schedule from server (detects creator shuffle/swap) ──
+                if (data.schedule && setSchedule) {
+                    const serverScheduleStr = JSON.stringify(data.schedule);
+                    if (serverScheduleHashRef.current === '') {
+                        // First poll — just record the hash
+                        serverScheduleHashRef.current = serverScheduleStr;
+                    } else if (serverScheduleStr !== serverScheduleHashRef.current) {
+                        // Schedule changed on server — update local
+                        console.log('📋 Schedule updated from server — syncing player assignments');
+                        serverScheduleHashRef.current = serverScheduleStr;
+                        // Parse and set schedule with proper IDs (same logic as useGameLogic init)
+                        const parsed = data.schedule;
+                        const safeSchedule = parsed.map((round: any, rIdx: number) => ({
+                            ...round,
+                            id: round.id || `round-${rIdx}`,
+                            games: round.games.map((g: any, gIdx: number) => ({
+                                ...g,
+                                id: g.id || `game-${rIdx}-${gIdx}-${Date.now()}`,
+                                score_team1: g.score_team1 || 0,
+                                score_team2: g.score_team2 || 0
+                            }))
+                        }));
+                        setSchedule(safeSchedule);
+                        setToastMessage('Matchups updated by host');
+                    }
+                }
 
                 if (data.updates && data.updates.length > 0) {
                     // Compare server state against our synchronous ref
@@ -249,7 +280,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         } catch (err) {
             console.error('Poll failed:', err);
         }
-    }, [setScores]);
+    }, [setScores, setSchedule]);
 
     // ── LIFECYCLE: Start polling after initial sync ──────────────
     useEffect(() => {
@@ -332,6 +363,28 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         return serverScores;
     }, [pullAllScoresFromServer]);
 
+    // ── PUSH SCHEDULE UPDATE (Unit A after shuffle/swap) ─────────
+    const pushScheduleToServer = useCallback(async (scheduleData: any[]) => {
+        const sid = sessionIdRef.current;
+        const code = shareCodeRef.current;
+        if (!sid || !code) return;
+
+        try {
+            await fetchWithRetry(`${API_URL}/collab_update_schedule.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    share_code: code,
+                    session_id: sid,
+                    schedule: scheduleData
+                })
+            });
+            console.log('📤 Pushed updated schedule to server');
+        } catch (err) {
+            console.error('Push schedule failed:', err);
+        }
+    }, [fetchWithRetry]);
+
     const dismissToast = useCallback(() => {
         setToastMessage(null);
     }, []);
@@ -346,6 +399,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         syncScoreToServer,
         createCollabSession,
         joinAndSync,
+        pushScheduleToServer,
         isSyncing,
         connectedUsers,
         toastMessage,

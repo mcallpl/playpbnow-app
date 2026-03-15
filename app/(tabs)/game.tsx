@@ -102,7 +102,7 @@ export default function GameScreen() {
           setNavDataLoaded(true);
       };
       loadMatchData();
-  }, []);
+  }, [params.navId]);
 
   const [currentRoster, setCurrentRoster] = useState<Player[]>([]);
   const [editingPlayer, setEditingPlayer] = useState<{r:number,g:number,t:number,p:number} | null>(null);
@@ -134,11 +134,11 @@ export default function GameScreen() {
   });
 
   const {
-      syncScoreToServer, createCollabSession, joinAndSync,
+      syncScoreToServer, createCollabSession, joinAndSync, pushScheduleToServer,
       isSyncing, connectedUsers, toastMessage, dismissToast,
       matchFinishedByRemote, finishedGroupName, finishedSessionId, clearMatchFinished
   } = useCollaborativeScoring({
-      sessionId, shareCode, isCollaborator, schedule, scores, setScores, scoresRef, inputRefs
+      sessionId, shareCode, isCollaborator, schedule, setSchedule, scores, setScores, scoresRef, inputRefs
   });
 
   const { setActiveMatch, clearActiveMatch } = useActiveMatch();
@@ -193,6 +193,7 @@ export default function GameScreen() {
   }, [params.groupName]);
 
   // UNIT B INIT: When arriving as collaborator, pull Unit A's scores
+  // Depends on shareCode+sessionId params so it re-runs when joining a NEW match
   useEffect(() => {
       if (params.isCollaborator === 'true' && params.shareCode && params.sessionId) {
           setIsCollaborator(true);
@@ -244,7 +245,7 @@ export default function GameScreen() {
               players: currentRoster,
           });
       }
-  }, [params.isCollaborator]);
+  }, [params.isCollaborator, params.shareCode, params.sessionId]);
 
   // When a collaborator finishes the match, redirect all other devices to podium
   useEffect(() => {
@@ -322,6 +323,18 @@ export default function GameScreen() {
       Alert.alert("Added", `${newP.first_name} added to roster. Hit 'Shuffle' to include them in games.`);
       setNewPlayerName(''); setSearchResults([]); setModalVisible(false);
   };
+
+  // When the owner changes the schedule (shuffle/swap), push to server so Unit B stays synced
+  const scheduleVersionRef = React.useRef(0);
+  useEffect(() => {
+      if (sessionId && shareCode && !isCollaborator && schedule.length > 0) {
+          // Skip the initial mount (scheduleVersionRef starts at 0)
+          if (scheduleVersionRef.current > 0) {
+              pushScheduleToServer(schedule);
+          }
+          scheduleVersionRef.current++;
+      }
+  }, [schedule, sessionId, shareCode, isCollaborator, pushScheduleToServer]);
 
   const handleShuffle = () => {
     const doShuffle = () => {
