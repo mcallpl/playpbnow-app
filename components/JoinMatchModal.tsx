@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { storeNavData } from '../utils/navData';
 import {
     ActivityIndicator,
+    Alert,
     Modal,
     StyleSheet,
     Text,
@@ -76,7 +77,12 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                     }
                 });
             } else {
-                setErrorMessage('That share code does not exist. Please try another code.');
+                Alert.alert(
+                    'Invalid Share Code',
+                    'Please check the share code you entered. That code does not exist.',
+                    [{ text: 'OK' }]
+                );
+                setShareCode('');
             }
         } catch (error) {
             console.error('Join error:', error);
