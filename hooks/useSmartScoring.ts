@@ -21,12 +21,30 @@ export interface ScoreChangeResult {
 }
 
 export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresComplete?: () => void) => {
-    const [scores, setScores] = useState<{ [key: string]: string }>({});
+    const [scores, setScoresRaw] = useState<{ [key: string]: string }>({});
     const [winningScore, setWinningScore] = useState(11);
 
     const inputRefs = useRef<{ [key: string]: TextInput | null }>({});
     const flatListRef = useRef<FlatList>(null);
     const finishButtonRef = useRef<any>(null);
+
+    // Synchronous ref — always has the latest scores, even between renders.
+    // This prevents poll-delivered scores from being wiped by stale closures.
+    const scoresRef = useRef<{ [key: string]: string }>({});
+
+    // Wrapper that keeps ref + state in sync
+    const setScores = (newScores: { [key: string]: string } | ((prev: { [key: string]: string }) => { [key: string]: string })) => {
+        if (typeof newScores === 'function') {
+            setScoresRaw(prev => {
+                const result = newScores(prev);
+                scoresRef.current = result;
+                return result;
+            });
+        } else {
+            scoresRef.current = newScores;
+            setScoresRaw(newScores);
+        }
+    };
 
     // Persist scores & WTS
     useEffect(() => {
@@ -34,7 +52,11 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
         const load = async () => {
             try {
                 const saved = await AsyncStorage.getItem(`scores_${groupName}`);
-                if (saved) setScores(JSON.parse(saved));
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    scoresRef.current = parsed;
+                    setScoresRaw(parsed);
+                }
                 const savedWts = await AsyncStorage.getItem(`wts_${groupName}`);
                 if (savedWts) setWinningScore(parseInt(savedWts));
             } catch (e) {}
@@ -98,7 +120,7 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
         const t1Key = `${rIdx}_${gIdx}_t1`;
         const t2Key = `${rIdx}_${gIdx}_t2`;
 
-        let newState = { ...scores, [currentKey]: value };
+        let newState = { ...scoresRef.current, [currentKey]: value };
         const numVal = parseInt(value);
 
         setScores(newState);
@@ -209,7 +231,7 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
     };
 
     return {
-        scores, setScores,
+        scores, setScores, scoresRef,
         winningScore, setWinningScore: updateWTS,
         clearScores, inputRefs, flatListRef, finishButtonRef,
         handleScoreChange

@@ -24,12 +24,13 @@ interface CollabConfig {
     isCollaborator: boolean;
     schedule: any[];
     scores: { [key: string]: string };
-    setScores: (scores: { [key: string]: string }) => void;
+    setScores: (scores: { [key: string]: string } | ((prev: { [key: string]: string }) => { [key: string]: string })) => void;
+    scoresRef: React.MutableRefObject<{ [key: string]: string }>;
     inputRefs: React.MutableRefObject<{ [key: string]: any }>;
 }
 
 export const useCollaborativeScoring = (config: CollabConfig) => {
-    const { sessionId, shareCode, isCollaborator, schedule, scores, setScores, inputRefs } = config;
+    const { sessionId, shareCode, isCollaborator, schedule, scores, setScores, scoresRef, inputRefs } = config;
 
     const [isSyncing, setSyncing] = useState(false);
     const [connectedUsers, setConnectedUsers] = useState(0);
@@ -40,13 +41,10 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     const [finishedSessionId, setFinishedSessionId] = useState<string | null>(null);
 
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const pollForUpdatesRef = useRef<(() => void) | null>(null);
     const localUpdatesRef = useRef<Set<string>>(new Set());
     const lastSyncTimeRef = useRef(0);
-    const scoresRef = useRef(scores);
-
-    useEffect(() => {
-        scoresRef.current = scores;
-    }, [scores]);
+    // scoresRef is now provided by useSmartScoring — always synchronously up-to-date
 
     // ── PUSH ALL: Unit A sends every score to server ─────────────
     const pushAllScoresToServer = useCallback(async (
@@ -116,6 +114,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 }
 
                 // REPLACE local scores entirely with server state
+                // (Full pull on join — this is intentionally a replace, not merge)
                 setScores(serverScores);
                 console.log(`📥 Pulled ${Object.keys(serverScores).length} values from server — local replaced`);
 
@@ -160,6 +159,9 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                     updated_at: Date.now()
                 })
             });
+            // After pushing our score, immediately poll for any collaborator changes
+            // This cuts effective sync delay from 2s to near-instant
+            setTimeout(() => pollForUpdatesRef.current?.(), 500);
         } catch (err) {
             console.error('Score sync failed:', err);
         }
@@ -205,8 +207,9 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 setConnectedUsers(data.connected_users || 0);
 
                 if (data.updates && data.updates.length > 0) {
-                    const currentScores = { ...scoresRef.current };
-                    let hasChanges = false;
+                    // Compute changes against the synchronous ref
+                    const changes: { [key: string]: string } = {};
+                    const current = scoresRef.current;
 
                     for (const update of data.updates) {
                         const key1 = `${update.round_idx}_${update.game_idx}_t1`;
@@ -214,23 +217,22 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
 
                         if (!localUpdatesRef.current.has(key1)) {
                             const serverVal = update.s1_str ?? '';
-                            if (serverVal !== '' && currentScores[key1] !== serverVal) {
-                                currentScores[key1] = serverVal;
-                                hasChanges = true;
+                            if (serverVal !== '' && current[key1] !== serverVal) {
+                                changes[key1] = serverVal;
                             }
                         }
 
                         if (!localUpdatesRef.current.has(key2)) {
                             const serverVal = update.s2_str ?? '';
-                            if (serverVal !== '' && currentScores[key2] !== serverVal) {
-                                currentScores[key2] = serverVal;
-                                hasChanges = true;
+                            if (serverVal !== '' && current[key2] !== serverVal) {
+                                changes[key2] = serverVal;
                             }
                         }
                     }
 
-                    if (hasChanges) {
-                        setScores(currentScores);
+                    if (Object.keys(changes).length > 0) {
+                        // Use functional setState to MERGE — never overwrite concurrent local edits
+                        setScores(prev => ({ ...prev, ...changes }));
                         setToastMessage('Scores updated from collaborator');
                     }
                 }
@@ -244,6 +246,9 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         }
     }, [setScores]);
 
+    // Keep a ref to pollForUpdates so syncScoreToServer can trigger immediate polls
+    useEffect(() => { pollForUpdatesRef.current = pollForUpdates; }, [pollForUpdates]);
+
     // ── LIFECYCLE: Start polling after initial sync ──────────────
     useEffect(() => {
         if (!sessionId || !shareCode || !initialSyncDone) {
@@ -254,8 +259,8 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             return;
         }
 
-        // Start polling every 3 seconds
-        pollIntervalRef.current = setInterval(pollForUpdates, 3000);
+        // Start polling every 2 seconds for faster sync
+        pollIntervalRef.current = setInterval(pollForUpdates, 2000);
 
         return () => {
             if (pollIntervalRef.current) {

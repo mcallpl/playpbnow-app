@@ -125,7 +125,7 @@ export default function GameScreen() {
   const [isCollaborator, setIsCollaborator] = useState(false);
 
   const {
-      scores, setScores, winningScore, setWinningScore,
+      scores, setScores, scoresRef, winningScore, setWinningScore,
       clearScores, inputRefs, flatListRef, handleScoreChange
   } = useSmartScoring(groupName, schedule, () => {
       if (finishButtonRef.current && isMatchScored) {
@@ -138,7 +138,7 @@ export default function GameScreen() {
       isSyncing, connectedUsers, toastMessage, dismissToast,
       matchFinishedByRemote, finishedGroupName, finishedSessionId, clearMatchFinished
   } = useCollaborativeScoring({
-      sessionId, shareCode, isCollaborator, schedule, scores, setScores, inputRefs
+      sessionId, shareCode, isCollaborator, schedule, scores, setScores, scoresRef, inputRefs
   });
 
   const { setActiveMatch, clearActiveMatch } = useActiveMatch();
