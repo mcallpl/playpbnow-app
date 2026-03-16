@@ -4,7 +4,6 @@ import React, { useMemo, useState } from 'react';
 import { storeNavData } from '../utils/navData';
 import {
     ActivityIndicator,
-    Alert,
     Modal,
     StyleSheet,
     Text,
@@ -31,11 +30,14 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
+    // Strip everything except letters A-Z (codes are alpha-only, no I or O)
+    const cleanCode = (text: string) => text.replace(/[^A-Za-z]/g, '').toUpperCase();
+
     const handleJoin = async () => {
         setErrorMessage('');
-        const code = shareCode.trim().toUpperCase();
+        const code = cleanCode(shareCode);
         if (code.length !== 6) {
-            setErrorMessage('Please enter a 6-character share code.');
+            setErrorMessage('Please enter a 6-letter share code (letters only, no numbers).');
             return;
         }
 
@@ -43,6 +45,8 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
 
         try {
             const userId = await AsyncStorage.getItem('user_id') || '';
+
+            console.log(`[JoinMatch] Sending code: "${code}" to ${API_URL}/collab_join_match.php`);
 
             const response = await fetch(`${API_URL}/collab_join_match.php`, {
                 method: 'POST',
@@ -53,7 +57,17 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                 })
             });
 
-            const data = await response.json();
+            const responseText = await response.text();
+            console.log(`[JoinMatch] Response (${response.status}): ${responseText.substring(0, 500)}`);
+
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (parseErr) {
+                console.error('[JoinMatch] Failed to parse JSON:', responseText.substring(0, 200));
+                setErrorMessage('Server returned an unexpected response. Please try again.');
+                return;
+            }
 
             if (data.status === 'success') {
                 onClose();
@@ -77,15 +91,12 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                     }
                 });
             } else {
-                Alert.alert(
-                    'Invalid Share Code',
-                    'Please check the share code you entered. That code does not exist.',
-                    [{ text: 'OK' }]
-                );
-                setShareCode('');
+                const serverMsg = data.message || 'Unknown error';
+                console.error(`[JoinMatch] Server error: ${serverMsg}`);
+                setErrorMessage(serverMsg);
             }
         } catch (error) {
-            console.error('Join error:', error);
+            console.error('[JoinMatch] Network error:', error);
             setErrorMessage('Could not connect to the server. Please check your connection and try again.');
         } finally {
             setLoading(false);
@@ -104,16 +115,16 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                     </View>
 
                     <Text style={styles.instructions}>
-                        Enter the 6-character code shared by the match host to view live scores and help keep score.
+                        Enter the 6-letter code shared by the match host to view live scores and help keep score.
                     </Text>
 
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={[styles.input, errorMessage ? { borderColor: '#ff4444' } : null]}
-                            placeholder="ABC123"
+                            placeholder="ABCDEF"
                             placeholderTextColor={colors.inputPlaceholder}
                             value={shareCode}
-                            onChangeText={(text) => { setShareCode(text.toUpperCase()); setErrorMessage(''); }}
+                            onChangeText={(text) => { setShareCode(cleanCode(text)); setErrorMessage(''); }}
                             autoCapitalize="characters"
                             maxLength={6}
                             autoFocus
