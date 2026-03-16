@@ -509,22 +509,17 @@ export default function GameScreen() {
       // If already in a collab session, show share modal
       if (sessionId && shareCode) { setShareModalVisible(true); return; }
 
-      if (isMatchScored) {
-          // In scoring mode — offer to create OR join
-          if (Platform.OS === 'web') {
-              const choice = window.confirm('Create a shared match?\n\nOK = Create Shared Match\nCancel = Join Existing Match');
-              if (choice) createNewCollabSession();
-              else setJoinModalVisible(true);
-          } else {
-              Alert.alert('Shared Scoring', 'What would you like to do?', [
-                  { text: 'Create Shared Match', onPress: createNewCollabSession },
-                  { text: 'Join Match', onPress: () => setJoinModalVisible(true) },
-                  { text: 'Cancel', style: 'cancel' },
-              ]);
-          }
+      // Always offer to create OR join
+      if (Platform.OS === 'web') {
+          const choice = window.confirm('Create a shared match?\n\nOK = Create Shared Match\nCancel = Join Existing Match');
+          if (choice) createNewCollabSession();
+          else setJoinModalVisible(true);
       } else {
-          // Not scoring — only join
-          setJoinModalVisible(true);
+          Alert.alert('Shared Scoring', 'What would you like to do?', [
+              { text: 'Create Shared Match', onPress: createNewCollabSession },
+              { text: 'Join Match', onPress: () => setJoinModalVisible(true) },
+              { text: 'Cancel', style: 'cancel' },
+          ]);
       }
   };
 
