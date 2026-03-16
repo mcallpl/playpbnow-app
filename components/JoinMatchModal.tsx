@@ -88,6 +88,7 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                         shareCode: data.session.share_code,
                         sessionId: data.session.id,
                         isCollaborator: 'true',
+                        creatorUserId: data.session.creator_user_id || '',
                     }
                 });
             } else {

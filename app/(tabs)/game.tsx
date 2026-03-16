@@ -145,6 +145,7 @@ export default function GameScreen() {
   const { isPro, isTrial, isFree, isAdmin, showPaywall, features } = useSubscription();
 
   const [isMatchScored, setIsMatchScored] = useState(false);
+  const [creatorUserId, setCreatorUserId] = useState('');
   const [generatingImg, setGeneratingImg] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [generatedImageShareUrl, setGeneratedImageShareUrl] = useState<string | null>(null);
@@ -202,6 +203,7 @@ export default function GameScreen() {
           const sid = params.sessionId as string;
           setShareCode(code);
           setSessionId(sid);
+          if (params.creatorUserId) setCreatorUserId(params.creatorUserId as string);
 
           // Pre-seed scores from join API data for instant display
           if (navCollabScores && typeof navCollabScores === 'object' && Object.keys(navCollabScores).length > 0) {
@@ -475,7 +477,25 @@ export default function GameScreen() {
       doShareImage();
   };
 
-  const handleFinish = () => setSaveModalVisible(true);
+  const handleFinish = () => {
+      if (!matchIsComplete) {
+          if (Platform.OS === 'web') {
+              if (!window.confirm('⚠️ MATCH NOT COMPLETE\n\nNot all scores have been entered. Some games will not be recorded.\n\nFinish anyway?')) return;
+              setSaveModalVisible(true);
+          } else {
+              Alert.alert(
+                  '⚠️ Match Not Complete',
+                  'Not all scores have been entered. Some games will not be recorded if you finish now.',
+                  [
+                      { text: 'Go Back & Enter Scores', style: 'cancel' },
+                      { text: 'Finish Anyway', style: 'destructive', onPress: () => setSaveModalVisible(true) },
+                  ]
+              );
+          }
+          return;
+      }
+      setSaveModalVisible(true);
+  };
   const handleTextMatchPress = () => { setDateTimeConfirmed(false); setReportModalVisible(true); handleGenerateReport(); };
   const handleGatekeeperSuccess = (newId: string) => setUserId(newId);
 
@@ -483,7 +503,7 @@ export default function GameScreen() {
   const createNewCollabSession = async () => {
       if (sessionId && shareCode) { setShareModalVisible(true); return; }
       const batchId = groupKey || `collab_${Date.now()}`;
-      const result = await createCollabSession(batchId, groupName, schedule);
+      const result = await createCollabSession(batchId, groupName, schedule, userId);
       if (result) {
           setShareCode(result.shareCode);
           setSessionId(result.sessionId.toString());
@@ -551,7 +571,7 @@ export default function GameScreen() {
             return;
         }
         const payload = {
-            group_name: groupName, group_id: groupKey, matches: matchesToSave, user_id: userId,
+            group_name: groupName, group_id: groupKey, matches: matchesToSave, user_id: isCollaborator && creatorUserId ? creatorUserId : userId,
             custom_timestamp: Math.floor(selectedDate.getTime() / 1000), match_title: saveTitle,
             force_update: forceUpdate,
             share_code: shareCode || undefined
@@ -631,6 +651,18 @@ export default function GameScreen() {
   React.useEffect(() => {
       syncHandlerRef.current = handleScoreChangeWithSync;
   });
+
+  // True only when every game in every round has both scores entered
+  const matchIsComplete = useMemo(() => {
+      if (!schedule || schedule.length === 0) return false;
+      return schedule.every((round, rIdx) =>
+          round.games.every((_: any, gIdx: number) => {
+              const k1 = `${rIdx}_${gIdx}_t1`;
+              const k2 = `${rIdx}_${gIdx}_t2`;
+              return !!scores[k1] && !!scores[k2];
+          })
+      );
+  }, [schedule, scores]);
 
   const renderPlayerBox = (player: Player | undefined, rIdx: number, gIdx: number, tIdx: number, pIdx: number, isTeamConflict: boolean) => {
     if (!player) return <View style={styles.emptyBox} />;
@@ -796,7 +828,7 @@ export default function GameScreen() {
             <TouchableOpacity style={[styles.actionBtn, styles.textBtn]} onPress={handleTextMatchPress} activeOpacity={0.8}>
                 <Text style={styles.btnText}>TEXT MATCH</Text>
             </TouchableOpacity>
-            {isMatchScored && (
+            {isMatchScored && (!isCollaborator || matchIsComplete) && (
                 <TouchableOpacity ref={finishButtonRef} style={[styles.actionBtn, styles.finishBtn]} onPress={handleFinish} activeOpacity={0.8}>
                     <Text style={styles.btnText}>FINISH MATCH</Text>
                 </TouchableOpacity>

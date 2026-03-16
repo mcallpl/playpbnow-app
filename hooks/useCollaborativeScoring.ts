@@ -314,7 +314,8 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     const createCollabSession = useCallback(async (
         batchId: string,
         groupName: string,
-        scheduleData: any[]
+        scheduleData: any[],
+        creatorUserId: string = ''
     ): Promise<{ shareCode: string; sessionId: string } | null> => {
         setSyncing(true);
         try {
@@ -325,7 +326,8 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                     batch_id: batchId,
                     group_name: groupName,
                     schedule: scheduleData,
-                    scores: {}
+                    scores: {},
+                    creator_user_id: creatorUserId
                 })
             });
             const data = await res.json();
