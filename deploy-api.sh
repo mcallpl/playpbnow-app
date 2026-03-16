@@ -19,7 +19,7 @@ expect "sftp>"
 send "lcd playpbnow-api\r"
 expect "sftp>"
 
-foreach f {migrate_players_and_invites.php player_register.php pool_players_api.php invite_api.php invite_respond.php sms_credits_api.php stripe_webhook.php add_pool_fields.php court_cities.php broadcast_api.php admin_api.php ai_generate.php media_upload.php collab_create_session.php collab_join_match.php collab_get_scores.php collab_sync_scores.php collab_update_schedule.php privacy.html terms.html} {
+foreach f {migrate_players_and_invites.php player_register.php pool_players_api.php invite_api.php invite_respond.php sms_credits_api.php stripe_webhook.php add_pool_fields.php court_cities.php broadcast_api.php admin_api.php ai_generate.php media_upload.php collab_create_session.php collab_join_match.php collab_get_scores.php collab_sync_scores.php collab_update_schedule.php run_collab_alter.php privacy.html terms.html} {
     puts "\n--- Uploading $f ---"
     send "put $f ${remote_dir}/$f\r"
     expect "sftp>"
