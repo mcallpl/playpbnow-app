@@ -50,4 +50,6 @@ deploy-*.sh
 
 # Claude Code
 .claude/
+
+# API has its own git repo (mcallpl/playpbnow-api)
 playpbnow-api/
