@@ -55,33 +55,49 @@ export default function LoginScreen() {
     const handleSubmit = async () => {
         setErrorMessage('');
 
-        if (!phone.trim() || !password) {
-            setErrorMessage('Please enter your phone number and password.');
-            return;
-        }
-
-        if (mode === 'register' && !firstName.trim()) {
-            setErrorMessage('Please enter your first name.');
-            return;
-        }
-
-        if (mode === 'register' && password.length < 6) {
-            setErrorMessage('Password must be at least 6 characters.');
-            return;
+        if (mode === 'login') {
+            if (!email.trim() || !password) {
+                setErrorMessage('Please enter your email (or phone) and password.');
+                return;
+            }
+        } else {
+            // Register mode: email + password required, phone optional
+            if (!email.trim() || !password) {
+                setErrorMessage('Email and password are required.');
+                return;
+            }
+            if (!firstName.trim()) {
+                setErrorMessage('Please enter your first name.');
+                return;
+            }
+            if (password.length < 6) {
+                setErrorMessage('Password must be at least 6 characters.');
+                return;
+            }
         }
 
         setLoading(true);
         try {
             const body: any = {
                 mode,
-                phone: phone.trim(),
                 password,
                 device_info: Platform.OS,
             };
-            if (mode === 'register') {
+            if (mode === 'login') {
+                // The email field doubles as "email or phone" for login
+                const loginId = email.trim();
+                const looksLikePhone = /^[\d\s()+\-]+$/.test(loginId) && loginId.replace(/\D/g, '').length >= 10;
+                if (looksLikePhone) {
+                    body.phone = loginId;
+                } else {
+                    body.email = loginId;
+                }
+            } else {
+                // Register mode: email required, phone optional
+                body.email = email.trim();
+                if (phone.trim()) body.phone = phone.trim();
                 body.first_name = firstName.trim();
                 body.last_name = lastName.trim();
-                if (email.trim()) body.email = email.trim();
             }
 
             const response = await fetch(`${API_URL}/email_login.php`, {
@@ -265,33 +281,37 @@ export default function LoginScreen() {
                                     autoComplete="family-name"
                                     textContentType="familyName"
                                 />
+                            </>
+                        )}
 
-                                <Text style={styles.label}>EMAIL</Text>
+                        <Text style={styles.label}>EMAIL{mode === 'login' ? ' OR PHONE' : ''}</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder={mode === 'login' ? 'Email or phone number' : 'Email address'}
+                            placeholderTextColor={colors.inputPlaceholder}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoComplete="email"
+                            textContentType="emailAddress"
+                            value={email}
+                            onChangeText={setEmail}
+                        />
+
+                        {mode === 'register' && (
+                            <>
+                                <Text style={styles.label}>PHONE NUMBER</Text>
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Optional"
                                     placeholderTextColor={colors.inputPlaceholder}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    autoComplete="email"
-                                    textContentType="emailAddress"
-                                    value={email}
-                                    onChangeText={setEmail}
+                                    keyboardType="phone-pad"
+                                    autoComplete="tel"
+                                    textContentType="telephoneNumber"
+                                    value={phone}
+                                    onChangeText={setPhone}
                                 />
                             </>
                         )}
-
-                        <Text style={styles.label}>PHONE NUMBER</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="(949) 735-9415"
-                            placeholderTextColor={colors.inputPlaceholder}
-                            keyboardType="phone-pad"
-                            autoComplete="tel"
-                            textContentType="telephoneNumber"
-                            value={phone}
-                            onChangeText={setPhone}
-                        />
 
                         <Text style={styles.label}>PASSWORD</Text>
                         <TextInput
