@@ -38,7 +38,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif;line-height:1.15}
 .bebas{font-family:'Bebas Neue',sans-serif}
 a{color:inherit;text-decoration:none}
-img{max-width:100%;display:block}
+img{max-width:100%;height:auto;display:block}
 
 /* ═══════════ NOISE OVERLAY ═══════════ */
 body::after{
@@ -164,7 +164,7 @@ body::after{
   background:linear-gradient(180deg,transparent 50%,rgba(8,14,26,0.8));
   pointer-events:none;
 }
-.hero-image-wrap img{width:100%;display:block}
+.hero-image-wrap img{width:100%;height:auto;display:block}
 .hero-image-caption{
   position:absolute;bottom:20px;left:0;right:0;z-index:2;
   font-family:'Bebas Neue',sans-serif;font-size:clamp(1.4rem,4vw,2.4rem);
