@@ -752,6 +752,8 @@ export default function AdminDashboard() {
 
   // Save or update the draft in the DB so we can preview the real landing page
   const saveDraft = async (): Promise<{ id: number; code: string } | null> => {
+    const draftSubject = subject.trim() || 'Quick SMS';
+    const draftBody = bodyHtml.trim() || smsText;
     try {
       if (draftId && draftCode) {
         // Update existing draft
@@ -762,8 +764,8 @@ export default function AdminDashboard() {
             action: 'update',
             user_id: userId,
             broadcast_id: draftId,
-            subject,
-            body_html: bodyHtml,
+            subject: draftSubject,
+            body_html: draftBody,
             sms_text: smsText,
             featured_image: featuredImage,
           }),
@@ -774,7 +776,7 @@ export default function AdminDashboard() {
         const res = await fetch(`${API_URL}/broadcast_api.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'create', user_id: userId, subject, body_html: bodyHtml, sms_text: smsText, featured_image: featuredImage }),
+          body: JSON.stringify({ action: 'create', user_id: userId, subject: draftSubject, body_html: draftBody, sms_text: smsText, featured_image: featuredImage }),
         });
         const data = await res.json();
         if (data.status === 'success') {
@@ -794,8 +796,7 @@ export default function AdminDashboard() {
 
   // Preview: save draft then open real landing page in browser
   const handlePreviewLandingPage = async () => {
-    if (!subject.trim()) { setError('Subject is required to preview'); return; }
-    if (!bodyHtml.trim()) { setError('Message body is required to preview'); return; }
+    if (!smsText.trim() && !bodyHtml.trim()) { setError('Message text is required to preview'); return; }
     setError('');
     setPreviewing(true);
 
@@ -808,8 +809,6 @@ export default function AdminDashboard() {
   };
 
   const handleSendBroadcast = async () => {
-    if (!subject.trim()) { setError('Subject is required'); return; }
-    if (!bodyHtml.trim()) { setError('Message body is required'); return; }
     if (!smsText.trim()) { setError('SMS text is required'); return; }
     if (selectedPlayers.length === 0) { setError('Select at least one recipient'); return; }
     setError('');
