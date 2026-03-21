@@ -296,6 +296,8 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
 export default function PlayNowTab() {
   const router = useRouter();
   const { colors } = useTheme();
+
+  const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const {
@@ -839,6 +841,9 @@ export default function PlayNowTab() {
             <BrandedIcon name="playnow" size={28} color={colors.accent} />
             <Text style={styles.headerTitle}>Play Now</Text>
           </View>
+          <TouchableOpacity onPress={handleLogout} hitSlop={8}>
+            <BrandedIcon name="logout" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
         </View>
 
         {/* Error */}
@@ -2089,6 +2094,9 @@ const createStyles = (c: ThemeColors) =>
 
     // --- Header ---
     header: {
+      flexDirection: 'row' as const,
+      justifyContent: 'space-between' as const,
+      alignItems: 'center' as const,
       paddingHorizontal: SPACING.screenPadding,
       paddingTop: 8,
       paddingBottom: 12,

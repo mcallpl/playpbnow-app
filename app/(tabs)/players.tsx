@@ -43,6 +43,8 @@ const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 export default function PlayersScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
+
+    const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
     const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
     // Hooks
@@ -613,15 +615,20 @@ export default function PlayersScreen() {
                         {players.length} PLAYERS: {femaleCount} FEMALES & {maleCount} MALES
                     </Text>
                 </View>
-                <TouchableOpacity
-                    style={[styles.selectBtn, selectionMode && styles.selectBtnActive]}
-                    onPress={toggleSelectionMode}
-                >
-                    <BrandedIcon name={selectionMode ? 'close' : 'confirm'} size={20} color={colors.text} />
-                    <Text style={styles.selectBtnText}>
-                        {selectionMode ? 'CANCEL' : 'SELECT'}
-                    </Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <TouchableOpacity
+                        style={[styles.selectBtn, selectionMode && styles.selectBtnActive]}
+                        onPress={toggleSelectionMode}
+                    >
+                        <BrandedIcon name={selectionMode ? 'close' : 'confirm'} size={20} color={colors.text} />
+                        <Text style={styles.selectBtnText}>
+                            {selectionMode ? 'CANCEL' : 'SELECT'}
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleLogout} hitSlop={8}>
+                        <BrandedIcon name="logout" size={20} color={colors.textMuted} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Duplicate Warning Banner */}

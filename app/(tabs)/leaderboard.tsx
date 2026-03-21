@@ -35,6 +35,8 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   const router = useRouter();
   const params = useLocalSearchParams();
   const { colors, isDark } = useTheme();
+
+  const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const {
@@ -356,9 +358,12 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             </View>
         </View>
 
-        <View style={{flexDirection:'row', gap: 10}}>
+        <View style={{flexDirection:'row', gap: 10, alignItems: 'center'}}>
             <TouchableOpacity onPress={() => setCompareModalVisible(true)} style={styles.backBtn}>
                 <BrandedIcon name="players" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout} hitSlop={8}>
+                <BrandedIcon name="logout" size={20} color={colors.textMuted} />
             </TouchableOpacity>
         </View>
       </View>

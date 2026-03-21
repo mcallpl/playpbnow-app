@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -100,6 +100,9 @@ export default function InvitesScreen() {
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { isPro, isAdmin, showPaywall } = useSubscription();
   const { userId } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
 
   const [activeTab, setActiveTab] = useState<TabView>('invites');
   const [loading, setLoading] = useState(false);
@@ -529,12 +532,17 @@ export default function InvitesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>INVITES</Text>
-        {!isAdmin && (
-        <View style={styles.creditBadge}>
-          <BrandedIcon name="flash" size={14} color={colors.accent} />
-          <Text style={styles.creditText}>{creditBalance} credits</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {!isAdmin && (
+          <View style={styles.creditBadge}>
+            <BrandedIcon name="flash" size={14} color={colors.accent} />
+            <Text style={styles.creditText}>{creditBalance} credits</Text>
+          </View>
+          )}
+          <TouchableOpacity onPress={handleLogout} hitSlop={8}>
+            <BrandedIcon name="logout" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
         </View>
-        )}
       </View>
 
       {/* Tab Selector */}

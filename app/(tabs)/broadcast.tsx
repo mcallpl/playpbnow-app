@@ -14,7 +14,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -81,6 +82,9 @@ export default function AdminDashboard() {
   const s = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { isAdmin } = useSubscription();
   const { userId } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
 
   const [activeTab, setActiveTab] = useState<DashTab>('overview');
   const [loading, setLoading] = useState(false);
@@ -963,8 +967,13 @@ export default function AdminDashboard() {
       {/* Header */}
       <View style={s.header}>
         <Text style={s.headerTitle}>ADMIN</Text>
-        <View style={s.adminBadge}>
-          <Text style={s.adminBadgeText}>DASHBOARD</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={s.adminBadge}>
+            <Text style={s.adminBadgeText}>DASHBOARD</Text>
+          </View>
+          <TouchableOpacity onPress={handleLogout} hitSlop={8}>
+            <BrandedIcon name="logout" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
         </View>
       </View>
 
