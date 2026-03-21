@@ -1744,7 +1744,7 @@ export default function AdminDashboard() {
               <TouchableOpacity
                 key={tab}
                 style={[s.subTab, broadcastTab === tab && s.subTabActive]}
-                onPress={() => setBroadcastTab(tab)}
+                onPress={() => { setBroadcastTab(tab); setError(''); }}
               >
                 <Text style={[s.subTabText, broadcastTab === tab && s.subTabTextActive]}>
                   {tab === 'quicksms' ? 'Quick SMS' : tab === 'compose' ? 'Broadcast' : 'History'}
