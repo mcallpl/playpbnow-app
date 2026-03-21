@@ -530,7 +530,7 @@ body::after{
 <nav class="topbar" id="topbar">
   <div class="container topbar-inner">
     <span class="topbar-title">SOCPB Tournament</span>
-    <a href="https://app.courtreserve.com/.../List/15268/ZAHHMQUZNF15268" class="topbar-cta" target="_blank" rel="noopener">Register Now</a>
+    <a href="https://app.courtreserve.com/Online/Events/List/15268/ZAHHMQUZNF15268?fbclid=IwY2xjawQr1DJleHRuA2FlbQIxMABicmlkETEzbktRQWRkVjRTd3R5VlRFc3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHnA4jFmm9lvEIzKULbNIqfEZUHHIlsUGCjBn1AkaBFlMW9HTiYcIOFUjHm_O_aem_V45yRhDpdNE34s-NF_X62A" class="topbar-cta" target="_blank" rel="noopener">Register Now</a>
   </div>
 </nav>
 
@@ -580,7 +580,7 @@ body::after{
     </div>
 
     <div class="hero-ctas reveal stagger-5">
-      <a href="https://app.courtreserve.com/.../List/15268/ZAHHMQUZNF15268" class="btn-primary" target="_blank" rel="noopener">Register Now</a>
+      <a href="https://app.courtreserve.com/Online/Events/List/15268/ZAHHMQUZNF15268?fbclid=IwY2xjawQr1DJleHRuA2FlbQIxMABicmlkETEzbktRQWRkVjRTd3R5VlRFc3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHnA4jFmm9lvEIzKULbNIqfEZUHHIlsUGCjBn1AkaBFlMW9HTiYcIOFUjHm_O_aem_V45yRhDpdNE34s-NF_X62A" class="btn-primary" target="_blank" rel="noopener">Register Now</a>
       <a href="#schedule" class="btn-secondary">View Schedule</a>
     </div>
   </div>
@@ -706,7 +706,7 @@ body::after{
       <h2 class="reveal stagger-1">Don't Wait. Register Today.</h2>
       <p class="reveal stagger-2">Secure your spot in the biggest South OC pickleball event of the year. Bring a friend&mdash;bring your whole crew.</p>
       <div class="cta-buttons reveal stagger-3">
-        <a href="https://app.courtreserve.com/.../List/15268/ZAHHMQUZNF15268" class="btn-primary" target="_blank" rel="noopener">Register Now</a>
+        <a href="https://app.courtreserve.com/Online/Events/List/15268/ZAHHMQUZNF15268?fbclid=IwY2xjawQr1DJleHRuA2FlbQIxMABicmlkETEzbktRQWRkVjRTd3R5VlRFc3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHnA4jFmm9lvEIzKULbNIqfEZUHHIlsUGCjBn1AkaBFlMW9HTiYcIOFUjHm_O_aem_V45yRhDpdNE34s-NF_X62A" class="btn-primary" target="_blank" rel="noopener">Register Now</a>
         <a href="https://www.facebook.com/groups/southocpickleballcommunity/" class="btn-secondary" target="_blank" rel="noopener">Join Our Community</a>
       </div>
     </div>
