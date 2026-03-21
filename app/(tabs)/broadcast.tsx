@@ -75,7 +75,7 @@ interface ActivityData {
   recent_purchases: any[];
 }
 
-type DashTab = 'overview' | 'activity' | 'engage' | 'users' | 'players' | 'groups' | 'database' | 'broadcast';
+type DashTab = 'overview' | 'activity' | 'engage' | 'users' | 'players' | 'groups' | 'database' | 'quicksms' | 'broadcast';
 
 export default function AdminDashboard() {
   const { colors, isDark } = useTheme();
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
   const [aiGenerating, setAiGenerating] = useState(false);
 
   // Broadcast
-  const [broadcastTab, setBroadcastTab] = useState<'compose' | 'history' | 'quicksms'>('compose');
+  const [broadcastTab, setBroadcastTab] = useState<'compose' | 'history'>('compose');
   const [subject, setSubject] = useState('');
   const [bodyHtml, setBodyHtml] = useState('');
   const [smsText, setSmsText] = useState('');
@@ -956,6 +956,7 @@ export default function AdminDashboard() {
     { key: 'players', label: 'Players', icon: 'players' },
     { key: 'groups', label: 'Groups', icon: 'layers' },
     { key: 'database', label: 'Database', icon: 'stats' },
+    { key: 'quicksms', label: 'Quick SMS', icon: 'flash' },
     { key: 'broadcast', label: 'Broadcast', icon: 'send' },
   ];
 
@@ -1734,19 +1735,163 @@ export default function AdminDashboard() {
         </>
       )}
 
+      {/* ════════ QUICK SMS ════════ */}
+      {activeTab === 'quicksms' && (
+        quickResults ? (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+            <View style={s.resultsView}>
+              <View style={s.resultsIcon}>
+                <BrandedIcon name="checkmark" size={48} color={quickResults.failedCount > 0 ? '#f78c6b' : colors.accent} />
+              </View>
+              <Text style={s.resultsTitle}>
+                {quickResults.failedCount === 0 ? 'Messages Sent!' : 'Sent (With Issues)'}
+              </Text>
+              <Text style={s.resultsSubtitle}>
+                {quickResults.sentCount} delivered{quickResults.failedCount > 0 ? `, ${quickResults.failedCount} failed` : ''}
+              </Text>
+              {quickResults.sentNames.length > 0 && (
+                <View style={[s.resultsCard, { marginTop: 16 }]}>
+                  <Text style={[s.resultsLabel, { color: colors.accent }]}>DELIVERED TO</Text>
+                  <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: colors.textMuted, lineHeight: 22 }}>
+                    {quickResults.sentNames.join(', ')}
+                  </Text>
+                </View>
+              )}
+              {quickResults.failedNames.length > 0 && (
+                <View style={[s.resultsCard, { marginTop: 12, borderColor: 'rgba(255,71,87,0.3)' }]}>
+                  <Text style={[s.resultsLabel, { color: '#ff4757' }]}>FAILED</Text>
+                  <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: '#ff6b7a', lineHeight: 22 }}>
+                    {quickResults.failedNames.join(', ')}
+                  </Text>
+                </View>
+              )}
+              <TouchableOpacity style={s.primaryBtn} onPress={resetQuickSms}>
+                <Text style={s.primaryBtnText}>SEND ANOTHER</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        ) : (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+            <Text style={s.inputLabel}>YOUR MESSAGE</Text>
+            <Text style={s.inputHint}>
+              Type your freestyle message. No landing page — just a direct text.
+              {quickPersonalize ? ' First names auto-prepended.' : ''}
+            </Text>
+            <TextInput
+              style={[s.input, { minHeight: 100, textAlignVertical: 'top' }]}
+              value={quickSmsText}
+              onChangeText={setQuickSmsText}
+              placeholder="Type your message here..."
+              placeholderTextColor={colors.inputPlaceholder}
+              multiline
+              maxLength={480}
+            />
+            <Text style={[s.inputHint, {
+              textAlign: 'right',
+              color: quickCharCount > 320 ? '#ff4757' : quickCharCount > 160 ? '#f0b429' : colors.textMuted
+            }]}>
+              {quickCharCount}/160 chars ({quickSegments} segment{quickSegments > 1 ? 's' : ''})
+            </Text>
+            {quickSegments > 1 && (
+              <Text style={s.warningText}>{quickSegments} segments = {quickSegments}x cost per text!</Text>
+            )}
+
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4, marginBottom: 16 }}
+              onPress={() => setQuickPersonalize(!quickPersonalize)}
+            >
+              <BrandedIcon name={quickPersonalize ? 'checkbox' : 'checkboxEmpty'} size={22}
+                color={quickPersonalize ? colors.accent : colors.textMuted} />
+              <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 14, color: colors.textMuted }}>
+                Prepend recipient's first name
+              </Text>
+            </TouchableOpacity>
+
+            <View style={s.divider} />
+            <View style={s.recipientHeader}>
+              <Text style={s.sectionTitle}>Recipients</Text>
+              <Text style={s.recipientCount}>{quickSelectedPlayers.length}/{poolPlayers.length}</Text>
+            </View>
+
+            <View style={{ marginTop: 8 }}>
+              <View style={s.searchContainer}>
+                <BrandedIcon name="search" size={18} color={colors.textMuted} />
+                <TextInput style={s.searchInput} value={quickPlayerSearch} onChangeText={setQuickPlayerSearch}
+                  placeholder="Search by name, level, city..." placeholderTextColor={colors.inputPlaceholder} />
+                {quickPlayerSearch ? (
+                  <TouchableOpacity onPress={() => setQuickPlayerSearch('')}>
+                    <BrandedIcon name="close" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+
+            <View style={s.bulkActions}>
+              <TouchableOpacity style={s.bulkBtn} onPress={() => { haptic.tap(); setQuickSelectedPlayers(quickFilteredPlayers.map(p => p.id)); }}>
+                <BrandedIcon name="checkmark" size={14} color={colors.accent} />
+                <Text style={[s.bulkBtnText, { color: colors.accent }]}>Select All</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.bulkBtn} onPress={() => { haptic.tap(); setQuickSelectedPlayers([]); }}>
+                <BrandedIcon name="close" size={14} color={colors.danger} />
+                <Text style={[s.bulkBtnText, { color: colors.danger }]}>Deselect All</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loadingPlayers ? (
+              <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 20 }} />
+            ) : (
+              <View style={{ marginTop: 4 }}>
+                {quickFilteredPlayers.map(player => {
+                  const sel = quickSelectedPlayers.includes(player.id);
+                  return (
+                    <TouchableOpacity
+                      key={player.id}
+                      style={[s.playerRow, sel && s.playerRowSelected]}
+                      onPress={() => toggleQuickPlayer(player.id)}
+                    >
+                      <BrandedIcon name={sel ? 'checkbox' : 'checkboxEmpty'} size={22}
+                        color={sel ? colors.accent : colors.textMuted} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.playerName}>{player.first_name} {player.last_name}</Text>
+                        <Text style={s.playerMeta}>
+                          {player.play_level || 'N/A'}{player.cities_to_play ? ` · ${player.cities_to_play}` : ''}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[s.sendBtn, quickSending && { opacity: 0.6 }]}
+              onPress={handleSendQuickSms} disabled={quickSending}
+            >
+              {quickSending ? <ActivityIndicator color="#0f1b2d" /> : (
+                <>
+                  <BrandedIcon name="send" size={20} color="#0f1b2d" />
+                  <Text style={s.sendBtnText}>SEND TO {quickSelectedPlayers.length} PLAYERS</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        )
+      )}
+
       {/* ════════ BROADCAST ════════ */}
       {activeTab === 'broadcast' && (
         <>
           {/* Broadcast sub-tabs */}
           <View style={s.subTabBar}>
-            {(['quicksms', 'compose', 'history'] as const).map(tab => (
+            {(['compose', 'history'] as const).map(tab => (
               <TouchableOpacity
                 key={tab}
                 style={[s.subTab, broadcastTab === tab && s.subTabActive]}
                 onPress={() => { setBroadcastTab(tab); setError(''); }}
               >
                 <Text style={[s.subTabText, broadcastTab === tab && s.subTabTextActive]}>
-                  {tab === 'quicksms' ? 'Quick SMS' : tab === 'compose' ? 'Broadcast' : 'History'}
+                  {tab === 'compose' ? 'Compose' : 'History'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -1771,7 +1916,7 @@ export default function AdminDashboard() {
                 {sendResults.sentNames.length > 0 && (
                   <View style={[s.resultsCard, { marginTop: 16 }]}>
                     <Text style={[s.resultsLabel, { color: colors.accent }]}>DELIVERED TO</Text>
-                    <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: colors.textSecondary, lineHeight: 22 }}>
+                    <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: colors.textMuted, lineHeight: 22 }}>
                       {sendResults.sentNames.join(', ')}
                     </Text>
                   </View>
@@ -1800,148 +1945,6 @@ export default function AdminDashboard() {
                 </TouchableOpacity>
               </View>
             </ScrollView>
-          ) : broadcastTab === 'quicksms' ? (
-            /* ════════ QUICK SMS ════════ */
-            quickResults ? (
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-                <View style={s.resultsView}>
-                  <View style={s.resultsIcon}>
-                    <BrandedIcon name="checkmark" size={48} color={quickResults.failedCount > 0 ? '#f78c6b' : colors.accent} />
-                  </View>
-                  <Text style={s.resultsTitle}>
-                    {quickResults.failedCount === 0 ? 'Messages Sent!' : 'Sent (With Issues)'}
-                  </Text>
-                  <Text style={s.resultsSubtitle}>
-                    {quickResults.sentCount} delivered{quickResults.failedCount > 0 ? `, ${quickResults.failedCount} failed` : ''}
-                  </Text>
-                  {quickResults.sentNames.length > 0 && (
-                    <View style={[s.resultsCard, { marginTop: 16 }]}>
-                      <Text style={[s.resultsLabel, { color: colors.accent }]}>DELIVERED TO</Text>
-                      <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: colors.textSecondary, lineHeight: 22 }}>
-                        {quickResults.sentNames.join(', ')}
-                      </Text>
-                    </View>
-                  )}
-                  {quickResults.failedNames.length > 0 && (
-                    <View style={[s.resultsCard, { marginTop: 12, borderColor: 'rgba(255,71,87,0.3)' }]}>
-                      <Text style={[s.resultsLabel, { color: '#ff4757' }]}>FAILED</Text>
-                      <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: '#ff6b7a', lineHeight: 22 }}>
-                        {quickResults.failedNames.join(', ')}
-                      </Text>
-                    </View>
-                  )}
-                  <TouchableOpacity style={s.primaryBtn} onPress={resetQuickSms}>
-                    <Text style={s.primaryBtnText}>SEND ANOTHER</Text>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            ) : (
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-                <Text style={s.inputLabel}>YOUR MESSAGE</Text>
-                <Text style={s.inputHint}>
-                  Type your freestyle message. No landing page — just a direct text.
-                  {quickPersonalize ? ' First names auto-prepended.' : ''}
-                </Text>
-                <TextInput
-                  style={[s.input, { minHeight: 100, textAlignVertical: 'top' }]}
-                  value={quickSmsText}
-                  onChangeText={setQuickSmsText}
-                  placeholder="Type your message here..."
-                  placeholderTextColor={colors.inputPlaceholder}
-                  multiline
-                  maxLength={480}
-                />
-                <Text style={[s.inputHint, {
-                  textAlign: 'right',
-                  color: quickCharCount > 320 ? '#ff4757' : quickCharCount > 160 ? '#f0b429' : colors.textMuted
-                }]}>
-                  {quickCharCount}/160 chars ({quickSegments} segment{quickSegments > 1 ? 's' : ''})
-                </Text>
-                {quickSegments > 1 && (
-                  <Text style={s.warningText}>{quickSegments} segments = {quickSegments}x cost per text!</Text>
-                )}
-
-                <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4, marginBottom: 16 }}
-                  onPress={() => setQuickPersonalize(!quickPersonalize)}
-                >
-                  <BrandedIcon name={quickPersonalize ? 'checkbox' : 'checkboxEmpty'} size={22}
-                    color={quickPersonalize ? colors.accent : colors.textMuted} />
-                  <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 14, color: colors.textSecondary }}>
-                    Prepend recipient's first name
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={s.divider} />
-                <View style={s.recipientHeader}>
-                  <Text style={s.sectionTitle}>Recipients</Text>
-                  <Text style={s.recipientCount}>{quickSelectedPlayers.length}/{poolPlayers.length}</Text>
-                </View>
-
-                <View style={{ marginTop: 8 }}>
-                  <View style={s.searchContainer}>
-                    <BrandedIcon name="search" size={18} color={colors.textMuted} />
-                    <TextInput style={s.searchInput} value={quickPlayerSearch} onChangeText={setQuickPlayerSearch}
-                      placeholder="Search by name, level, city..." placeholderTextColor={colors.inputPlaceholder} />
-                    {quickPlayerSearch ? (
-                      <TouchableOpacity onPress={() => setQuickPlayerSearch('')}>
-                        <BrandedIcon name="close" size={16} color={colors.textMuted} />
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-
-                <View style={s.bulkActions}>
-                  <TouchableOpacity style={s.bulkBtn} onPress={() => { haptic.tap(); setQuickSelectedPlayers(quickFilteredPlayers.map(p => p.id)); }}>
-                    <BrandedIcon name="checkmark" size={14} color={colors.accent} />
-                    <Text style={[s.bulkBtnText, { color: colors.accent }]}>Select All</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={s.bulkBtn} onPress={() => { haptic.tap(); setQuickSelectedPlayers([]); }}>
-                    <BrandedIcon name="close" size={14} color={colors.danger} />
-                    <Text style={[s.bulkBtnText, { color: colors.danger }]}>Deselect All</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {loadingPlayers ? (
-                  <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 20 }} />
-                ) : (
-                  <View style={{ marginTop: 4 }}>
-                    {quickFilteredPlayers.map(player => {
-                      const sel = quickSelectedPlayers.includes(player.id);
-                      return (
-                        <TouchableOpacity
-                          key={player.id}
-                          style={[s.playerRow, sel && s.playerRowSelected]}
-                          onPress={() => toggleQuickPlayer(player.id)}
-                        >
-                          <BrandedIcon name={sel ? 'checkbox' : 'checkboxEmpty'} size={22}
-                            color={sel ? colors.accent : colors.textMuted} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={s.playerName}>{player.first_name} {player.last_name}</Text>
-                            <Text style={s.playerMeta}>
-                              {player.play_level || 'N/A'}{player.cities_to_play ? ` · ${player.cities_to_play}` : ''}
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-
-                <TouchableOpacity
-                  style={[s.sendBtn, quickSending && { opacity: 0.6 }]}
-                  onPress={handleSendQuickSms} disabled={quickSending}
-                >
-                  {quickSending ? <ActivityIndicator color="#0f1b2d" /> : (
-                    <>
-                      <BrandedIcon name="send" size={20} color="#0f1b2d" />
-                      <Text style={s.sendBtnText}>SEND TO {quickSelectedPlayers.length} PLAYERS</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-                <View style={{ height: 40 }} />
-              </ScrollView>
-            )
           ) : broadcastTab === 'compose' ? (
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
 
