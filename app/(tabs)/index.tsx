@@ -2,13 +2,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Image,
+  Modal,
   Platform,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -21,6 +24,7 @@ import {
   ThemeColors,
   FONT_DISPLAY_EXTRABOLD,
   FONT_DISPLAY_BOLD,
+  FONT_BODY_BOLD,
   FONT_BODY_MEDIUM,
   FONT_BODY_REGULAR,
   ANIMATION,
@@ -126,6 +130,65 @@ export default function LandingScreen() {
     }
   };
 
+  // Account deletion state
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleDeleteAccount = () => {
+    const showModal = () => {
+      setDeletePassword('');
+      setDeleteError('');
+      setDeleteModalVisible(true);
+    };
+    if (Platform.OS === 'web') {
+      showModal();
+    } else {
+      Alert.alert(
+        'Delete Account',
+        'This will permanently delete your account and all associated data. This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Continue', style: 'destructive', onPress: showModal },
+        ]
+      );
+    }
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      setDeleteError('Please enter your password');
+      return;
+    }
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      const userId = await AsyncStorage.getItem('user_id');
+      const response = await fetch(`${API_URL}/delete_account.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, password: deletePassword }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setDeleteModalVisible(false);
+        await AsyncStorage.clear();
+        if (Platform.OS === 'web') {
+          window.alert('Your account has been permanently deleted.');
+        } else {
+          Alert.alert('Account Deleted', 'Your account has been permanently deleted.');
+        }
+        router.replace('/login');
+      } else {
+        setDeleteError(data.message || 'Failed to delete account');
+      }
+    } catch (e) {
+      setDeleteError('Network error. Please try again.');
+    }
+    setDeleteLoading(false);
+  };
+
   const screenWidth = 400;
   const screenHeight = 400;
 
@@ -180,6 +243,11 @@ export default function LandingScreen() {
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
+        {/* Delete Account */}
+        <TouchableOpacity onPress={handleDeleteAccount} activeOpacity={0.7}>
+          <Text style={styles.deleteAccountText}>Delete Account</Text>
+        </TouchableOpacity>
+
         {/* System status row */}
         <View style={styles.statusRow}>
           <View style={styles.statusItem}>
@@ -199,6 +267,49 @@ export default function LandingScreen() {
 
       {/* Footer */}
       <Text style={styles.footerText}>Powered by PeopleStar</Text>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal visible={deleteModalVisible} transparent animationType="fade" onRequestClose={() => setDeleteModalVisible(false)}>
+        <View style={styles.deleteOverlay}>
+          <View style={styles.deleteCard}>
+            <Text style={styles.deleteTitle}>Delete Account</Text>
+            <Text style={styles.deleteDesc}>
+              This will permanently delete your account and all data including groups, matches, and subscription. This cannot be undone.
+            </Text>
+            <Text style={styles.deletePrompt}>Enter your password to confirm:</Text>
+            <TextInput
+              style={styles.deleteInput}
+              placeholder="Password"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              editable={!deleteLoading}
+            />
+            {deleteError ? <Text style={styles.deleteErrorText}>{deleteError}</Text> : null}
+            <View style={styles.deleteButtons}>
+              <TouchableOpacity
+                style={styles.deleteCancelBtn}
+                onPress={() => setDeleteModalVisible(false)}
+                disabled={deleteLoading}
+              >
+                <Text style={styles.deleteCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteConfirmBtn}
+                onPress={confirmDeleteAccount}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <Text style={styles.deleteConfirmText}>Delete Forever</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -257,6 +368,97 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     color: c.danger,
     letterSpacing: 0.5,
+  },
+  deleteAccountText: {
+    fontFamily: FONT_BODY_REGULAR,
+    fontSize: 12,
+    color: c.textMuted,
+    textDecorationLine: 'underline' as const,
+  },
+  deleteOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  deleteCard: {
+    backgroundColor: c.bg,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 380,
+    borderWidth: 1,
+    borderColor: c.border,
+  },
+  deleteTitle: {
+    fontFamily: FONT_DISPLAY_BOLD,
+    fontSize: 20,
+    color: c.danger,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  deleteDesc: {
+    fontFamily: FONT_BODY_REGULAR,
+    fontSize: 14,
+    color: c.textMuted,
+    lineHeight: 20,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  deletePrompt: {
+    fontFamily: FONT_BODY_BOLD,
+    fontSize: 14,
+    color: c.text,
+    marginBottom: 8,
+  },
+  deleteInput: {
+    borderWidth: 1,
+    borderColor: c.border,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: c.text,
+    fontFamily: FONT_BODY_MEDIUM,
+    fontSize: 14,
+    backgroundColor: c.surfaceLight,
+    marginBottom: 8,
+  },
+  deleteErrorText: {
+    fontFamily: FONT_BODY_REGULAR,
+    fontSize: 13,
+    color: c.danger,
+    marginBottom: 8,
+  },
+  deleteButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  deleteCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: c.border,
+    alignItems: 'center',
+  },
+  deleteCancelText: {
+    fontFamily: FONT_BODY_MEDIUM,
+    fontSize: 15,
+    color: c.text,
+  },
+  deleteConfirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: c.danger,
+    alignItems: 'center',
+  },
+  deleteConfirmText: {
+    fontFamily: FONT_DISPLAY_BOLD,
+    fontSize: 15,
+    color: '#ffffff',
   },
   statusRow: {
     flexDirection: 'row',

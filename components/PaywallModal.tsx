@@ -170,26 +170,28 @@ export const PaywallModal: React.FC = () => {
                                 )}
                             </TouchableOpacity>
 
-                            {/* Promo Code */}
-                            {!showPromoInput ? (
-                                <TouchableOpacity style={styles.restoreBtn} onPress={() => setShowPromoInput(true)}>
-                                    <Text style={styles.restoreBtnText}>Have a promo code?</Text>
-                                </TouchableOpacity>
-                            ) : (
-                                <View style={styles.promoRow}>
-                                    <TextInput
-                                        style={styles.promoInput}
-                                        placeholder="Enter code"
-                                        placeholderTextColor={colors.textMuted}
-                                        value={promoCode}
-                                        onChangeText={setPromoCode}
-                                        autoCapitalize="characters"
-                                        onSubmitEditing={handleRedeemPromo}
-                                    />
-                                    <TouchableOpacity style={styles.promoBtn} onPress={handleRedeemPromo} disabled={purchaseLoading}>
-                                        <Text style={styles.promoBtnText}>REDEEM</Text>
+                            {/* Promo Code — web only (Apple guideline 3.1.1) */}
+                            {isWeb && (
+                                !showPromoInput ? (
+                                    <TouchableOpacity style={styles.restoreBtn} onPress={() => setShowPromoInput(true)}>
+                                        <Text style={styles.restoreBtnText}>Have a promo code?</Text>
                                     </TouchableOpacity>
-                                </View>
+                                ) : (
+                                    <View style={styles.promoRow}>
+                                        <TextInput
+                                            style={styles.promoInput}
+                                            placeholder="Enter code"
+                                            placeholderTextColor={colors.textMuted}
+                                            value={promoCode}
+                                            onChangeText={setPromoCode}
+                                            autoCapitalize="characters"
+                                            onSubmitEditing={handleRedeemPromo}
+                                        />
+                                        <TouchableOpacity style={styles.promoBtn} onPress={handleRedeemPromo} disabled={purchaseLoading}>
+                                            <Text style={styles.promoBtnText}>REDEEM</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )
                             )}
                         </View>
                     )}
@@ -231,11 +233,11 @@ export const PaywallModal: React.FC = () => {
                                 </Text>
                             )}
                             <View style={styles.legalLinks}>
-                                <TouchableOpacity onPress={() => Linking.openURL('https://peoplestar.com/privacy')}>
+                                <TouchableOpacity onPress={() => Linking.openURL('https://peoplestar.com/PlayPBNow/api/privacy.html')}>
                                     <Text style={styles.legalLink}>Privacy Policy</Text>
                                 </TouchableOpacity>
                                 <Text style={styles.legalDivider}>|</Text>
-                                <TouchableOpacity onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+                                <TouchableOpacity onPress={() => Linking.openURL('https://peoplestar.com/PlayPBNow/api/terms.html')}>
                                     <Text style={styles.legalLink}>Terms of Use (EULA)</Text>
                                 </TouchableOpacity>
                             </View>
