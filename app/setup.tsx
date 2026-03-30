@@ -448,7 +448,7 @@ export default function SetupScreen() {
             const navId = await storeNavData({ schedule: data.schedule, players, isFixedTeams, teams: teamsPayload });
             router.push({
                 pathname: '/(tabs)/game',
-                params: { navId, groupName, groupKey, isFixedTeams: isFixedTeams.toString() }
+                params: { navId, groupName, groupKey, courtName, courtId: (courtId || '').toString(), isFixedTeams: isFixedTeams.toString() }
             });
         } else { Alert.alert("Error", data.message || "Generation failed."); }
     } catch (e) { Alert.alert("Error", "Network error."); }

@@ -57,7 +57,9 @@ export default function GameScreen() {
 
   const [groupName, setGroupName] = useState(params.groupName as string || '');
   const [groupKey, setGroupKey] = useState(params.groupKey as string || '');
-  const courtName = (params.courtName as string) || '';
+  const [courtName, setCourtName] = useState((params.courtName as string) || '');
+  const [allCourts, setAllCourts] = useState<{ id: number; name: string; city: string | null }[]>([]);
+  const [showCourtPicker, setShowCourtPicker] = useState(false);
 
   // Nav data loaded from AsyncStorage (large payloads) or fallback to URL params
   const [navScheduleJson, setNavScheduleJson] = useState<string | undefined>(
@@ -128,6 +130,13 @@ export default function GameScreen() {
   useEffect(() => {
       if (navPlayersData.length > 0) setCurrentRoster(navPlayersData);
   }, [navPlayersData]);
+
+  // Load courts for picker
+  useEffect(() => {
+      fetch(`${API_URL}/get_courts.php`).then(r => r.json()).then(d => {
+          if (d.status === 'success') setAllCourts(d.courts || []);
+      }).catch(() => {});
+  }, []);
 
   const {
       schedule, setSchedule, loading, swapSource, setSwapSource,
@@ -522,7 +531,7 @@ export default function GameScreen() {
       }
       setSaveModalVisible(true);
   };
-  const handleTextMatchPress = () => { setDateTimeConfirmed(false); setReportModalVisible(true); handleGenerateReport(); };
+  const handleTextMatchPress = () => { setDateTimeConfirmed(false); setShowCourtPicker(false); setReportModalVisible(true); handleGenerateReport(); };
   const handleGatekeeperSuccess = (newId: string) => setUserId(newId);
 
   // CREATE COLLAB SESSION (only when in scoring mode)
@@ -1038,6 +1047,26 @@ export default function GameScreen() {
                 )}
                 <Text style={styles.label}>Match Title</Text>
                 <TextInput style={styles.modalInput} value={reportTitle} onChangeText={(t) => { setReportTitle(t); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} placeholder="Enter Title" placeholderTextColor={colors.inputPlaceholder} />
+                <Text style={styles.label}>Court / Location</Text>
+                <TouchableOpacity style={styles.modalInput} onPress={() => setShowCourtPicker(!showCourtPicker)}>
+                    <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 16, color: courtName ? colors.inputText : colors.inputPlaceholder }}>{courtName || '(none)'}</Text>
+                </TouchableOpacity>
+                {showCourtPicker && (
+                    <View style={{ backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginBottom: 10, maxHeight: 160 }}>
+                        <ScrollView nestedScrollEnabled>
+                            <TouchableOpacity style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border }} onPress={() => { setCourtName(''); setShowCourtPicker(false); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }}>
+                                <Text style={{ color: colors.danger, fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14 }}>Clear Court</Text>
+                            </TouchableOpacity>
+                            {allCourts.map(court => (
+                                <TouchableOpacity key={court.id} style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: court.name === courtName ? colors.accentSoft : 'transparent' }}
+                                    onPress={() => { setCourtName(court.name); setShowCourtPicker(false); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }}>
+                                    <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text }}>{court.name}</Text>
+                                    {court.city && <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: colors.textMuted }}>{court.city}</Text>}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
                 <Text style={styles.label}>Date & Time</Text>
                 <View style={styles.datePickerContainer}>
                     <View style={styles.dateRow}>
@@ -1070,6 +1099,26 @@ export default function GameScreen() {
                 <Text style={styles.modalTitle}>SAVE MATCH RESULTS</Text>
                 <Text style={styles.label}>Match Title</Text>
                 <TextInput style={styles.modalInput} value={saveTitle} onChangeText={setSaveTitle} placeholder="Enter Title" placeholderTextColor={colors.inputPlaceholder} />
+                <Text style={styles.label}>Court / Location</Text>
+                <TouchableOpacity style={styles.modalInput} onPress={() => setShowCourtPicker(!showCourtPicker)}>
+                    <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 16, color: courtName ? colors.inputText : colors.inputPlaceholder }}>{courtName || '(none)'}</Text>
+                </TouchableOpacity>
+                {showCourtPicker && (
+                    <View style={{ backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginBottom: 10, maxHeight: 160 }}>
+                        <ScrollView nestedScrollEnabled>
+                            <TouchableOpacity style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border }} onPress={() => { setCourtName(''); setShowCourtPicker(false); }}>
+                                <Text style={{ color: colors.danger, fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14 }}>Clear Court</Text>
+                            </TouchableOpacity>
+                            {allCourts.map(court => (
+                                <TouchableOpacity key={court.id} style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: court.name === courtName ? colors.accentSoft : 'transparent' }}
+                                    onPress={() => { setCourtName(court.name); setShowCourtPicker(false); }}>
+                                    <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text }}>{court.name}</Text>
+                                    {court.city && <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: colors.textMuted }}>{court.city}</Text>}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
                 <Text style={styles.label}>Scheduled Date & Time</Text>
                 <View style={styles.datePickerContainer}>
                     <View style={styles.dateRow}>
