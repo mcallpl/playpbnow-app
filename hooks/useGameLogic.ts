@@ -123,12 +123,11 @@ export const useGameLogic = (
         return counts;
     }, [schedule]);
 
-    // ── RULE 1: SWAP PLAYERS (tap-to-swap, same round only) ─────
-    // Rule 1a: Swaps only within the same round
-    // Rule 1b: Dropped player goes to source spot; source player goes to target spot
+    // ── RULE 1: SWAP PLAYERS (tap-to-swap) ─────
+    // Rotating mode: swaps only within the same round
+    // Fixed teams mode: swaps across ALL rounds (every occurrence of each player)
     const handlePlayerTap = (rIdx: number, gIdx: number, tIdx: number, pIdx: number) => {
         if (!swapSource) {
-            // First tap: select this player
             setSwapSource({ r: rIdx, g: gIdx, t: tIdx, p: pIdx });
             return;
         }
@@ -139,7 +138,37 @@ export const useGameLogic = (
             return;
         }
 
-        // Rule 1a: only within same round
+        if (isFixedTeams) {
+            // Fixed teams: swap these two players across ALL rounds
+            const newSchedule = JSON.parse(JSON.stringify(schedule));
+            const srcRound = newSchedule[swapSource.r];
+            const srcPlayer: Player = swapSource.t === 1 ? srcRound.games[swapSource.g].team1[swapSource.p] : srcRound.games[swapSource.g].team2[swapSource.p];
+            const tgtRound = newSchedule[rIdx];
+            const tgtPlayer: Player = tIdx === 1 ? tgtRound.games[gIdx].team1[pIdx] : tgtRound.games[gIdx].team2[pIdx];
+
+            // Swap every occurrence of srcPlayer and tgtPlayer in every round
+            newSchedule.forEach((round: RoundData) => {
+                round.games.forEach((game: GameData) => {
+                    [game.team1, game.team2].forEach((team) => {
+                        team.forEach((p: Player, i: number) => {
+                            if (p.id === srcPlayer.id) team[i] = { ...tgtPlayer };
+                            else if (p.id === tgtPlayer.id) team[i] = { ...srcPlayer };
+                        });
+                    });
+                });
+                // Also swap in byes
+                round.byes.forEach((p: Player, i: number) => {
+                    if (p.id === srcPlayer.id) round.byes[i] = { ...tgtPlayer };
+                    else if (p.id === tgtPlayer.id) round.byes[i] = { ...srcPlayer };
+                });
+            });
+
+            setSchedule(newSchedule);
+            setSwapSource(null);
+            return;
+        }
+
+        // Rotating mode: only within same round
         if (swapSource.r !== rIdx) {
             Alert.alert('Locked', 'You can only swap players within the same round.');
             setSwapSource(null);
@@ -156,7 +185,6 @@ export const useGameLogic = (
             else round.games[g].team2[p] = val;
         };
 
-        // Rule 1b: true swap — each goes to the other's spot
         const srcPlayer = getPlayer(swapSource.g, swapSource.t, swapSource.p);
         const tgtPlayer = getPlayer(gIdx, tIdx, pIdx);
         setPlayer(swapSource.g, swapSource.t, swapSource.p, tgtPlayer);

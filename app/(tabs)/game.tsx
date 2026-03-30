@@ -802,6 +802,20 @@ export default function GameScreen() {
       return `ROUND ${index + 1} (${item.type === 'gender' ? 'SAME GENDER' : (item.type === 'mixed' ? 'MIXED DOUBLES' : 'MIXER')})`;
   };
 
+  // Check if any scores have been entered
+  const hasAnyScores = useMemo(() => {
+      return Object.values(scores).some(v => v && v.length > 0);
+  }, [scores]);
+
+  const handlePlayerTapGuarded = (rIdx: number, gIdx: number, tIdx: number, pIdx: number) => {
+      if (isFixedTeams && hasAnyScores) {
+          Alert.alert('Swap Locked', 'Cannot swap players after scores have been entered.');
+          setSwapSource(null);
+          return;
+      }
+      handlePlayerTap(rIdx, gIdx, tIdx, pIdx);
+  };
+
   const renderPlayerBox = (player: Player | undefined, rIdx: number, gIdx: number, tIdx: number, pIdx: number, isTeamConflict: boolean) => {
     if (!player) return <View style={styles.emptyBox} />;
     const genderStr = (player.gender || '').toLowerCase();
@@ -813,7 +827,7 @@ export default function GameScreen() {
     if (isSelected) { bg = '#ffff00'; txt = '#000000'; }
     return (
       <TouchableOpacity style={[styles.playerBox, { backgroundColor: bg }, isSelected && styles.selectedBox]}
-        onPress={() => { if (!isEditing) handlePlayerTap(rIdx, gIdx, tIdx, pIdx); }}
+        onPress={() => { if (!isEditing) handlePlayerTapGuarded(rIdx, gIdx, tIdx, pIdx); }}
         onLongPress={() => { setSwapSource(null); setEditingPlayer({ r: rIdx, g: gIdx, t: tIdx, p: pIdx }); }} activeOpacity={0.7}>
         {isEditing ? (
           <TextInput style={[styles.pText, { color: txt, width: '100%', textAlign: 'center', padding: 2 }]}
