@@ -29,6 +29,7 @@ import { useSubscription } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useCollaborativeScoring } from '../../hooks/useCollaborativeScoring';
 import { Player, useGameLogic } from '../../hooks/useGameLogic';
+import { calculateTeamStandings, generateSemifinals, generateFinals, TeamStanding } from '../../utils/standings';
 import { useSmartScoring } from '../../hooks/useSmartScoring';
 import { ShareMatchModal } from '../../components/ShareMatchModal';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
@@ -69,6 +70,10 @@ export default function GameScreen() {
       params.collabScores ? JSON.parse(params.collabScores as string) : null
   );
   const [navDataLoaded, setNavDataLoaded] = useState(false);
+  const [isFixedTeams, setIsFixedTeams] = useState(params.isFixedTeams === 'true');
+  const [isTournament, setIsTournament] = useState(params.isTournament === 'true');
+  const [tournamentPhase, setTournamentPhase] = useState<'round-robin' | 'semifinals' | 'finals' | 'complete'>('round-robin');
+  const [roundRobinCount, setRoundRobinCount] = useState(0);
 
   useEffect(() => {
       const loadMatchData = async () => {
@@ -79,6 +84,11 @@ export default function GameScreen() {
                   if (data.schedule) setNavScheduleJson(JSON.stringify(data.schedule));
                   if (data.players) setNavPlayersData(data.players);
                   if (data.collabScores) setNavCollabScores(data.collabScores);
+                  if (data.isFixedTeams) setIsFixedTeams(true);
+                  if (data.isTournament) setIsTournament(true);
+                  if (data.roundRobinCount) { setRoundRobinCount(data.roundRobinCount); }
+                  else if (data.schedule) { setRoundRobinCount(data.schedule.length); }
+                  if (data.tournamentPhase) setTournamentPhase(data.tournamentPhase);
                   // Persist for refresh survival
                   await saveActiveMatchData({
                       schedule: data.schedule,
@@ -86,6 +96,9 @@ export default function GameScreen() {
                       groupName: params.groupName,
                       groupKey: params.groupKey,
                       courtName: params.courtName,
+                      isFixedTeams: data.isFixedTeams,
+                      isTournament: data.isTournament,
+                      roundRobinCount: data.roundRobinCount || (data.schedule ? data.schedule.length : 0),
                   });
                   setNavDataLoaded(true);
                   return;
@@ -98,6 +111,10 @@ export default function GameScreen() {
               if (saved.players) setNavPlayersData(saved.players);
               if (saved.groupName && !params.groupName) setGroupName(saved.groupName as string);
               if (saved.groupKey && !params.groupKey) setGroupKey(saved.groupKey as string);
+              if (saved.isFixedTeams) setIsFixedTeams(true);
+              if (saved.isTournament) setIsTournament(true);
+              if (saved.roundRobinCount) setRoundRobinCount(saved.roundRobinCount);
+              if (saved.tournamentPhase) setTournamentPhase(saved.tournamentPhase);
           }
           setNavDataLoaded(true);
       };
@@ -112,10 +129,19 @@ export default function GameScreen() {
       if (navPlayersData.length > 0) setCurrentRoster(navPlayersData);
   }, [navPlayersData]);
 
+  // Set roundRobinCount when schedule first loads (before any playoffs added)
+  useEffect(() => {
+      if (schedule.length > 0 && roundRobinCount === 0) {
+          // Count only non-playoff rounds
+          const rrCount = schedule.filter(r => !['semifinal', 'gold', 'bronze'].includes(r.type)).length;
+          setRoundRobinCount(rrCount);
+      }
+  }, [schedule]);
+
   const {
       schedule, setSchedule, loading, swapSource, setSwapSource,
       partnerCounts, handlePlayerTap, handlePlayerNameChange, performShuffle, updateGame
-  } = useGameLogic(navScheduleJson, navPlayersData, currentRoster, groupName);
+  } = useGameLogic(navScheduleJson, navPlayersData, currentRoster, groupName, isFixedTeams);
 
   const finishButtonRef = React.useRef<any & { measure: Function }>(null);
 
@@ -664,6 +690,99 @@ export default function GameScreen() {
       );
   }, [schedule, scores]);
 
+  // Tournament: check if round-robin portion is fully scored
+  const roundRobinComplete = useMemo(() => {
+      if (!isTournament || roundRobinCount === 0 || schedule.length === 0) return false;
+      for (let rIdx = 0; rIdx < roundRobinCount && rIdx < schedule.length; rIdx++) {
+          for (let gIdx = 0; gIdx < schedule[rIdx].games.length; gIdx++) {
+              if (!scores[`${rIdx}_${gIdx}_t1`] || !scores[`${rIdx}_${gIdx}_t2`]) return false;
+          }
+      }
+      return true;
+  }, [schedule, scores, roundRobinCount, isTournament]);
+
+  // Tournament: check if semifinals are fully scored
+  const semifinalsComplete = useMemo(() => {
+      if (tournamentPhase !== 'semifinals') return false;
+      const semiRounds = schedule.filter(r => r.type === 'semifinal');
+      return semiRounds.every((round) => {
+          const rIdx = schedule.indexOf(round);
+          return round.games.every((_, gIdx) => !!scores[`${rIdx}_${gIdx}_t1`] && !!scores[`${rIdx}_${gIdx}_t2`]);
+      });
+  }, [schedule, scores, tournamentPhase]);
+
+  // Tournament: start playoffs
+  const handleStartPlayoffs = () => {
+      const standings = calculateTeamStandings(schedule, scores, roundRobinCount);
+      if (standings.length < 4) {
+          Alert.alert('Not Enough Teams', 'Need at least 4 teams with scores to generate playoffs.');
+          return;
+      }
+      const top4 = standings.slice(0, 4);
+      const standingsText = top4.map((s, i) => `#${i + 1} ${s.players.map(p => p.first_name).join(' & ')} — ${s.winPct}% (${s.wins}W-${s.losses}L, ${s.pointDiff > 0 ? '+' : ''}${s.pointDiff})`).join('\n');
+
+      const startPlayoffs = () => {
+          const semis = generateSemifinals(top4);
+          setSchedule([...schedule, ...semis]);
+          setTournamentPhase('semifinals');
+          // Persist updated state
+          saveActiveMatchData({
+              schedule: [...schedule, ...semis],
+              players: navPlayersData,
+              groupName, groupKey, courtName,
+              isFixedTeams, isTournament,
+              roundRobinCount,
+              tournamentPhase: 'semifinals',
+          });
+          setTimeout(() => flatListRef.current?.scrollToIndex({ index: roundRobinCount, animated: true }), 400);
+      };
+
+      if (Platform.OS === 'web') {
+          if (window.confirm(`STANDINGS\n\n${standingsText}\n\nSemifinal 1: #1 vs #4\nSemifinal 2: #2 vs #3\n\nStart playoffs?`)) startPlayoffs();
+      } else {
+          Alert.alert('Playoff Standings', `${standingsText}\n\nSemifinal 1: #1 vs #4\nSemifinal 2: #2 vs #3`, [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Start Playoffs', onPress: startPlayoffs },
+          ]);
+      }
+  };
+
+  // Tournament: generate finals from semifinal results
+  const handleGenerateFinals = () => {
+      const semiStartIndex = roundRobinCount;
+      const finals = generateFinals(schedule, scores, semiStartIndex);
+      if (finals.length === 0) {
+          Alert.alert('Error', 'Could not determine semifinal results.');
+          return;
+      }
+      const newSchedule = [...schedule, ...finals];
+      setSchedule(newSchedule);
+      setTournamentPhase('finals');
+      saveActiveMatchData({
+          schedule: newSchedule,
+          players: navPlayersData,
+          groupName, groupKey, courtName,
+          isFixedTeams, isTournament,
+          roundRobinCount,
+          tournamentPhase: 'finals',
+      });
+      setTimeout(() => flatListRef.current?.scrollToIndex({ index: newSchedule.length - 2, animated: true }), 400);
+  };
+
+  // Helper: get display label for a round
+  const getRoundLabel = (item: any, index: number): string => {
+      if (item.type === 'semifinal') {
+          const semiNum = index - roundRobinCount + 1;
+          const t1Names = item.games[0]?.team1?.map((p: Player) => p.first_name).join(' & ') || '?';
+          const t2Names = item.games[0]?.team2?.map((p: Player) => p.first_name).join(' & ') || '?';
+          return `SEMIFINAL ${semiNum}: ${t1Names} vs ${t2Names}`;
+      }
+      if (item.type === 'gold') return 'GOLD MEDAL MATCH';
+      if (item.type === 'bronze') return 'BRONZE MEDAL MATCH';
+      if (item.type === 'fixed') return `ROUND ${index + 1}`;
+      return `ROUND ${index + 1} (${item.type === 'gender' ? 'SAME GENDER' : (item.type === 'mixed' ? 'MIXED DOUBLES' : 'MIXER')})`;
+  };
+
   const renderPlayerBox = (player: Player | undefined, rIdx: number, gIdx: number, tIdx: number, pIdx: number, isTeamConflict: boolean) => {
     if (!player) return <View style={styles.emptyBox} />;
     const genderStr = (player.gender || '').toLowerCase();
@@ -690,8 +809,11 @@ export default function GameScreen() {
 
   const renderGame = (game: any, rIdx: number, gIdx: number) => {
     let t1Conflict = false, t2Conflict = false;
-    if (game.team1.length === 2) { const key = [game.team1[0].id, game.team1[1].id].sort().join('-'); if ((partnerCounts[key] || 0) > 1) t1Conflict = true; }
-    if (game.team2.length === 2) { const key = [game.team2[0].id, game.team2[1].id].sort().join('-'); if ((partnerCounts[key] || 0) > 1) t2Conflict = true; }
+    // Disable partner conflict highlighting for fixed teams (same partners are expected)
+    if (!isFixedTeams) {
+        if (game.team1.length === 2) { const key = [game.team1[0].id, game.team1[1].id].sort().join('-'); if ((partnerCounts[key] || 0) > 1) t1Conflict = true; }
+        if (game.team2.length === 2) { const key = [game.team2[0].id, game.team2[1].id].sort().join('-'); if ((partnerCounts[key] || 0) > 1) t2Conflict = true; }
+    }
     return (
       <View key={gIdx} style={styles.gameRow}>
         {isMatchScored && (
@@ -771,8 +893,14 @@ export default function GameScreen() {
                   {shareCode && connectedUsers > 0 && (
                       <View style={styles.connectedBadge}><Text style={styles.connectedText}>{connectedUsers}</Text></View>
                   )}
-                  <TouchableOpacity onPress={handleShuffle} style={styles.shuffleBtn} disabled={loading}>
-                      {loading ? <ActivityIndicator size="small" color={colors.text} /> : <BrandedIcon name="shuffle" size={24} color={colors.text} />}
+                  <TouchableOpacity onPress={() => {
+                      if (isTournament && tournamentPhase !== 'round-robin') {
+                          Alert.alert('Playoffs Active', 'Cannot shuffle during playoffs.');
+                          return;
+                      }
+                      handleShuffle();
+                  }} style={styles.shuffleBtn} disabled={loading}>
+                      {loading ? <ActivityIndicator size="small" color={colors.text} /> : <BrandedIcon name="shuffle" size={24} color={tournamentPhase !== 'round-robin' ? colors.textMuted : colors.text} />}
                   </TouchableOpacity>
                   <Switch value={isMatchScored} onValueChange={setIsMatchScored}
                     trackColor={{false: colors.textMuted, true: colors.accent}} thumbColor={colors.text}
@@ -807,10 +935,10 @@ export default function GameScreen() {
               </View>
           }
           renderItem={({ item, index }) => (
-            <View style={styles.roundBlock}>
-                <View style={styles.roundHeader}>
-                    <Text style={styles.roundTitle}>
-                        ROUND {index + 1} ({item.type === 'gender' ? 'SAME GENDER' : (item.type === 'mixed' ? 'MIXED DOUBLES' : 'MIXER')})
+            <View style={[styles.roundBlock, item.type === 'gold' && { borderColor: '#FFD700', borderWidth: 2 }, item.type === 'bronze' && { borderColor: '#CD7F32', borderWidth: 2 }, item.type === 'semifinal' && { borderColor: colors.accent, borderWidth: 2 }]}>
+                <View style={[styles.roundHeader, item.type === 'gold' && { backgroundColor: 'rgba(255,215,0,0.15)' }, item.type === 'bronze' && { backgroundColor: 'rgba(205,127,50,0.15)' }, item.type === 'semifinal' && { backgroundColor: 'rgba(109,184,44,0.15)' }]}>
+                    <Text style={[styles.roundTitle, item.type === 'gold' && { color: '#DAA520' }, item.type === 'bronze' && { color: '#CD7F32' }]}>
+                        {getRoundLabel(item, index)}
                     </Text>
                 </View>
                 <View style={styles.separator} />
@@ -828,9 +956,22 @@ export default function GameScreen() {
             <TouchableOpacity style={[styles.actionBtn, styles.textBtn]} onPress={handleTextMatchPress} activeOpacity={0.8}>
                 <Text style={styles.btnText}>TEXT MATCH</Text>
             </TouchableOpacity>
-            {isMatchScored && (!isCollaborator || matchIsComplete) && (
+            {/* Tournament: START PLAYOFFS button */}
+            {isTournament && isMatchScored && roundRobinComplete && tournamentPhase === 'round-robin' && (
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FFD700' }]} onPress={handleStartPlayoffs} activeOpacity={0.8}>
+                    <Text style={[styles.btnText, { color: '#000' }]}>START PLAYOFFS</Text>
+                </TouchableOpacity>
+            )}
+            {/* Tournament: GENERATE FINALS button */}
+            {isTournament && isMatchScored && semifinalsComplete && tournamentPhase === 'semifinals' && (
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FFD700' }]} onPress={handleGenerateFinals} activeOpacity={0.8}>
+                    <Text style={[styles.btnText, { color: '#000' }]}>GENERATE FINALS</Text>
+                </TouchableOpacity>
+            )}
+            {/* Normal FINISH button — hide during tournament round-robin/semis phases */}
+            {isMatchScored && (!isCollaborator || matchIsComplete) && (!isTournament || tournamentPhase === 'finals' || tournamentPhase === 'complete') && (
                 <TouchableOpacity ref={finishButtonRef} style={[styles.actionBtn, styles.finishBtn]} onPress={handleFinish} activeOpacity={0.8}>
-                    <Text style={styles.btnText}>FINISH MATCH</Text>
+                    <Text style={styles.btnText}>{isTournament ? 'FINISH TOURNAMENT' : 'FINISH MATCH'}</Text>
                 </TouchableOpacity>
             )}
         </View>

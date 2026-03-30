@@ -13,6 +13,7 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
@@ -107,6 +108,8 @@ export default function SetupScreen() {
       { type: 'mixed' }, { type: 'mixed' }, { type: 'mixed' },
       { type: 'mixed' }, { type: 'mixed' }, { type: 'mixed' }
   ]);
+  const [isFixedTeams, setIsFixedTeams] = useState(false);
+  const [isTournament, setIsTournament] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -413,6 +416,8 @@ export default function SetupScreen() {
 
   const handleSetupPress = () => {
     if (players.length < 4) { Alert.alert('Not Enough Players', 'You need at least 4 players.'); return; }
+    if (isFixedTeams && players.length % 2 !== 0) { Alert.alert('Odd Player Count', 'Fixed Teams requires an even number of players. Every player needs a partner.'); return; }
+    if (isTournament && players.length < 8) { Alert.alert('Not Enough Players', 'Tournament mode requires at least 8 players (4 teams).'); return; }
     setConfigModalVisible(true);
   };
 
@@ -424,16 +429,28 @@ export default function SetupScreen() {
     try {
         setConfigModalVisible(false);
         if (groupName) await AsyncStorage.removeItem(`scores_${groupName}`);
+
+        // Build teams array for fixed teams mode
+        const teamsPayload = isFixedTeams ? Array.from({ length: Math.floor(players.length / 2) }, (_, i) => ({
+            id: `team-${i}`,
+            player1: { id: players[i * 2].id, first_name: players[i * 2].first_name, gender: players[i * 2].gender },
+            player2: { id: players[i * 2 + 1].id, first_name: players[i * 2 + 1].first_name, gender: players[i * 2 + 1].gender },
+        })) : undefined;
+
+        const payload = isFixedTeams
+            ? { group_key: groupKey, mode: 'fixed_teams', tournament: isTournament, teams: teamsPayload, players: players.map(p => ({ id: p.id, first_name: p.first_name, gender: p.gender })) }
+            : { group_key: groupKey, round_configs: roundsConfig, group: groupName, players: players.map(p => ({ id: p.id, first_name: p.first_name, gender: p.gender })) };
+
         const res = await fetch(`${API_URL}/generate_schedule.php`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ group_key: groupKey, round_configs: roundsConfig, group: groupName, players: players.map(p => ({ id: p.id, first_name: p.first_name, gender: p.gender })) }),
+            body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (data.status === 'success') {
-            const navId = await storeNavData({ schedule: data.schedule, players });
+            const navId = await storeNavData({ schedule: data.schedule, players, isFixedTeams, isTournament, teams: teamsPayload });
             router.push({
                 pathname: '/(tabs)/game',
-                params: { navId, groupName, groupKey, courtName, courtId: (courtId || '').toString() }
+                params: { navId, groupName, groupKey, courtName, courtId: (courtId || '').toString(), isFixedTeams: isFixedTeams.toString(), isTournament: isTournament.toString() }
             });
         } else { Alert.alert("Error", data.message || "Generation failed."); }
     } catch (e) { Alert.alert("Error", "Network error."); }
@@ -496,6 +513,9 @@ export default function SetupScreen() {
   );
 
   const courtCount = Math.floor(players.length / 4);
+  const teamCount = Math.floor(players.length / 2);
+  const fixedRoundCount = teamCount > 1 ? (teamCount % 2 === 0 ? teamCount - 1 : teamCount) : 0;
+  const fixedGameCount = teamCount * (teamCount - 1) / 2;
   const maleCount = players.filter(p => p.gender === 'male').length;
   const femaleCount = players.filter(p => p.gender === 'female').length;
 
@@ -535,11 +555,36 @@ export default function SetupScreen() {
             </View>
         </View>
 
+        {/* MODE TOGGLES */}
+        <View style={styles.toggleSection}>
+            <View style={styles.toggleRow}>
+                <Text style={styles.toggleLabel}>Fixed Teams</Text>
+                <Switch value={isFixedTeams} onValueChange={(v) => { setIsFixedTeams(v); if (!v) setIsTournament(false); }}
+                    trackColor={{ false: colors.border, true: colors.accent }} thumbColor="white" />
+            </View>
+            {isFixedTeams && (
+                <View style={styles.toggleRow}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.toggleLabel, players.length < 8 && { opacity: 0.4 }]}>Tournament Playoffs</Text>
+                        {players.length < 8 && <Text style={styles.toggleHint}>Requires 8+ players (4 teams)</Text>}
+                    </View>
+                    <Switch value={isTournament} onValueChange={setIsTournament} disabled={players.length < 8}
+                        trackColor={{ false: colors.border, true: '#FFD700' }} thumbColor="white" />
+                </View>
+            )}
+            {isFixedTeams && (
+                <Text style={styles.toggleInfo}>
+                    {teamCount} teams · {fixedRoundCount} rounds · {fixedGameCount} games
+                    {isTournament ? ' + 4 playoff games' : ''}
+                </Text>
+            )}
+        </View>
+
         {/* ACTION BUTTONS */}
         <View style={styles.actionButtons}>
             <TouchableOpacity style={styles.createMatchBtn} onPress={handleSetupPress}>
                 <BrandedIcon name="game-controller" size={18} color={colors.bg} />
-                <Text style={styles.createMatchBtnText}>CREATE MATCH</Text>
+                <Text style={styles.createMatchBtnText}>{isTournament ? 'CREATE TOURNAMENT' : 'CREATE MATCH'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.editPlayersBtn} onPress={() => router.push('/(tabs)/players')}>
                 <BrandedIcon name="groups" size={18} color={colors.textSoft} />
@@ -754,35 +799,69 @@ export default function SetupScreen() {
                 <View style={styles.infoBox}>
                     <Text style={styles.infoBoxText}>{players.length} Players</Text>
                     <Text style={styles.infoBoxText}>·</Text>
-                    <Text style={styles.infoBoxText}>{courtCount} Courts</Text>
+                    {isFixedTeams ? (
+                        <Text style={styles.infoBoxText}>{teamCount} Teams</Text>
+                    ) : (
+                        <Text style={styles.infoBoxText}>{courtCount} Courts</Text>
+                    )}
                 </View>
-                <View style={styles.counterRow}>
-                    <Text style={styles.label}>ROUNDS:</Text>
-                    <View style={styles.roundControls}>
-                        <TouchableOpacity onPress={removeRound} style={styles.roundBtn}><BrandedIcon name="minus" size={24} color={colors.text} /></TouchableOpacity>
-                        <Text style={styles.roundCountText}>{roundsConfig.length}</Text>
-                        <TouchableOpacity onPress={addRound} style={styles.roundBtn}><BrandedIcon name="add" size={24} color={colors.text} /></TouchableOpacity>
-                    </View>
-                </View>
-                <View style={{ maxHeight: 200, marginVertical: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 12 }}>
-                    <ScrollView contentContainerStyle={{ padding: 10 }} nestedScrollEnabled>
-                        {roundsConfig.map((conf, index) => (
-                            <View key={index} style={styles.roundConfigRow}>
-                                <Text style={styles.roundNum}>#{index + 1}</Text>
-                                <View style={styles.toggleGroup}>
-                                    {(['mixed', 'gender', 'mixer'] as const).map(t => (
-                                        <TouchableOpacity key={t} style={[styles.smallTypeBtn, conf.type === t && styles.smallTypeActive]}
-                                            onPress={() => updateRoundType(index, t)}>
-                                            <Text style={[styles.smallTypeText, conf.type === t && { color: colors.bg }]}>{t.toUpperCase()}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
+
+                {isFixedTeams ? (
+                    <>
+                        <View style={styles.infoBox}>
+                            <Text style={styles.infoBoxText}>{fixedRoundCount} Rounds · {fixedGameCount} Games</Text>
+                        </View>
+                        {isTournament && (
+                            <View style={[styles.infoBox, { backgroundColor: 'rgba(255,215,0,0.15)' }]}>
+                                <Text style={[styles.infoBoxText, { color: '#DAA520' }]}>+ Semifinals, Gold & Bronze Matches</Text>
                             </View>
-                        ))}
-                    </ScrollView>
-                </View>
+                        )}
+                        <View style={{ marginVertical: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 10 }}>
+                            <Text style={[styles.label, { marginBottom: 8 }]}>TEAM PAIRINGS (by roster order)</Text>
+                            {Array.from({ length: teamCount }, (_, i) => (
+                                <View key={i} style={[styles.roundConfigRow, { justifyContent: 'flex-start', gap: 10 }]}>
+                                    <Text style={[styles.roundNum, { width: 50 }]}>Team {i + 1}</Text>
+                                    <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text, flex: 1 }}>
+                                        {players[i * 2]?.first_name || '?'} & {players[i * 2 + 1]?.first_name || '?'}
+                                    </Text>
+                                </View>
+                            ))}
+                            <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: colors.textMuted, marginTop: 4 }}>
+                                Reorder players on the roster to change pairings
+                            </Text>
+                        </View>
+                    </>
+                ) : (
+                    <>
+                        <View style={styles.counterRow}>
+                            <Text style={styles.label}>ROUNDS:</Text>
+                            <View style={styles.roundControls}>
+                                <TouchableOpacity onPress={removeRound} style={styles.roundBtn}><BrandedIcon name="minus" size={24} color={colors.text} /></TouchableOpacity>
+                                <Text style={styles.roundCountText}>{roundsConfig.length}</Text>
+                                <TouchableOpacity onPress={addRound} style={styles.roundBtn}><BrandedIcon name="add" size={24} color={colors.text} /></TouchableOpacity>
+                            </View>
+                        </View>
+                        <View style={{ maxHeight: 200, marginVertical: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 12 }}>
+                            <ScrollView contentContainerStyle={{ padding: 10 }} nestedScrollEnabled>
+                                {roundsConfig.map((conf, index) => (
+                                    <View key={index} style={styles.roundConfigRow}>
+                                        <Text style={styles.roundNum}>#{index + 1}</Text>
+                                        <View style={styles.toggleGroup}>
+                                            {(['mixed', 'gender', 'mixer'] as const).map(t => (
+                                                <TouchableOpacity key={t} style={[styles.smallTypeBtn, conf.type === t && styles.smallTypeActive]}
+                                                    onPress={() => updateRoundType(index, t)}>
+                                                    <Text style={[styles.smallTypeText, conf.type === t && { color: colors.bg }]}>{t.toUpperCase()}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    </>
+                )}
                 <TouchableOpacity style={styles.startMatchBtn} onPress={generateSchedule}>
-                    <Text style={styles.startMatchText}>GENERATE MATCH</Text>
+                    <Text style={styles.startMatchText}>{isTournament ? 'GENERATE TOURNAMENT' : 'GENERATE MATCH'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setConfigModalVisible(false)} style={styles.closeModalBtn}>
                     <Text style={styles.closeText}>CANCEL</Text>
@@ -852,6 +931,11 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
     fontFamily: FONT_BODY_SEMIBOLD,
     fontSize: 11,
   },
+  toggleSection: { paddingHorizontal: 20, paddingBottom: 4 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
+  toggleLabel: { fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: c.text },
+  toggleHint: { fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: c.textMuted, marginTop: 2 },
+  toggleInfo: { fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: c.textMuted, textAlign: 'center', paddingVertical: 4 },
   actionButtons: { flexDirection: 'row', padding: 16, gap: 10 },
   createMatchBtn: {
     flex: 1,

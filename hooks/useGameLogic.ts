@@ -34,11 +34,51 @@ function isGenderIllegal(t1: Player[], t2: Player[]): boolean {
     return (t1AllMale && t2AllFemale) || (t1AllFemale && t2AllMale);
 }
 
+// Generate a fixed-teams round-robin schedule using the circle method
+export const generateFixedTeamsLocal = (teams: { player1: Player; player2: Player }[]): RoundData[] => {
+    const n = teams.length;
+    if (n < 2) return [];
+
+    const teamList = [...teams];
+    const hasBye = n % 2 !== 0;
+    if (hasBye) teamList.push({ player1: { id: 'BYE', first_name: 'BYE', gender: '' } as Player, player2: { id: 'BYE', first_name: 'BYE', gender: '' } as Player });
+    const total = teamList.length;
+    const numRounds = total - 1;
+    const schedule: RoundData[] = [];
+
+    for (let round = 0; round < numRounds; round++) {
+        const games: GameData[] = [];
+        const byes: Player[] = [];
+        for (let i = 0; i < total / 2; i++) {
+            let homeIdx: number, awayIdx: number;
+            if (i === 0) {
+                homeIdx = 0;
+                awayIdx = (round % (total - 1)) + 1;
+            } else {
+                homeIdx = ((round + i) % (total - 1)) + 1;
+                awayIdx = ((round + total - 1 - i) % (total - 1)) + 1;
+            }
+            const t1 = teamList[homeIdx];
+            const t2 = teamList[awayIdx];
+            if (t1.player1.id === 'BYE') { byes.push(t2.player1, t2.player2); continue; }
+            if (t2.player1.id === 'BYE') { byes.push(t1.player1, t1.player2); continue; }
+            games.push({
+                id: `fg-${round}-${i}-${Math.random().toString(36).substr(2, 6)}`,
+                team1: [t1.player1, t1.player2],
+                team2: [t2.player1, t2.player2],
+            });
+        }
+        schedule.push({ id: `fr-${round}-${Date.now()}`, type: 'fixed', games, byes });
+    }
+    return schedule;
+};
+
 export const useGameLogic = (
     initialScheduleJson: string | undefined,
     playersData: Player[],
     currentRoster: Player[],
-    groupName: string
+    groupName: string,
+    isFixedTeams: boolean = false
 ) => {
     const [schedule, setSchedule] = useState<RoundData[]>([]);
     const [loading, setLoading] = useState(false);
@@ -355,6 +395,45 @@ export const useGameLogic = (
         if (rosterToUse.length === 0) {
             Alert.alert('Error', 'No player data available to shuffle.');
             return false;
+        }
+
+        // Fixed teams mode: extract teams from schedule and regenerate with shuffled round order
+        if (isFixedTeams) {
+            setLoading(true);
+            return new Promise<boolean>((resolve) => {
+                setTimeout(() => {
+                    try {
+                        // Extract fixed teams from the current schedule
+                        const teamMap = new Map<string, { player1: Player; player2: Player }>();
+                        schedule.forEach(round => {
+                            round.games.forEach(game => {
+                                if (game.team1.length === 2) {
+                                    const key = [game.team1[0].id, game.team1[1].id].sort().join('-');
+                                    if (!teamMap.has(key)) teamMap.set(key, { player1: game.team1[0], player2: game.team1[1] });
+                                }
+                                if (game.team2.length === 2) {
+                                    const key = [game.team2[0].id, game.team2[1].id].sort().join('-');
+                                    if (!teamMap.has(key)) teamMap.set(key, { player1: game.team2[0], player2: game.team2[1] });
+                                }
+                            });
+                        });
+                        const teams = Array.from(teamMap.values());
+                        // Shuffle team order for variety
+                        for (let i = teams.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            [teams[i], teams[j]] = [teams[j], teams[i]];
+                        }
+                        const newSchedule = generateFixedTeamsLocal(teams);
+                        setSchedule(newSchedule);
+                        setSwapSource(null);
+                    } catch (e: any) {
+                        Alert.alert('Error', 'Shuffle failed: ' + e.message);
+                    } finally {
+                        setLoading(false);
+                    }
+                    resolve(true);
+                }, 100);
+            });
         }
 
         const currentRoundConfigs = schedule.length > 0
