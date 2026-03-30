@@ -58,6 +58,13 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   } = useLeaderboardLogic(localHistory, localRoster);
 
   const isFixedTeams = params.isFixedTeams === 'true';
+  const tournamentPlacementsRaw = params.tournamentPlacements as string || '';
+
+  // Parse tournament placements if provided (from tournament bracket results)
+  const tournamentPlacements: { id: string; first_name: string }[][] = useMemo(() => {
+      if (!tournamentPlacementsRaw) return [];
+      try { return JSON.parse(tournamentPlacementsRaw); } catch { return []; }
+  }, [tournamentPlacementsRaw]);
 
   // Team leaderboard for fixed teams mode — aggregate pairs from match history
   interface TeamLeaderboardItem {
@@ -68,6 +75,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       diff: number;
       pct: number;
       badges: string[];
+      placement?: number; // 1=gold, 2=silver, 3=bronze, 4=4th
       dupr?: number | null;
   }
 
@@ -80,7 +88,6 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           const s2 = parseInt(String(m.s2));
           if (s1 === 0 && s2 === 0) return;
 
-          // Team 1: p1 + p2, Team 2: p3 + p4
           const t1Key = [m.p1, m.p2].filter(Boolean).sort().join('-');
           const t2Key = [m.p3, m.p4].filter(Boolean).sort().join('-');
           const t1Names = [m.p1_name, m.p2_name].filter(Boolean);
@@ -96,27 +103,51 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           teamStats[t2Key].diff -= diff;
       });
 
-      return Object.entries(teamStats).map(([key, s]) => ({
+      const teams = Object.entries(teamStats).map(([key, s]) => ({
           id: key,
           name: s.names.join(' & '),
           w: s.w,
           l: s.l,
           diff: s.diff,
           pct: s.w + s.l > 0 ? Math.round((s.w / (s.w + s.l)) * 100) : 0,
-          badges: [],
+          badges: [] as string[],
+          placement: undefined as number | undefined,
       }));
-  }, [isFixedTeams, history]);
+
+      // Apply tournament placements if available (overrides stats-based ranking for top 4)
+      if (tournamentPlacements.length === 4) {
+          tournamentPlacements.forEach((teamPlayers, placeIdx) => {
+              const placementKey = teamPlayers.map(p => p.id).sort().join('-');
+              const team = teams.find(t => t.id === placementKey);
+              if (team) {
+                  team.placement = placeIdx + 1; // 1=gold, 2=silver, 3=bronze, 4=4th
+                  if (placeIdx === 0) team.badges = ['Gold'];
+                  else if (placeIdx === 1) team.badges = ['Silver'];
+                  else if (placeIdx === 2) team.badges = ['Bronze'];
+              }
+          });
+      }
+
+      return teams;
+  }, [isFixedTeams, history, tournamentPlacements]);
 
   const sortedTeamLeaderboard = useMemo(() => {
       let data = [...teamLeaderboard];
+
+      // If tournament placements exist, placed teams go first in placement order
+      const placed = data.filter(t => t.placement != null).sort((a, b) => a.placement! - b.placement!);
+      const unplaced = data.filter(t => t.placement == null);
+
+      // Sort unplaced by current sort mode
       if (sortMode === 'pct') {
-          data.sort((a, b) => b.pct !== a.pct ? b.pct - a.pct : b.diff - a.diff);
+          unplaced.sort((a, b) => b.pct !== a.pct ? b.pct - a.pct : b.diff - a.diff);
       } else if (sortMode === 'wins') {
-          data.sort((a, b) => b.w !== a.w ? b.w - a.w : a.l - b.l);
+          unplaced.sort((a, b) => b.w !== a.w ? b.w - a.w : a.l - b.l);
       } else if (sortMode === 'diff') {
-          data.sort((a, b) => b.diff !== a.diff ? b.diff - a.diff : b.pct - a.pct);
+          unplaced.sort((a, b) => b.diff !== a.diff ? b.diff - a.diff : b.pct - a.pct);
       }
-      return data;
+
+      return [...placed, ...unplaced];
   }, [teamLeaderboard, sortMode]);
 
   const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -389,6 +420,11 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   const renderTeamPodiumStats = (team: TeamLeaderboardItem, rank: string) => (
       <>
           <Text style={styles.podiumName} numberOfLines={2} adjustsFontSizeToFit>{team.name}</Text>
+          {team.badges && team.badges.length > 0 && (
+              <Text style={[styles.podiumStat, { color: rank === 'gold' ? '#DAA520' : rank === 'silver' ? '#C0C0C0' : '#CD7F32', fontWeight: '800', fontSize: 10 }]}>
+                  {team.badges[0]}
+              </Text>
+          )}
           <Text style={styles.podiumStat}>{team.w}W - {team.l}L</Text>
           <Text style={[styles.podiumStat, {fontSize:9, opacity:0.8}]}>{team.diff > 0 ? '+' : ''}{team.diff} Diff</Text>
           <Text style={[styles.podiumStat, rank === 'gold' ? styles.textGold : null, {marginTop:2}]}>{team.pct}%</Text>
@@ -397,10 +433,11 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
 
   const renderTeamPedestal = () => {
       if (sortedTeamLeaderboard.length === 0) return null;
+      // Top 3 are already in correct order (placement-based if tournament, stats-based otherwise)
       const top3 = sortedTeamLeaderboard.slice(0, 3);
-      const gold = top3[0] || { name: '-', w:0, l:0, diff:0, pct:0 };
-      const silver = top3[1] || { name: '-', w:0, l:0, diff:0, pct:0 };
-      const bronze = top3[2] || { name: '-', w:0, l:0, diff:0, pct:0 };
+      const gold = top3[0] || { name: '-', w:0, l:0, diff:0, pct:0, badges: [] };
+      const silver = top3[1] || { name: '-', w:0, l:0, diff:0, pct:0, badges: [] };
+      const bronze = top3[2] || { name: '-', w:0, l:0, diff:0, pct:0, badges: [] };
 
       const getInitials = (name: string) => name.split(' & ').map(n => n.charAt(0)).join('');
 

@@ -629,12 +629,38 @@ export default function GameScreen() {
             } else {
                 Alert.alert("Success!", data.message || "Match saved successfully!");
             }
+            // Compute tournament placements if applicable
+            let tournamentPlacements = '';
+            if (isTournament && isFixedTeams) {
+                const goldRound = schedule.find(r => r.type === 'gold');
+                const bronzeRound = schedule.find(r => r.type === 'bronze');
+                if (goldRound && bronzeRound) {
+                    const gIdx = schedule.indexOf(goldRound);
+                    const bIdx = schedule.indexOf(bronzeRound);
+                    const gs1 = parseInt(scores[`${gIdx}_0_t1`] || '0');
+                    const gs2 = parseInt(scores[`${gIdx}_0_t2`] || '0');
+                    const bs1 = parseInt(scores[`${bIdx}_0_t1`] || '0');
+                    const bs2 = parseInt(scores[`${bIdx}_0_t2`] || '0');
+                    const goldWinner = gs1 >= gs2 ? goldRound.games[0].team1 : goldRound.games[0].team2;
+                    const goldLoser = gs1 >= gs2 ? goldRound.games[0].team2 : goldRound.games[0].team1;
+                    const bronzeWinner = bs1 >= bs2 ? bronzeRound.games[0].team1 : bronzeRound.games[0].team2;
+                    const bronzeLoser = bs1 >= bs2 ? bronzeRound.games[0].team2 : bronzeRound.games[0].team1;
+                    // Encode as JSON: array of teams in placement order [1st, 2nd, 3rd, 4th]
+                    tournamentPlacements = JSON.stringify([
+                        goldWinner.map((p: Player) => ({ id: p.id, first_name: p.first_name })),
+                        goldLoser.map((p: Player) => ({ id: p.id, first_name: p.first_name })),
+                        bronzeWinner.map((p: Player) => ({ id: p.id, first_name: p.first_name })),
+                        bronzeLoser.map((p: Player) => ({ id: p.id, first_name: p.first_name })),
+                    ]);
+                }
+            }
             router.replace({ pathname: '/(tabs)/leaderboard', params: {
                 groupName,
                 forceGlobal: 'true',
                 sessionId: data.session_id ? String(data.session_id) : '',
                 refresh: Date.now().toString(),
                 isFixedTeams: isFixedTeams ? 'true' : 'false',
+                tournamentPlacements,
             } });
         } else if (data.status === 'already_exists') {
             setSaveModalVisible(false);
