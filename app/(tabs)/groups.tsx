@@ -1,5 +1,6 @@
 import { BrandedIcon } from '../../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -70,6 +71,10 @@ export default function HomeScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
@@ -318,6 +323,61 @@ export default function HomeScreen() {
       setPasswordLoading(false);
     }
   };
+
+  const handleDeleteAccount = () => {
+    setSettingsVisible(false);
+    const showModal = () => {
+      setDeletePassword('');
+      setDeleteError('');
+      setDeleteAccountVisible(true);
+    };
+    if (Platform.OS === 'web') {
+      showModal();
+    } else {
+      Alert.alert(
+        'Delete Account',
+        'This will permanently delete your account and all associated data. This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Continue', style: 'destructive', onPress: showModal },
+        ]
+      );
+    }
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      setDeleteError('Please enter your password');
+      return;
+    }
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      const response = await fetch(`${API_URL}/delete_account.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, password: deletePassword }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setDeleteAccountVisible(false);
+        await AsyncStorage.clear();
+        if (Platform.OS === 'web') {
+          window.alert('Your account has been permanently deleted.');
+        } else {
+          Alert.alert('Account Deleted', 'Your account has been permanently deleted.');
+        }
+        router.replace('/login');
+      } else {
+        setDeleteError(data.message || 'Failed to delete account');
+      }
+    } catch (e) {
+      setDeleteError('Network error. Please try again.');
+    }
+    setDeleteLoading(false);
+  };
+
+  const appVersion = Constants.expoConfig?.version || '1.4.3';
 
   const totalPlayers = groups.reduce((sum, g) => sum + (g.count || 0), 0);
 
@@ -628,9 +688,13 @@ export default function HomeScreen() {
             {/* Account */}
             <View style={styles.settingsSection}>
               <Text style={styles.settingsSectionTitle}>ACCOUNT</Text>
-              <TouchableOpacity style={styles.settingsActionRow} onPress={() => setChangePasswordVisible(true)}>
+              <TouchableOpacity style={styles.settingsActionRow} onPress={() => { setSettingsVisible(false); setChangePasswordVisible(true); }}>
                 <BrandedIcon name="lock" size={20} color={colors.text} />
                 <Text style={styles.settingsActionText}>Change Password</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.settingsActionRow} onPress={handleDeleteAccount}>
+                <BrandedIcon name="trash" size={20} color={colors.danger} />
+                <Text style={[styles.settingsActionText, { color: colors.danger }]}>Delete Account</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.settingsActionRow} onPress={handleLogout}>
                 <BrandedIcon name="logout" size={20} color={colors.danger} />
@@ -638,7 +702,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.appVersion}>PlayPBNow v1.3.0</Text>
+            <Text style={styles.appVersion}>PlayPBNow v{appVersion}</Text>
           </View>
         </View>
       </Modal>
@@ -690,6 +754,50 @@ export default function HomeScreen() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: '#fff' }}>Update</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* DELETE ACCOUNT MODAL */}
+      <Modal animationType="slide" transparent visible={deleteAccountVisible} onRequestClose={() => setDeleteAccountVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24 }}>
+            <Text style={{ fontFamily: FONT_DISPLAY_BOLD, fontSize: 20, color: colors.danger, marginBottom: 8 }}>Delete Account</Text>
+            <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: colors.textMuted, marginBottom: 20 }}>
+              This will permanently delete your account and all associated data including groups, players, matches, SMS credits, and invites. This cannot be undone.
+            </Text>
+            <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text, marginBottom: 8 }}>Enter your password to confirm:</Text>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+              value={deletePassword}
+              onChangeText={(t) => { setDeletePassword(t); setDeleteError(''); }}
+              autoCapitalize="none"
+            />
+            {deleteError ? (
+              <Text style={{ color: colors.danger, fontFamily: FONT_BODY_MEDIUM, fontSize: 13, marginBottom: 8 }}>{deleteError}</Text>
+            ) : null}
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: colors.border, alignItems: 'center' }}
+                onPress={() => { setDeleteAccountVisible(false); setDeletePassword(''); setDeleteError(''); }}
+              >
+                <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: colors.text }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: colors.danger, alignItems: 'center', opacity: deleteLoading ? 0.6 : 1 }}
+                onPress={confirmDeleteAccount}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: '#fff' }}>Delete Forever</Text>
                 )}
               </TouchableOpacity>
             </View>
