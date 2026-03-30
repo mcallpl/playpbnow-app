@@ -7,8 +7,11 @@ const SHARED_BEACON_URL = 'https://peoplestar.com/shared/beacon/api';
 
 interface BeaconContextValue {
   hasActiveBeacons: boolean;
+  hasOtherBeacons: boolean;
+  hasOwnBeacon: boolean;
   activeBeaconCount: number;
-  reportBeaconCount: (count: number) => void;
+  otherBeaconCount: number;
+  reportBeaconCounts: (total: number, others: number, own: boolean) => void;
   location: UserLocation | null;
   locationPermissionDenied: boolean;
   requestLocation: () => Promise<UserLocation | null>;
@@ -19,8 +22,11 @@ interface BeaconContextValue {
 
 const BeaconContext = createContext<BeaconContextValue>({
   hasActiveBeacons: false,
+  hasOtherBeacons: false,
+  hasOwnBeacon: false,
   activeBeaconCount: 0,
-  reportBeaconCount: () => {},
+  otherBeaconCount: 0,
+  reportBeaconCounts: () => {},
   location: null,
   locationPermissionDenied: false,
   requestLocation: async () => null,
@@ -34,8 +40,10 @@ export function useBeaconStatus() {
 
 export function BeaconProvider({ children }: { children: React.ReactNode }) {
   const [activeBeaconCount, setActiveBeaconCount] = useState(0);
+  const [otherBeaconCount, setOtherBeaconCount] = useState(0);
+  const [hasOwnBeacon, setHasOwnBeacon] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
-  const prevCountRef = useRef<number>(0);
+  const prevOtherCountRef = useRef<number>(0);
 
   const {
     location,
@@ -45,13 +53,15 @@ export function BeaconProvider({ children }: { children: React.ReactNode }) {
   } = useLocation();
 
   // Called by the feed whenever it fetches beacons — single source of truth
-  const reportBeaconCount = useCallback((count: number) => {
-    // Play chime when a new beacon appears
-    if (count > prevCountRef.current && prevCountRef.current >= 0) {
+  const reportBeaconCounts = useCallback((total: number, others: number, own: boolean) => {
+    // Play chime only when OTHER players' beacons increase
+    if (others > prevOtherCountRef.current && prevOtherCountRef.current >= 0) {
       playBeaconChime();
     }
-    prevCountRef.current = count;
-    setActiveBeaconCount(count);
+    prevOtherCountRef.current = others;
+    setActiveBeaconCount(total);
+    setOtherBeaconCount(others);
+    setHasOwnBeacon(own);
     if (!initialCheckDone) setInitialCheckDone(true);
   }, [initialCheckDone]);
 
@@ -79,13 +89,18 @@ export function BeaconProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
 
         if (!cancelled && data.status === 'success') {
-          const count = Array.isArray(data.beacons) ? data.beacons.length : 0;
+          const beacons = Array.isArray(data.beacons) ? data.beacons : [];
+          const uid = parseInt(userId);
+          const others = beacons.filter((b: any) => !b.is_mine && b.user_id !== uid).length;
+          const own = beacons.some((b: any) => b.is_mine || b.user_id === uid);
           // Only update if Play Now tab hasn't already reported (avoid overwriting)
-          if (prevCountRef.current === 0 && count > 0) {
-            prevCountRef.current = count;
-            setActiveBeaconCount(count);
+          if (prevOtherCountRef.current === 0 && others > 0) {
+            prevOtherCountRef.current = others;
             playBeaconChime();
           }
+          setActiveBeaconCount(beacons.length);
+          setOtherBeaconCount(others);
+          setHasOwnBeacon(own);
           setInitialCheckDone(true);
         }
       } catch {
@@ -108,8 +123,11 @@ export function BeaconProvider({ children }: { children: React.ReactNode }) {
   return (
     <BeaconContext.Provider value={{
       hasActiveBeacons: activeBeaconCount > 0,
+      hasOtherBeacons: otherBeaconCount > 0,
+      hasOwnBeacon,
       activeBeaconCount,
-      reportBeaconCount,
+      otherBeaconCount,
+      reportBeaconCounts,
       location,
       locationPermissionDenied,
       requestLocation,

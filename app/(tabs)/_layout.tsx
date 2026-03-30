@@ -10,7 +10,7 @@ import { FONT_DISPLAY_BOLD } from '../../constants/theme';
 
 export default function TabLayout() {
   const { activeMatch } = useActiveMatch();
-  const { hasActiveBeacons, activeBeaconCount } = useBeaconStatus();
+  const { hasOtherBeacons, hasOwnBeacon, otherBeaconCount } = useBeaconStatus();
   const { isAdmin } = useSubscription();
   const { colors } = useTheme();
 
@@ -57,10 +57,10 @@ export default function TabLayout() {
             <PulsingTabIcon
               name="playnow"
               size={24}
-              color={color}
-              active={hasActiveBeacons}
+              color={hasOwnBeacon && !hasOtherBeacons ? '#cc0000' : color}
+              active={hasOtherBeacons}
               glowColor={colors.accent}
-              count={activeBeaconCount}
+              count={otherBeaconCount}
             />
           ),
         }}

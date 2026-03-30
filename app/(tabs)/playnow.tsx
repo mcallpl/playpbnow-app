@@ -321,7 +321,7 @@ export default function PlayNowTab() {
     setError,
   } = useBeacon();
 
-  const { location, locationPermissionDenied, showLocationDeniedAlert, reportBeaconCount } = useBeaconStatus();
+  const { location, locationPermissionDenied, showLocationDeniedAlert, reportBeaconCounts } = useBeaconStatus();
 
   const [view, setView] = useState<BeaconView>('feed');
   const viewRef = useRef<BeaconView>('feed');
@@ -554,7 +554,11 @@ export default function PlayNowTab() {
   useEffect(() => { viewRef.current = view; }, [view]);
 
   // Sync beacon count to context so the tab icon matches exactly what the feed shows
-  useEffect(() => { reportBeaconCount(beacons.length); }, [beacons.length, reportBeaconCount]);
+  useEffect(() => {
+    const others = beacons.filter((b: any) => !b.is_mine).length;
+    const own = beacons.some((b: any) => b.is_mine);
+    reportBeaconCounts(beacons.length, others, own);
+  }, [beacons.length, reportBeaconCounts]);
 
   // Helper to pass location into every fetchFeed call
   const fetchFeedWithLocation = useCallback(
