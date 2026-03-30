@@ -582,22 +582,30 @@ export default function SetupScreen() {
             </View>
         </View>
 
-        {/* MODE TOGGLES */}
-        <View style={styles.toggleSection}>
-            <View style={styles.toggleRow}>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.toggleLabel}>Fixed Teams</Text>
-                    <Text style={styles.toggleHint}>Same partner every round</Text>
-                </View>
-                <Switch value={isFixedTeams} onValueChange={setIsFixedTeams}
-                    trackColor={{ false: colors.border, true: colors.accent }} thumbColor="white" />
-            </View>
-            {isFixedTeams && (
-                <Text style={styles.toggleInfo}>
-                    {teamCount} teams · {fixedRoundCount} rounds · {fixedGameCount} games
-                </Text>
-            )}
+        {/* MODE SELECTOR */}
+        <View style={styles.modeSelector}>
+            <TouchableOpacity
+                style={[styles.modeBtn, !isFixedTeams && styles.modeBtnActive]}
+                onPress={() => setIsFixedTeams(false)}
+                activeOpacity={0.7}
+            >
+                <BrandedIcon name="shuffle" size={18} color={!isFixedTeams ? colors.bg : colors.textMuted} />
+                <Text style={[styles.modeBtnText, !isFixedTeams && styles.modeBtnTextActive]}>ROTATING PARTNERS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+                style={[styles.modeBtn, isFixedTeams && styles.modeBtnActive]}
+                onPress={() => setIsFixedTeams(true)}
+                activeOpacity={0.7}
+            >
+                <BrandedIcon name="link" size={18} color={isFixedTeams ? colors.bg : colors.textMuted} />
+                <Text style={[styles.modeBtnText, isFixedTeams && styles.modeBtnTextActive]}>FIXED TEAMS</Text>
+            </TouchableOpacity>
         </View>
+        {isFixedTeams && (
+            <Text style={styles.toggleInfo}>
+                {teamCount} teams · {fixedRoundCount} rounds · {fixedGameCount} games
+            </Text>
+        )}
 
         {/* ACTION BUTTONS */}
         <View style={styles.actionButtons}>
@@ -945,10 +953,11 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
     fontFamily: FONT_BODY_SEMIBOLD,
     fontSize: 11,
   },
-  toggleSection: { paddingHorizontal: 20, paddingBottom: 4 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
-  toggleLabel: { fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: c.text },
-  toggleHint: { fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: c.textMuted, marginTop: 2 },
+  modeSelector: { flexDirection: 'row', marginHorizontal: 20, marginTop: 8, marginBottom: 4, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: c.border },
+  modeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, backgroundColor: c.surface },
+  modeBtnActive: { backgroundColor: c.accent },
+  modeBtnText: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 11, color: c.textMuted, letterSpacing: 0.5 },
+  modeBtnTextActive: { color: c.bg },
   toggleInfo: { fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: c.textMuted, textAlign: 'center', paddingVertical: 4 },
   actionButtons: { flexDirection: 'row', padding: 16, gap: 10 },
   createMatchBtn: {

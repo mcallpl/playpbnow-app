@@ -864,7 +864,7 @@ export default function GameScreen() {
         </View></View>
         <View style={styles.centerVS}>
              <Text style={styles.vsText}>VS</Text>
-             {!isFixedTeams && <Text style={styles.crtText}>CRT {gIdx + 1}</Text>}
+             <Text style={styles.crtText}>CRT {gIdx + 1}</Text>
         </View>
         <View style={styles.teamWrapper}><View style={styles.teamContainer}>
             {renderPlayerBox(game.team2[0], rIdx, gIdx, 2, 0, t2Conflict)}
