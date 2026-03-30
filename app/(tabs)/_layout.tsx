@@ -53,6 +53,8 @@ export default function TabLayout() {
         name="playnow"
         options={{
           title: 'PLAY NOW',
+          tabBarLabel: hasOwnBeacon && !hasOtherBeacons ? 'PLAY NOW' : undefined,
+          tabBarLabelStyle: hasOwnBeacon && !hasOtherBeacons ? { color: '#cc0000' } : undefined,
           tabBarIcon: ({ color }) => (
             <PulsingTabIcon
               name="playnow"
