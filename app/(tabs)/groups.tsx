@@ -182,7 +182,7 @@ export default function HomeScreen() {
       if (editingGroup) {
         const res = await fetch(`${API_URL}/update_group.php`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ group_key: editingGroup.group_key, new_name: newGroupName.trim(), user_id: userId }),
+          body: JSON.stringify({ group_key: editingGroup.group_key, new_name: newGroupName.trim(), user_id: userId, court_id: selectedCourtId }),
         });
         const data = await res.json();
         if (data.status === 'success') { haptic.save(); await loadGroups(userId); closeModal(); }
@@ -516,9 +516,8 @@ export default function HomeScreen() {
       <>
         <Text style={styles.modalTitle}>{editingGroup ? 'EDIT GROUP' : 'NEW GROUP'}</Text>
 
-        {!editingGroup && (
-          <View style={styles.stepSection}>
-            <Text style={styles.stepLabel}>STEP 1: MATCH LOCATION</Text>
+        <View style={styles.stepSection}>
+            <Text style={styles.stepLabel}>{editingGroup ? 'LOCATION' : 'STEP 1: MATCH LOCATION'}</Text>
             <TouchableOpacity
               style={[styles.courtSelector, selectedCourtId ? styles.courtSelectorSelected : null]}
               onPress={() => setModalView('courtPicker')}
@@ -534,8 +533,7 @@ export default function HomeScreen() {
               </View>
               <BrandedIcon name="chevron-right" size={20} color={colors.textMuted} />
             </TouchableOpacity>
-          </View>
-        )}
+        </View>
 
         <View style={styles.stepSection}>
           <Text style={styles.stepLabel}>{editingGroup ? 'GROUP NAME' : 'STEP 2: GROUP NAME'}</Text>
