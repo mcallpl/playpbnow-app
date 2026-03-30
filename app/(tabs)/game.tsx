@@ -129,6 +129,11 @@ export default function GameScreen() {
       if (navPlayersData.length > 0) setCurrentRoster(navPlayersData);
   }, [navPlayersData]);
 
+  const {
+      schedule, setSchedule, loading, swapSource, setSwapSource,
+      partnerCounts, handlePlayerTap, handlePlayerNameChange, performShuffle, updateGame
+  } = useGameLogic(navScheduleJson, navPlayersData, currentRoster, groupName, isFixedTeams);
+
   // Set roundRobinCount when schedule first loads (before any playoffs added)
   useEffect(() => {
       if (schedule.length > 0 && roundRobinCount === 0) {
@@ -137,11 +142,6 @@ export default function GameScreen() {
           setRoundRobinCount(rrCount);
       }
   }, [schedule]);
-
-  const {
-      schedule, setSchedule, loading, swapSource, setSwapSource,
-      partnerCounts, handlePlayerTap, handlePlayerNameChange, performShuffle, updateGame
-  } = useGameLogic(navScheduleJson, navPlayersData, currentRoster, groupName, isFixedTeams);
 
   const finishButtonRef = React.useRef<any & { measure: Function }>(null);
 

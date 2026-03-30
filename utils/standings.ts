@@ -1,17 +1,6 @@
 // Standings calculator for tournament mode (fixed teams & rotating partners)
 
-interface Player {
-    id: string;
-    first_name: string;
-    gender?: string;
-}
-
-interface RoundData {
-    id: string;
-    type: string;
-    games: { team1: Player[]; team2: Player[]; }[];
-    byes: Player[];
-}
+import { Player, RoundData } from '../hooks/useGameLogic';
 
 export interface TeamStanding {
     teamIndex: number;
