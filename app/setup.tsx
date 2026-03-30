@@ -457,57 +457,86 @@ export default function SetupScreen() {
   const renderPlayerRow = (item: Player, drag: () => void, isActive: boolean, index?: number) => {
     const totalGames = (item.wins || 0) + (item.losses || 0);
     const hasStats = totalGames > 0;
+    const idx = index ?? 0;
+    const isEven = idx % 2 === 0;
+    const isFirstOfPair = isFixedTeams && isEven;
+    const isSecondOfPair = isFixedTeams && !isEven;
+    const teamNum = Math.floor(idx / 2) + 1;
+
     return (
-        <View style={[styles.playerRow, isActive && { backgroundColor: colors.cardHover, elevation: 5 }]}>
-          <View style={styles.playerInfo}>
-             {Platform.OS === 'web' && index !== undefined ? (
-               <View style={{ marginRight: 8, gap: 0 }}>
-                   <Pressable onPress={() => movePlayer(index, 'up')}
-                       style={{ opacity: index === 0 ? 0.2 : 1, paddingHorizontal: 6, paddingVertical: 2 }}>
-                       <Text style={{ fontSize: 16, color: colors.textMuted, fontWeight: '700' }}>▲</Text>
-                   </Pressable>
-                   <Pressable onPress={() => movePlayer(index, 'down')}
-                       style={{ opacity: index === players.length - 1 ? 0.2 : 1, paddingHorizontal: 6, paddingVertical: 2 }}>
-                       <Text style={{ fontSize: 16, color: colors.textMuted, fontWeight: '700' }}>▼</Text>
-                   </Pressable>
-               </View>
-             ) : Platform.OS !== 'web' ? (
-               <Pressable onPressIn={drag} hitSlop={20} style={styles.dragHandle}>
-                   <BrandedIcon name="menu" size={24} color={colors.textMuted} />
-               </Pressable>
-             ) : null}
-             <View style={[styles.genderIcon, { backgroundColor: item.gender === 'female' ? 'rgba(247,140,162,0.15)' : 'rgba(79,172,254,0.15)' }]}>
-                 <BrandedIcon name={item.gender === 'female' ? 'gender-female' : 'gender-male'} size={16}
-                    color={item.gender === 'female' ? colors.female : colors.male} />
-             </View>
-             <View style={{ marginLeft: 12, flex: 1 }}>
-                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                     <Text style={styles.playerName}>{item.first_name}{item.last_name ? ` ${item.last_name}` : ''}</Text>
-                     {item.is_verified && <BrandedIcon name="confirm" size={14} color={colors.accent} />}
+        <View>
+          {/* Team label above first player of each pair */}
+          {isFirstOfPair && (
+              <Text style={{ fontFamily: FONT_BODY_BOLD, fontSize: 10, color: colors.accent, letterSpacing: 1, marginBottom: 4, marginLeft: 4 }}>
+                  TEAM {teamNum}
+              </Text>
+          )}
+          <View style={[
+              styles.playerRow,
+              isActive && { backgroundColor: colors.cardHover, elevation: 5 },
+              isFirstOfPair && { marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+              isSecondOfPair && { marginTop: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 },
+          ]}>
+            <View style={styles.playerInfo}>
+               {Platform.OS === 'web' && index !== undefined ? (
+                 <View style={{ marginRight: 8, gap: 0 }}>
+                     <Pressable onPress={() => movePlayer(index, 'up')}
+                         style={{ opacity: index === 0 ? 0.2 : 1, paddingHorizontal: 6, paddingVertical: 2 }}>
+                         <Text style={{ fontSize: 16, color: colors.textMuted, fontWeight: '700' }}>▲</Text>
+                     </Pressable>
+                     <Pressable onPress={() => movePlayer(index, 'down')}
+                         style={{ opacity: index === players.length - 1 ? 0.2 : 1, paddingHorizontal: 6, paddingVertical: 2 }}>
+                         <Text style={{ fontSize: 16, color: colors.textMuted, fontWeight: '700' }}>▼</Text>
+                     </Pressable>
                  </View>
-                 <Text style={styles.playerStats}>
-                     {item.dupr_rating ? `DUPR ${item.dupr_rating}` : ''}
-                     {item.dupr_rating && hasStats ? ' · ' : ''}
-                     {hasStats ? `${item.wins}W-${item.losses}L · ${(item.win_pct || 0).toFixed(0)}%` : ''}
-                     {(hasStats || item.dupr_rating) && item.home_court_name ? ' · ' : ''}
-                     {item.home_court_name || ''}
-                 </Text>
-             </View>
+               ) : Platform.OS !== 'web' ? (
+                 <Pressable onPressIn={drag} hitSlop={20} style={styles.dragHandle}>
+                     <BrandedIcon name="menu" size={24} color={colors.textMuted} />
+                 </Pressable>
+               ) : null}
+               <View style={[styles.genderIcon, { backgroundColor: item.gender === 'female' ? 'rgba(247,140,162,0.15)' : 'rgba(79,172,254,0.15)' }]}>
+                   <BrandedIcon name={item.gender === 'female' ? 'gender-female' : 'gender-male'} size={16}
+                      color={item.gender === 'female' ? colors.female : colors.male} />
+               </View>
+               <View style={{ marginLeft: 12, flex: 1 }}>
+                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                       <Text style={styles.playerName}>{item.first_name}{item.last_name ? ` ${item.last_name}` : ''}</Text>
+                       {item.is_verified && <BrandedIcon name="confirm" size={14} color={colors.accent} />}
+                   </View>
+                   <Text style={styles.playerStats}>
+                       {item.dupr_rating ? `DUPR ${item.dupr_rating}` : ''}
+                       {item.dupr_rating && hasStats ? ' · ' : ''}
+                       {hasStats ? `${item.wins}W-${item.losses}L · ${(item.win_pct || 0).toFixed(0)}%` : ''}
+                       {(hasStats || item.dupr_rating) && item.home_court_name ? ' · ' : ''}
+                       {item.home_court_name || ''}
+                   </Text>
+               </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity onPress={() => openEditPlayer(item)}>
+                <BrandedIcon name="edit" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => removePlayer(item.id)}>
+                <BrandedIcon name="close" size={22} color={colors.danger} style={{ opacity: 0.5 }} />
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <TouchableOpacity onPress={() => openEditPlayer(item)}>
-              <BrandedIcon name="edit" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => removePlayer(item.id)}>
-              <BrandedIcon name="close" size={22} color={colors.danger} style={{ opacity: 0.5 }} />
-            </TouchableOpacity>
-          </View>
+          {/* Link connector between paired players */}
+          {isFirstOfPair && idx + 1 < players.length && (
+              <View style={{ alignItems: 'center', marginVertical: -4, zIndex: 1 }}>
+                  <View style={{ backgroundColor: colors.accent, borderRadius: 10, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+                      <BrandedIcon name="link" size={14} color={colors.bg} />
+                  </View>
+              </View>
+          )}
+          {/* Extra spacing after second player of pair */}
+          {isSecondOfPair && <View style={{ height: 8 }} />}
         </View>
     );
   };
 
-  const renderItem = ({ item, drag, isActive }: RenderItemParams<Player>) => (
-    <ScaleDecorator>{renderPlayerRow(item, drag, isActive)}</ScaleDecorator>
+  const renderItem = ({ item, drag, isActive, getIndex }: RenderItemParams<Player>) => (
+    <ScaleDecorator>{renderPlayerRow(item, drag, isActive, getIndex())}</ScaleDecorator>
   );
 
   const courtCount = Math.floor(players.length / 4);
