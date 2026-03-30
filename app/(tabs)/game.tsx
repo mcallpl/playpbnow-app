@@ -633,7 +633,8 @@ export default function GameScreen() {
                 groupName,
                 forceGlobal: 'true',
                 sessionId: data.session_id ? String(data.session_id) : '',
-                refresh: Date.now().toString()
+                refresh: Date.now().toString(),
+                isFixedTeams: isFixedTeams ? 'true' : 'false',
             } });
         } else if (data.status === 'already_exists') {
             setSaveModalVisible(false);

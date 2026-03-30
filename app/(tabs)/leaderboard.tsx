@@ -57,6 +57,68 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       deleteSession
   } = useLeaderboardLogic(localHistory, localRoster);
 
+  const isFixedTeams = params.isFixedTeams === 'true';
+
+  // Team leaderboard for fixed teams mode — aggregate pairs from match history
+  interface TeamLeaderboardItem {
+      id: string;
+      name: string; // "Player A & Player B"
+      w: number;
+      l: number;
+      diff: number;
+      pct: number;
+      badges: string[];
+      dupr?: number | null;
+  }
+
+  const teamLeaderboard: TeamLeaderboardItem[] = useMemo(() => {
+      if (!isFixedTeams || history.length === 0) return [];
+      const teamStats: Record<string, { names: string[]; w: number; l: number; diff: number }> = {};
+
+      history.forEach((m: any) => {
+          const s1 = parseInt(String(m.s1));
+          const s2 = parseInt(String(m.s2));
+          if (s1 === 0 && s2 === 0) return;
+
+          // Team 1: p1 + p2, Team 2: p3 + p4
+          const t1Key = [m.p1, m.p2].filter(Boolean).sort().join('-');
+          const t2Key = [m.p3, m.p4].filter(Boolean).sort().join('-');
+          const t1Names = [m.p1_name, m.p2_name].filter(Boolean);
+          const t2Names = [m.p3_name, m.p4_name].filter(Boolean);
+
+          if (!teamStats[t1Key]) teamStats[t1Key] = { names: t1Names, w: 0, l: 0, diff: 0 };
+          if (!teamStats[t2Key]) teamStats[t2Key] = { names: t2Names, w: 0, l: 0, diff: 0 };
+
+          const diff = s1 - s2;
+          if (s1 > s2) { teamStats[t1Key].w++; teamStats[t2Key].l++; }
+          else if (s2 > s1) { teamStats[t2Key].w++; teamStats[t1Key].l++; }
+          teamStats[t1Key].diff += diff;
+          teamStats[t2Key].diff -= diff;
+      });
+
+      return Object.entries(teamStats).map(([key, s]) => ({
+          id: key,
+          name: s.names.join(' & '),
+          w: s.w,
+          l: s.l,
+          diff: s.diff,
+          pct: s.w + s.l > 0 ? Math.round((s.w / (s.w + s.l)) * 100) : 0,
+          badges: [],
+      }));
+  }, [isFixedTeams, history]);
+
+  const sortedTeamLeaderboard = useMemo(() => {
+      let data = [...teamLeaderboard];
+      if (sortMode === 'pct') {
+          data.sort((a, b) => b.pct !== a.pct ? b.pct - a.pct : b.diff - a.diff);
+      } else if (sortMode === 'wins') {
+          data.sort((a, b) => b.w !== a.w ? b.w - a.w : a.l - b.l);
+      } else if (sortMode === 'diff') {
+          data.sort((a, b) => b.diff !== a.diff ? b.diff - a.diff : b.pct - a.pct);
+      }
+      return data;
+  }, [teamLeaderboard, sortMode]);
+
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [compareModalVisible, setCompareModalVisible] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
@@ -323,6 +385,63 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       );
   };
 
+  // ── FIXED TEAMS: Team podium and list ──
+  const renderTeamPodiumStats = (team: TeamLeaderboardItem, rank: string) => (
+      <>
+          <Text style={styles.podiumName} numberOfLines={2} adjustsFontSizeToFit>{team.name}</Text>
+          <Text style={styles.podiumStat}>{team.w}W - {team.l}L</Text>
+          <Text style={[styles.podiumStat, {fontSize:9, opacity:0.8}]}>{team.diff > 0 ? '+' : ''}{team.diff} Diff</Text>
+          <Text style={[styles.podiumStat, rank === 'gold' ? styles.textGold : null, {marginTop:2}]}>{team.pct}%</Text>
+      </>
+  );
+
+  const renderTeamPedestal = () => {
+      if (sortedTeamLeaderboard.length === 0) return null;
+      const top3 = sortedTeamLeaderboard.slice(0, 3);
+      const gold = top3[0] || { name: '-', w:0, l:0, diff:0, pct:0 };
+      const silver = top3[1] || { name: '-', w:0, l:0, diff:0, pct:0 };
+      const bronze = top3[2] || { name: '-', w:0, l:0, diff:0, pct:0 };
+
+      const getInitials = (name: string) => name.split(' & ').map(n => n.charAt(0)).join('');
+
+      return (
+          <View style={styles.pedestalContainer}>
+              <View style={styles.podiumCol}>
+                  <View style={styles.avatarCircle}><Text style={styles.avatarText}>{getInitials(silver.name)}</Text></View>
+                  {renderTeamPodiumStats(silver as TeamLeaderboardItem, 'silver')}
+                  <View style={[styles.podiumBar, styles.barSilver]}><Text style={styles.placeText}>2</Text></View>
+              </View>
+              <View style={[styles.podiumCol, {zIndex: 10}]}>
+                  <BrandedIcon name="leaderboard" size={30} color={colors.gold} />
+                  <View style={[styles.avatarCircle, styles.avatarGold]}><Text style={styles.avatarText}>{getInitials(gold.name)}</Text></View>
+                  {renderTeamPodiumStats(gold as TeamLeaderboardItem, 'gold')}
+                  <View style={[styles.podiumBar, styles.barGold]}><Text style={styles.placeText}>1</Text></View>
+              </View>
+              <View style={styles.podiumCol}>
+                  <View style={styles.avatarCircle}><Text style={styles.avatarText}>{getInitials(bronze.name)}</Text></View>
+                  {renderTeamPodiumStats(bronze as TeamLeaderboardItem, 'bronze')}
+                  <View style={[styles.podiumBar, styles.barBronze]}><Text style={styles.placeText}>3</Text></View>
+              </View>
+          </View>
+      );
+  };
+
+  const renderTeamRow = ({ item, index }: { item: TeamLeaderboardItem, index: number }) => {
+      const rank = index + Math.min(sortedTeamLeaderboard.length, 3) + 1;
+      return (
+          <View style={styles.card}>
+              <View style={styles.rankBox}><Text style={styles.rankText}>{rank}</Text></View>
+              <View style={styles.nameBox}>
+                  <Text style={styles.name}>{item.name}</Text>
+                  <Text style={styles.record}>
+                      {item.w}W - {item.l}L  •  {item.diff > 0 ? '+' : ''}{item.diff} Diff
+                  </Text>
+              </View>
+              <View style={styles.pctBox}><Text style={styles.pct}>{item.pct}%</Text></View>
+          </View>
+      );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -379,6 +498,16 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
 
       {loading ? (
         <ActivityIndicator size="large" color={colors.accent} style={{marginTop:50}} />
+      ) : isFixedTeams && sortedTeamLeaderboard.length > 0 ? (
+        <FlatList
+            data={sortedTeamLeaderboard.length >= 3 ? sortedTeamLeaderboard.slice(3) : []}
+            renderItem={renderTeamRow}
+            keyExtractor={(i) => i.id}
+            ListHeaderComponent={renderTeamPedestal}
+            alwaysBounceHorizontal={false}
+            contentContainerStyle={{padding: 20, paddingBottom: 100}}
+            ListEmptyComponent={<Text style={styles.empty}>{sortedTeamLeaderboard.length === 0 ? "No data found." : ""}</Text>}
+        />
       ) : (
         <FlatList
             data={sortedLeaderboard.length >= 3 ? sortedLeaderboard.slice(3) : []}
