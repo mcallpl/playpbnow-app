@@ -1,4 +1,4 @@
-// Team standings calculator for Fixed Teams tournament mode
+// Standings calculator for tournament mode (fixed teams & rotating partners)
 
 interface Player {
     id: string;
@@ -183,4 +183,89 @@ export function generateFinals(
         byes: [],
     };
     return [bronzeMatch, goldMatch]; // bronze first, then gold (grand finale)
+}
+
+export interface IndividualStanding {
+    playerId: string;
+    player: Player;
+    wins: number;
+    losses: number;
+    pointDiff: number;
+    winPct: number;
+    seed: number;
+}
+
+/**
+ * Calculate individual player standings from round-robin scores.
+ * Used for rotating partners mode to rank individuals before pairing into playoff teams.
+ */
+export function calculateIndividualStandings(
+    schedule: RoundData[],
+    scores: Record<string, string>,
+    roundRobinCount: number
+): IndividualStanding[] {
+    const stats: Record<string, IndividualStanding> = {};
+
+    for (let rIdx = 0; rIdx < roundRobinCount && rIdx < schedule.length; rIdx++) {
+        const round = schedule[rIdx];
+        round.games.forEach((game, gIdx) => {
+            const s1 = parseInt(scores[`${rIdx}_${gIdx}_t1`] || '0');
+            const s2 = parseInt(scores[`${rIdx}_${gIdx}_t2`] || '0');
+            if (s1 === 0 && s2 === 0) return;
+
+            const diff = s1 - s2;
+            const t1Won = s1 > s2;
+
+            // Update each player on team1
+            game.team1.forEach(p => {
+                if (!stats[p.id]) stats[p.id] = { playerId: p.id, player: p, wins: 0, losses: 0, pointDiff: 0, winPct: 0, seed: 0 };
+                if (t1Won) stats[p.id].wins++; else stats[p.id].losses++;
+                stats[p.id].pointDiff += diff;
+            });
+            // Update each player on team2
+            game.team2.forEach(p => {
+                if (!stats[p.id]) stats[p.id] = { playerId: p.id, player: p, wins: 0, losses: 0, pointDiff: 0, winPct: 0, seed: 0 };
+                if (!t1Won) stats[p.id].wins++; else stats[p.id].losses++;
+                stats[p.id].pointDiff -= diff;
+            });
+        });
+    }
+
+    const standings = Object.values(stats).map(s => ({
+        ...s,
+        winPct: s.wins + s.losses > 0 ? Math.round((s.wins / (s.wins + s.losses)) * 100) : 0,
+    }));
+
+    standings.sort((a, b) => {
+        if (b.winPct !== a.winPct) return b.winPct - a.winPct;
+        if (b.pointDiff !== a.pointDiff) return b.pointDiff - a.pointDiff;
+        return b.wins - a.wins;
+    });
+
+    standings.forEach((s, i) => { s.seed = i + 1; });
+    return standings;
+}
+
+/**
+ * Pair top 8 individuals into 4 teams for playoff bracket.
+ * #1+#2 = 1st team, #3+#4 = 2nd team, #5+#6 = 3rd team, #7+#8 = 4th team
+ */
+export function pairIndividualsIntoTeams(standings: IndividualStanding[]): TeamStanding[] {
+    if (standings.length < 8) return [];
+    const teams: TeamStanding[] = [];
+    for (let i = 0; i < 4; i++) {
+        const p1 = standings[i * 2];
+        const p2 = standings[i * 2 + 1];
+        teams.push({
+            teamIndex: i,
+            teamKey: [p1.playerId, p2.playerId].sort().join('-'),
+            players: [p1.player, p2.player],
+            wins: 0,
+            losses: 0,
+            pointDiff: 0,
+            winPct: 0,
+            seed: i + 1,
+        });
+    }
+    return teams;
 }

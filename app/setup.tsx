@@ -109,7 +109,6 @@ export default function SetupScreen() {
       { type: 'mixed' }, { type: 'mixed' }, { type: 'mixed' }
   ]);
   const [isFixedTeams, setIsFixedTeams] = useState(false);
-  const [isTournament, setIsTournament] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -417,7 +416,6 @@ export default function SetupScreen() {
   const handleSetupPress = () => {
     if (players.length < 4) { Alert.alert('Not Enough Players', 'You need at least 4 players.'); return; }
     if (isFixedTeams && players.length % 2 !== 0) { Alert.alert('Odd Player Count', 'Fixed Teams requires an even number of players. Every player needs a partner.'); return; }
-    if (isTournament && players.length < 8) { Alert.alert('Not Enough Players', 'Tournament mode requires at least 8 players (4 teams).'); return; }
     setConfigModalVisible(true);
   };
 
@@ -438,7 +436,7 @@ export default function SetupScreen() {
         })) : undefined;
 
         const payload = isFixedTeams
-            ? { group_key: groupKey, mode: 'fixed_teams', tournament: isTournament, teams: teamsPayload, players: players.map(p => ({ id: p.id, first_name: p.first_name, gender: p.gender })) }
+            ? { group_key: groupKey, mode: 'fixed_teams', teams: teamsPayload, players: players.map(p => ({ id: p.id, first_name: p.first_name, gender: p.gender })) }
             : { group_key: groupKey, round_configs: roundsConfig, group: groupName, players: players.map(p => ({ id: p.id, first_name: p.first_name, gender: p.gender })) };
 
         const res = await fetch(`${API_URL}/generate_schedule.php`, {
@@ -447,10 +445,10 @@ export default function SetupScreen() {
         });
         const data = await res.json();
         if (data.status === 'success') {
-            const navId = await storeNavData({ schedule: data.schedule, players, isFixedTeams, isTournament, teams: teamsPayload });
+            const navId = await storeNavData({ schedule: data.schedule, players, isFixedTeams, teams: teamsPayload });
             router.push({
                 pathname: '/(tabs)/game',
-                params: { navId, groupName, groupKey, courtName, courtId: (courtId || '').toString(), isFixedTeams: isFixedTeams.toString(), isTournament: isTournament.toString() }
+                params: { navId, groupName, groupKey, courtName, courtId: (courtId || '').toString(), isFixedTeams: isFixedTeams.toString() }
             });
         } else { Alert.alert("Error", data.message || "Generation failed."); }
     } catch (e) { Alert.alert("Error", "Network error."); }
@@ -558,24 +556,16 @@ export default function SetupScreen() {
         {/* MODE TOGGLES */}
         <View style={styles.toggleSection}>
             <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>Fixed Teams</Text>
-                <Switch value={isFixedTeams} onValueChange={(v) => { setIsFixedTeams(v); if (!v) setIsTournament(false); }}
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.toggleLabel}>Fixed Teams</Text>
+                    <Text style={styles.toggleHint}>Same partner every round</Text>
+                </View>
+                <Switch value={isFixedTeams} onValueChange={setIsFixedTeams}
                     trackColor={{ false: colors.border, true: colors.accent }} thumbColor="white" />
             </View>
             {isFixedTeams && (
-                <View style={styles.toggleRow}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.toggleLabel, players.length < 8 && { opacity: 0.4 }]}>Tournament Playoffs</Text>
-                        {players.length < 8 && <Text style={styles.toggleHint}>Requires 8+ players (4 teams)</Text>}
-                    </View>
-                    <Switch value={isTournament} onValueChange={setIsTournament} disabled={players.length < 8}
-                        trackColor={{ false: colors.border, true: '#FFD700' }} thumbColor="white" />
-                </View>
-            )}
-            {isFixedTeams && (
                 <Text style={styles.toggleInfo}>
                     {teamCount} teams · {fixedRoundCount} rounds · {fixedGameCount} games
-                    {isTournament ? ' + 4 playoff games' : ''}
                 </Text>
             )}
         </View>
@@ -584,7 +574,7 @@ export default function SetupScreen() {
         <View style={styles.actionButtons}>
             <TouchableOpacity style={styles.createMatchBtn} onPress={handleSetupPress}>
                 <BrandedIcon name="game-controller" size={18} color={colors.bg} />
-                <Text style={styles.createMatchBtnText}>{isTournament ? 'CREATE TOURNAMENT' : 'CREATE MATCH'}</Text>
+                <Text style={styles.createMatchBtnText}>CREATE MATCH</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.editPlayersBtn} onPress={() => router.push('/(tabs)/players')}>
                 <BrandedIcon name="groups" size={18} color={colors.textSoft} />
@@ -811,11 +801,6 @@ export default function SetupScreen() {
                         <View style={styles.infoBox}>
                             <Text style={styles.infoBoxText}>{fixedRoundCount} Rounds · {fixedGameCount} Games</Text>
                         </View>
-                        {isTournament && (
-                            <View style={[styles.infoBox, { backgroundColor: 'rgba(255,215,0,0.15)' }]}>
-                                <Text style={[styles.infoBoxText, { color: '#DAA520' }]}>+ Semifinals, Gold & Bronze Matches</Text>
-                            </View>
-                        )}
                         <View style={{ marginVertical: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 10 }}>
                             <Text style={[styles.label, { marginBottom: 8 }]}>TEAM PAIRINGS (by roster order)</Text>
                             {Array.from({ length: teamCount }, (_, i) => (
@@ -861,7 +846,7 @@ export default function SetupScreen() {
                     </>
                 )}
                 <TouchableOpacity style={styles.startMatchBtn} onPress={generateSchedule}>
-                    <Text style={styles.startMatchText}>{isTournament ? 'GENERATE TOURNAMENT' : 'GENERATE MATCH'}</Text>
+                    <Text style={styles.startMatchText}>GENERATE MATCH</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setConfigModalVisible(false)} style={styles.closeModalBtn}>
                     <Text style={styles.closeText}>CANCEL</Text>

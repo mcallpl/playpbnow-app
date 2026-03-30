@@ -29,7 +29,7 @@ import { useSubscription } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useCollaborativeScoring } from '../../hooks/useCollaborativeScoring';
 import { Player, useGameLogic } from '../../hooks/useGameLogic';
-import { calculateTeamStandings, generateSemifinals, generateFinals, TeamStanding } from '../../utils/standings';
+import { calculateTeamStandings, calculateIndividualStandings, pairIndividualsIntoTeams, generateSemifinals, generateFinals, TeamStanding } from '../../utils/standings';
 import { useSmartScoring } from '../../hooks/useSmartScoring';
 import { ShareMatchModal } from '../../components/ShareMatchModal';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
@@ -71,7 +71,7 @@ export default function GameScreen() {
   );
   const [navDataLoaded, setNavDataLoaded] = useState(false);
   const [isFixedTeams, setIsFixedTeams] = useState(params.isFixedTeams === 'true');
-  const [isTournament, setIsTournament] = useState(params.isTournament === 'true');
+  const [isTournament, setIsTournament] = useState(false);
   const [tournamentPhase, setTournamentPhase] = useState<'round-robin' | 'semifinals' | 'finals' | 'complete'>('round-robin');
   const [roundRobinCount, setRoundRobinCount] = useState(0);
 
@@ -698,6 +698,8 @@ export default function GameScreen() {
               if (!scores[`${rIdx}_${gIdx}_t1`] || !scores[`${rIdx}_${gIdx}_t2`]) return false;
           }
       }
+      // For rotating partners, need at least 8 scored players
+      // For fixed teams, need at least 4 teams
       return true;
   }, [schedule, scores, roundRobinCount, isTournament]);
 
@@ -711,21 +713,38 @@ export default function GameScreen() {
       });
   }, [schedule, scores, tournamentPhase]);
 
-  // Tournament: start playoffs
+  // Tournament: start playoffs — works for both fixed teams and rotating partners
   const handleStartPlayoffs = () => {
-      const standings = calculateTeamStandings(schedule, scores, roundRobinCount);
-      if (standings.length < 4) {
-          Alert.alert('Not Enough Teams', 'Need at least 4 teams with scores to generate playoffs.');
-          return;
+      let top4: TeamStanding[];
+      let standingsText: string;
+
+      if (isFixedTeams) {
+          // Fixed teams: rank teams directly
+          const teamStandings = calculateTeamStandings(schedule, scores, roundRobinCount);
+          if (teamStandings.length < 4) {
+              Alert.alert('Not Enough Teams', 'Need at least 4 teams with scores to generate playoffs.');
+              return;
+          }
+          top4 = teamStandings.slice(0, 4);
+          standingsText = top4.map((s, i) => `#${i + 1} ${s.players.map(p => p.first_name).join(' & ')} — ${s.winPct}% (${s.wins}W-${s.losses}L, ${s.pointDiff > 0 ? '+' : ''}${s.pointDiff})`).join('\n');
+      } else {
+          // Rotating partners: rank individuals, pair top 8 into 4 teams
+          const individualStandings = calculateIndividualStandings(schedule, scores, roundRobinCount);
+          if (individualStandings.length < 8) {
+              Alert.alert('Not Enough Players', 'Need at least 8 players with scores to generate playoffs.');
+              return;
+          }
+          top4 = pairIndividualsIntoTeams(individualStandings);
+          if (top4.length < 4) { Alert.alert('Error', 'Could not form 4 teams from standings.'); return; }
+          standingsText = individualStandings.slice(0, 8).map((s, i) => `#${i + 1} ${s.player.first_name} — ${s.winPct}% (${s.wins}W-${s.losses}L)`).join('\n')
+              + '\n\nPlayoff Teams:\n'
+              + top4.map((t, i) => `Team ${i + 1}: ${t.players.map(p => p.first_name).join(' & ')}`).join('\n');
       }
-      const top4 = standings.slice(0, 4);
-      const standingsText = top4.map((s, i) => `#${i + 1} ${s.players.map(p => p.first_name).join(' & ')} — ${s.winPct}% (${s.wins}W-${s.losses}L, ${s.pointDiff > 0 ? '+' : ''}${s.pointDiff})`).join('\n');
 
       const startPlayoffs = () => {
           const semis = generateSemifinals(top4);
           setSchedule([...schedule, ...semis]);
           setTournamentPhase('semifinals');
-          // Persist updated state
           saveActiveMatchData({
               schedule: [...schedule, ...semis],
               players: navPlayersData,
@@ -907,6 +926,22 @@ export default function GameScreen() {
                     style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }} />
               </View>
           </View>
+          {/* Tournament toggle — visible when scoring is on */}
+          {isMatchScored && tournamentPhase === 'round-robin' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 6, paddingHorizontal: 20, gap: 8 }}>
+                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 12, color: isTournament ? '#DAA520' : colors.textMuted }}>TOURNAMENT</Text>
+                  <Switch value={isTournament} onValueChange={setIsTournament}
+                    trackColor={{ false: colors.border, true: '#FFD700' }} thumbColor="white"
+                    style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }} />
+              </View>
+          )}
+          {isTournament && tournamentPhase !== 'round-robin' && (
+              <View style={{ alignItems: 'center', paddingVertical: 4 }}>
+                  <Text style={{ fontFamily: FONT_BODY_BOLD, fontSize: 11, color: '#DAA520', letterSpacing: 1 }}>
+                      {tournamentPhase === 'semifinals' ? 'SEMIFINALS' : tournamentPhase === 'finals' ? 'FINALS' : 'TOURNAMENT'}
+                  </Text>
+              </View>
+          )}
           {shareCode && (
               <View style={styles.collabStatusBar}>
                   <BrandedIcon name="live" size={14} color={colors.accent} />
