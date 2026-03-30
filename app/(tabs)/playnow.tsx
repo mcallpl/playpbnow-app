@@ -121,15 +121,16 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
   const isExpired = timeLeft === 'Expired';
   const hasCoords = beacon.court_lat != null && beacon.court_lng != null;
   const isCasual = beacon.beacon_type === 'casual';
+  const isMine = beacon.is_mine;
 
-  // Pulsing ring animation
+  // Pulsing ring animation — only for OTHER players' beacons, not the creator's
   const pulseScale = useSharedValue(1);
   const pulseOpacity = useSharedValue(0.8);
   // Beacon dot glow pulse
   const dotScale = useSharedValue(1);
 
   useEffect(() => {
-    if (!isExpired) {
+    if (!isExpired && !isMine) {
       pulseScale.value = withRepeat(
         withSequence(
           withTiming(2.5, { duration: 1400, easing: Easing.out(Easing.ease) }),
@@ -161,7 +162,7 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
       cancelAnimation(pulseOpacity);
       cancelAnimation(dotScale);
     };
-  }, [isExpired]);
+  }, [isExpired, isMine]);
 
   const pulseRingStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
@@ -200,18 +201,27 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
           </View>
         )}
 
-        {/* Pulsing beacon overlay */}
+        {/* Beacon overlay: pulsing for others, static red for creator */}
         {!isExpired && hasCoords && (
           <View style={styles.beaconOverlayContainer}>
-            <Animated.View style={[styles.pulseRing, pulseRingStyle]} />
-            <Animated.View style={[styles.beaconDot, dotStyle]} />
+            {isMine ? (
+              <>
+                <View style={[styles.pulseRing, { borderColor: '#cc0000', opacity: 0.4 }]} />
+                <View style={[styles.beaconDot, { backgroundColor: '#cc0000', shadowColor: '#cc0000' }]} />
+              </>
+            ) : (
+              <>
+                <Animated.View style={[styles.pulseRing, pulseRingStyle]} />
+                <Animated.View style={[styles.beaconDot, dotStyle]} />
+              </>
+            )}
           </View>
         )}
 
         {/* Time badge */}
-        <View style={styles.mapTimeBadge}>
-          <BrandedIcon name="live" size={12} color={isExpired ? colors.danger : '#ffffff'} />
-          <Text style={styles.mapTimeText}>{timeLeft}</Text>
+        <View style={[styles.mapTimeBadge, isMine && { backgroundColor: 'rgba(204,0,0,0.75)' }]}>
+          <BrandedIcon name={isMine ? 'location' : 'live'} size={12} color={isExpired ? colors.danger : '#ffffff'} />
+          <Text style={styles.mapTimeText}>{isMine ? `Your Beacon · ${timeLeft}` : timeLeft}</Text>
         </View>
       </View>
 
@@ -227,9 +237,9 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View style={isCasual ? styles.mapCardBadgeCasual : styles.mapCardBadgeStructured}>
-            <Text style={isCasual ? styles.mapCardBadgeCasualText : styles.mapCardBadgeStructuredText}>
-              {isCasual ? (beacon.is_mine ? 'My Beacon' : 'More Info') : 'Spot To Fill'}
+          <View style={isMine ? { backgroundColor: 'rgba(204,0,0,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 } : (isCasual ? styles.mapCardBadgeCasual : styles.mapCardBadgeStructured)}>
+            <Text style={isMine ? { fontFamily: FONT_BODY_BOLD, fontSize: 11, color: '#cc0000' } : (isCasual ? styles.mapCardBadgeCasualText : styles.mapCardBadgeStructuredText)}>
+              {isMine ? 'Your Beacon' : (isCasual ? 'More Info' : 'Spot To Fill')}
             </Text>
           </View>
           {beacon.is_mine && beacon.chat_count > 0 && (
