@@ -605,11 +605,37 @@ export default function GameScreen() {
             else Alert.alert("Error", "Group Name Lost.");
             return;
         }
+        // Compute tournament placements for saving
+        let saveTournamentPlacements: any = null;
+        if (isTournament && isFixedTeams) {
+            const goldRound = schedule.find(r => r.type === 'gold');
+            const bronzeRound = schedule.find(r => r.type === 'bronze');
+            if (goldRound && bronzeRound) {
+                const gIdx = schedule.indexOf(goldRound);
+                const bIdx = schedule.indexOf(bronzeRound);
+                const gs1 = parseInt(scores[`${gIdx}_0_t1`] || '0');
+                const gs2 = parseInt(scores[`${gIdx}_0_t2`] || '0');
+                const bs1 = parseInt(scores[`${bIdx}_0_t1`] || '0');
+                const bs2 = parseInt(scores[`${bIdx}_0_t2`] || '0');
+                const goldWinner = gs1 >= gs2 ? goldRound.games[0].team1 : goldRound.games[0].team2;
+                const goldLoser = gs1 >= gs2 ? goldRound.games[0].team2 : goldRound.games[0].team1;
+                const bronzeWinner = bs1 >= bs2 ? bronzeRound.games[0].team1 : bronzeRound.games[0].team2;
+                const bronzeLoser = bs1 >= bs2 ? bronzeRound.games[0].team2 : bronzeRound.games[0].team1;
+                saveTournamentPlacements = [
+                    goldWinner.map((p: Player) => ({ id: p.id, first_name: p.first_name })),
+                    goldLoser.map((p: Player) => ({ id: p.id, first_name: p.first_name })),
+                    bronzeWinner.map((p: Player) => ({ id: p.id, first_name: p.first_name })),
+                    bronzeLoser.map((p: Player) => ({ id: p.id, first_name: p.first_name })),
+                ];
+            }
+        }
         const payload = {
             group_name: groupName, group_id: groupKey, matches: matchesToSave, user_id: isCollaborator && creatorUserId ? creatorUserId : userId,
             custom_timestamp: Math.floor(selectedDate.getTime() / 1000), match_title: saveTitle,
             force_update: forceUpdate,
-            share_code: shareCode || undefined
+            share_code: shareCode || undefined,
+            is_fixed_teams: isFixedTeams,
+            tournament_placements: saveTournamentPlacements,
         };
         const res = await fetch(`${API_URL}/save_scores.php`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
         const responseText = await res.text();

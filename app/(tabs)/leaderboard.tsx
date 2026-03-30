@@ -50,6 +50,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       isGlobal, setIsGlobal,
       deviceId, setDeviceId,
       sortMode, setSortMode,
+      sessionMeta,
       fetchLeaderboard,
       fetchUniversalSessions,
       saveMatchUpdate,
@@ -57,14 +58,22 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       deleteSession
   } = useLeaderboardLogic(localHistory, localRoster);
 
-  const isFixedTeams = params.isFixedTeams === 'true';
+  // Fixed teams flag: from URL params (direct navigation) or from session metadata (viewing past sessions)
+  const isFixedTeams = params.isFixedTeams === 'true' || sessionMeta?.is_fixed_teams === true;
   const tournamentPlacementsRaw = params.tournamentPlacements as string || '';
 
-  // Parse tournament placements if provided (from tournament bracket results)
+  // Parse tournament placements: from URL params (direct) or session metadata (past sessions)
   const tournamentPlacements: { id: string; first_name: string }[][] = useMemo(() => {
-      if (!tournamentPlacementsRaw) return [];
-      try { return JSON.parse(tournamentPlacementsRaw); } catch { return []; }
-  }, [tournamentPlacementsRaw]);
+      // Try URL params first
+      if (tournamentPlacementsRaw) {
+          try { return JSON.parse(tournamentPlacementsRaw); } catch { /* fall through */ }
+      }
+      // Fallback to session metadata from API
+      if (sessionMeta?.tournament_placements && Array.isArray(sessionMeta.tournament_placements)) {
+          return sessionMeta.tournament_placements;
+      }
+      return [];
+  }, [tournamentPlacementsRaw, sessionMeta]);
 
   // Team leaderboard for fixed teams mode — aggregate pairs from match history
   interface TeamLeaderboardItem {

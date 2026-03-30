@@ -52,6 +52,7 @@ export const useLeaderboardLogic = (
     const [isGlobal, setIsGlobal] = useState(false); 
     const [deviceId, setDeviceId] = useState(''); // Actually user_id now
     const [sortMode, setSortMode] = useState<'pct' | 'diff' | 'wins'>('pct');
+    const [sessionMeta, setSessionMeta] = useState<{ is_fixed_teams?: boolean; tournament_placements?: any[] | null }>({});
 
     // --- 1. INITIALIZATION - GET USER_ID ---
     useEffect(() => {
@@ -212,6 +213,7 @@ export const useLeaderboardLogic = (
                 setHistory(safeHistory);
                 setRoster(cleanRoster);
                 setAllSessions(data.sessions || []);
+                if (data.session_meta) setSessionMeta(data.session_meta);
             } else {
                 setLeaderboard([]);
                 setHistory([]);
@@ -360,6 +362,7 @@ export const useLeaderboardLogic = (
         isGlobal, setIsGlobal,
         deviceId, setDeviceId,
         sortMode, setSortMode,
+        sessionMeta,
         fetchLeaderboard,
         fetchUniversalSessions,
         saveMatchUpdate,
