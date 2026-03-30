@@ -310,35 +310,45 @@ export default function PlayersScreen() {
         });
 
         if (allPhones.length > 1) {
-            // Multiple different phone numbers — ask which to keep
-            const phoneButtons = allPhones.map(phone => ({
-                text: phone,
-                onPress: () => executeMerge(keepPlayer, mergeTargets, phone, key)
-            }));
-            phoneButtons.push({
-                text: 'No Phone',
-                onPress: () => executeMerge(keepPlayer, mergeTargets, '', key)
-            });
-
-            Alert.alert(
-                'Which Phone Number?',
-                `These "${group.name}" records have different phone numbers. Which one should the merged player keep?`,
-                [{ text: 'Cancel', style: 'cancel' as const }, ...phoneButtons]
-            );
+            if (Platform.OS === 'web') {
+                // Web: use first phone and confirm
+                const usePhone = window.confirm(`These "${group.name}" records have different phone numbers (${allPhones.join(', ')}). Use "${allPhones[0]}"?\n\nOK = use ${allPhones[0]}\nCancel = no phone`);
+                executeMerge(keepPlayer, mergeTargets, usePhone ? allPhones[0] : '', key);
+            } else {
+                const phoneButtons = allPhones.map(phone => ({
+                    text: phone,
+                    onPress: () => executeMerge(keepPlayer, mergeTargets, phone, key)
+                }));
+                phoneButtons.push({
+                    text: 'No Phone',
+                    onPress: () => executeMerge(keepPlayer, mergeTargets, '', key)
+                });
+                Alert.alert(
+                    'Which Phone Number?',
+                    `These "${group.name}" records have different phone numbers. Which one should the merged player keep?`,
+                    [{ text: 'Cancel', style: 'cancel' as const }, ...phoneButtons]
+                );
+            }
         } else {
             // 0 or 1 phone — straightforward merge
-            Alert.alert(
-                'Merge Players',
-                `Merge ${mergeTargets.length} record${mergeTargets.length !== 1 ? 's' : ''} into "${keepPlayer.first_name}"${keepPlayer.last_name ? ' ' + keepPlayer.last_name : ''}?\n\nMatch history and stats will be preserved.`,
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'Merge',
-                        style: 'destructive',
-                        onPress: () => executeMerge(keepPlayer, mergeTargets, null, key)
-                    }
-                ]
-            );
+            if (Platform.OS === 'web') {
+                if (window.confirm(`Merge ${mergeTargets.length} record${mergeTargets.length !== 1 ? 's' : ''} into "${keepPlayer.first_name}"${keepPlayer.last_name ? ' ' + keepPlayer.last_name : ''}?\n\nMatch history and stats will be preserved.`)) {
+                    executeMerge(keepPlayer, mergeTargets, null, key);
+                }
+            } else {
+                Alert.alert(
+                    'Merge Players',
+                    `Merge ${mergeTargets.length} record${mergeTargets.length !== 1 ? 's' : ''} into "${keepPlayer.first_name}"${keepPlayer.last_name ? ' ' + keepPlayer.last_name : ''}?\n\nMatch history and stats will be preserved.`,
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Merge',
+                            style: 'destructive',
+                            onPress: () => executeMerge(keepPlayer, mergeTargets, null, key)
+                        }
+                    ]
+                );
+            }
         }
     };
 
@@ -349,38 +359,42 @@ export default function PlayersScreen() {
 
         if (selected.length === 0) {
             // No selection: mark ALL players in this group as different from each other
-            Alert.alert(
-                'Mark All as Different',
-                `Mark all "${group.name}" entries as different people? This will stop showing them as duplicates.`,
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'Yes, All Different',
-                        onPress: async () => {
-                            setIsMerging(true);
-                            setMergeProgress('Marking as different people...');
-                            for (let i = 0; i < group.players.length; i++) {
-                                for (let j = i + 1; j < group.players.length; j++) {
-                                    try {
-                                        await fetch(`${API_URL}/mark_not_duplicate.php`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                                player_id_1: group.players[i].id,
-                                                player_id_2: group.players[j].id
-                                            })
-                                        });
-                                    } catch (e) { console.error('Mark not-dup error:', e); }
-                                }
-                            }
-                            setIsMerging(false);
-                            setMergeProgress('');
-                            loadNotDuplicates();
-                            Alert.alert('Done', `All "${group.name}" entries are now marked as different people.`);
-                        }
+            const doMarkAll = async () => {
+                setIsMerging(true);
+                setMergeProgress('Marking as different people...');
+                for (let i = 0; i < group.players.length; i++) {
+                    for (let j = i + 1; j < group.players.length; j++) {
+                        try {
+                            await fetch(`${API_URL}/mark_not_duplicate.php`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    player_id_1: group.players[i].id,
+                                    player_id_2: group.players[j].id
+                                })
+                            });
+                        } catch (e) { console.error('Mark not-dup error:', e); }
                     }
-                ]
-            );
+                }
+                setIsMerging(false);
+                setMergeProgress('');
+                loadNotDuplicates();
+                if (Platform.OS === 'web') window.alert(`All "${group.name}" entries are now marked as different people.`);
+                else Alert.alert('Done', `All "${group.name}" entries are now marked as different people.`);
+            };
+
+            if (Platform.OS === 'web') {
+                if (window.confirm(`Mark all "${group.name}" entries as different people? This will stop showing them as duplicates.`)) doMarkAll();
+            } else {
+                Alert.alert(
+                    'Mark All as Different',
+                    `Mark all "${group.name}" entries as different people? This will stop showing them as duplicates.`,
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Yes, All Different', onPress: doMarkAll }
+                    ]
+                );
+            }
             return;
         }
 
@@ -464,52 +478,57 @@ export default function PlayersScreen() {
             return sum + (selectedMergeIds[key] || []).length - 1;
         }, 0);
 
-        Alert.alert(
-            'Merge All Selected',
-            `This will merge ${totalToMerge} duplicate record${totalToMerge !== 1 ? 's' : ''} across ${groupsToMerge.length} name${groupsToMerge.length !== 1 ? 's' : ''}. For each name, the oldest selected record is kept.\n\nMatch history and stats will be combined.\n\nContinue?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Merge',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setIsMerging(true);
-                        let totalMerged = 0;
-                        for (const group of groupsToMerge) {
-                            const key = group.name.toLowerCase();
-                            const selected = selectedMergeIds[key] || [];
-                            const selectedPlayers = group.players
-                                .filter((p: any) => selected.includes(p.id))
-                                .sort((a: any, b: any) => a.id - b.id);
+        const doMergeAll = async () => {
+            setIsMerging(true);
+            let totalMerged = 0;
+            for (const group of groupsToMerge) {
+                const key = group.name.toLowerCase();
+                const selected = selectedMergeIds[key] || [];
+                const selectedPlayers = group.players
+                    .filter((p: any) => selected.includes(p.id))
+                    .sort((a: any, b: any) => a.id - b.id);
 
-                            const keepPlayer = selectedPlayers[0];
-                            const firstPhone = selectedPlayers.find((p: any) => p.cell_phone)?.cell_phone || null;
+                const keepPlayer = selectedPlayers[0];
+                const firstPhone = selectedPlayers.find((p: any) => p.cell_phone)?.cell_phone || null;
 
-                            for (let i = 1; i < selectedPlayers.length; i++) {
-                                setMergeProgress(`Merging "${group.name}" (${i}/${selectedPlayers.length - 1})...`);
-                                try {
-                                    const body: any = { keep_id: keepPlayer.id, merge_id: selectedPlayers[i].id };
-                                    if (firstPhone) body.preferred_phone = firstPhone;
-                                    const res = await fetch(`${API_URL}/merge_players.php`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(body)
-                                    });
-                                    const data = await res.json();
-                                    if (data.status === 'success') totalMerged++;
-                                } catch (e) { console.error('Merge error:', e); }
-                            }
-                        }
-                        setIsMerging(false);
-                        setMergeProgress('');
-                        setSelectedMergeIds({});
-                        setMergeModalVisible(false);
-                        Alert.alert('All Done!', `Merged ${totalMerged} duplicate player record${totalMerged !== 1 ? 's' : ''}.`);
-                        loadPlayers();
-                    }
+                for (let i = 1; i < selectedPlayers.length; i++) {
+                    setMergeProgress(`Merging "${group.name}" (${i}/${selectedPlayers.length - 1})...`);
+                    try {
+                        const body: any = { keep_id: keepPlayer.id, merge_id: selectedPlayers[i].id };
+                        if (firstPhone) body.preferred_phone = firstPhone;
+                        const res = await fetch(`${API_URL}/merge_players.php`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body)
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') totalMerged++;
+                    } catch (e) { console.error('Merge error:', e); }
                 }
-            ]
-        );
+            }
+            setIsMerging(false);
+            setMergeProgress('');
+            setSelectedMergeIds({});
+            setMergeModalVisible(false);
+            if (Platform.OS === 'web') window.alert(`Merged ${totalMerged} duplicate player record${totalMerged !== 1 ? 's' : ''}.`);
+            else Alert.alert('All Done!', `Merged ${totalMerged} duplicate player record${totalMerged !== 1 ? 's' : ''}.`);
+            loadPlayers();
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`This will merge ${totalToMerge} duplicate record${totalToMerge !== 1 ? 's' : ''} across ${groupsToMerge.length} name${groupsToMerge.length !== 1 ? 's' : ''}. Continue?`)) {
+                doMergeAll();
+            }
+        } else {
+            Alert.alert(
+                'Merge All Selected',
+                `This will merge ${totalToMerge} duplicate record${totalToMerge !== 1 ? 's' : ''} across ${groupsToMerge.length} name${groupsToMerge.length !== 1 ? 's' : ''}. For each name, the oldest selected record is kept.\n\nMatch history and stats will be combined.\n\nContinue?`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Merge', style: 'destructive', onPress: doMergeAll }
+                ]
+            );
+        }
     };
 
     // Merge from edit modal — merge current player into another
