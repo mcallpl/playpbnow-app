@@ -202,7 +202,7 @@ export default function HomeScreen() {
           closeModal();
           router.push({
             pathname: '/setup',
-            params: { groupId: group.id.toString(), groupName: group.name, groupKey: group.group_key, courtId: (selectedCourtId || '').toString(), courtName: getSelectedCourtName() || '' }
+            params: { groupId: group.id.toString(), groupName: group.name, groupKey: group.group_key }
           });
         } else Alert.alert('Error', data.message || 'Failed to create group');
       }
@@ -267,8 +267,7 @@ export default function HomeScreen() {
       router.push({
         pathname: '/setup',
         params: {
-          groupId: group.id.toString(), groupName: group.name, groupKey: group.group_key,
-          courtId: (group.court_id || '').toString(), courtName: group.court_name || ''
+          groupId: group.id.toString(), groupName: group.name, groupKey: group.group_key
         }
       });
     } catch (e) { Alert.alert("Error", "Could not load group."); }

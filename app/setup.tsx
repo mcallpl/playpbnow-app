@@ -228,7 +228,7 @@ export default function SetupScreen() {
           if (data.status === 'success') {
               setPlayers([{
                   id: data.player_key || pk, first_name: data.first_name || name,
-                  gender, home_court_name: courtName || null
+                  gender, home_court_name: null
               }, ...players]);
               setNewPlayerName(''); setSearchResults([]); setShowSearchResults(false); setShowPhoneInput(false); setNewPlayerPhone('');
               setTimeout(() => nameInputRef.current?.focus(), 100);
@@ -284,7 +284,7 @@ export default function SetupScreen() {
               } catch (e) {
                   setPlayers([{
                       id: data.player_key || pk, first_name: data.first_name || name,
-                      gender, home_court_name: courtName || null
+                      gender, home_court_name: null
                   }, ...players]);
               }
               setNewPlayerName(''); setSearchResults([]); setShowSearchResults(false); setShowPhoneInput(false); setNewPlayerPhone('');
@@ -448,7 +448,7 @@ export default function SetupScreen() {
             const navId = await storeNavData({ schedule: data.schedule, players, isFixedTeams, teams: teamsPayload });
             router.push({
                 pathname: '/(tabs)/game',
-                params: { navId, groupName, groupKey, courtName, courtId: (courtId || '').toString(), isFixedTeams: isFixedTeams.toString() }
+                params: { navId, groupName, groupKey, isFixedTeams: isFixedTeams.toString() }
             });
         } else { Alert.alert("Error", data.message || "Generation failed."); }
     } catch (e) { Alert.alert("Error", "Network error."); }
@@ -557,12 +557,6 @@ export default function SetupScreen() {
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
                 <Text style={styles.headerTitle}>{groupName ? groupName.toUpperCase() : 'NEW GROUP'}</Text>
-                {courtName ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                        <BrandedIcon name="location" size={10} color={colors.accent} />
-                        <Text style={styles.courtText}>{courtName}</Text>
-                    </View>
-                ) : null}
             </View>
             <TouchableOpacity onPress={handleSavePress} style={styles.saveHeaderBtn}>
                 <Text style={styles.saveHeaderText}>SAVE</Text>
@@ -817,12 +811,6 @@ export default function SetupScreen() {
             <View style={styles.modalOverlay}><View style={styles.modalContent}>
                 <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>MATCH SETUP</Text>
-                {courtName ? (
-                    <View style={styles.courtDisplayBar}>
-                        <BrandedIcon name="location" size={16} color={colors.accent} />
-                        <Text style={styles.courtDisplayText}>{courtName}</Text>
-                    </View>
-                ) : null}
                 <View style={styles.infoBox}>
                     <Text style={styles.infoBoxText}>{players.length} Players</Text>
                     <Text style={styles.infoBoxText}>·</Text>
