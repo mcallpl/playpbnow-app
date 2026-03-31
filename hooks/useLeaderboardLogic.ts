@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
@@ -278,32 +278,38 @@ export const useLeaderboardLogic = (
             return;
         }
 
-        Alert.alert("Delete Game", "Are you sure?", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Delete", style: "destructive", onPress: async () => {
-                setLoading(true);
-                try {
-                    const targetId = match.original_id || match.match_id || match.id;
-                    const res = await fetch(`${API_URL}/delete_match.php`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            id: targetId,
-                            match_id: targetId,
-                            group: match.group || groupName,
-                            timestamp: match.timestamp,
-                            p1: match.p1, p2: match.p2,
-                            p3: match.p3, p4: match.p4
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.status === 'success') {
-                        fetchLeaderboard(groupName, deviceId, isGlobal, selectedBatchId);
-                    } else { Alert.alert("Error", data.message); }
-                } catch (e) { Alert.alert("Error", "Network error."); } 
-                finally { setLoading(false); }
-            }}
-        ]);
+        const doDelete = async () => {
+            setLoading(true);
+            try {
+                const targetId = match.original_id || match.match_id || match.id;
+                const res = await fetch(`${API_URL}/delete_match.php`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        id: targetId,
+                        match_id: targetId,
+                        group: match.group || groupName,
+                        timestamp: match.timestamp,
+                        p1: match.p1, p2: match.p2,
+                        p3: match.p3, p4: match.p4
+                    })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    fetchLeaderboard(groupName, deviceId, isGlobal, selectedBatchId);
+                } else { Alert.alert("Error", data.message); }
+            } catch (e) { Alert.alert("Error", "Network error."); }
+            finally { setLoading(false); }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm("Delete Game?\n\nAre you sure?")) doDelete();
+        } else {
+            Alert.alert("Delete Game", "Are you sure?", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Delete", style: "destructive", onPress: doDelete }
+            ]);
+        }
     };
 
     const deleteSession = async () => {
@@ -315,39 +321,41 @@ export const useLeaderboardLogic = (
             return;
         }
 
-        Alert.alert(
-            "Delete Session",
-            "This deletes ALL games in this session.",
-            [
-                { text: "Cancel", style: "cancel" },
-                { 
-                    text: "Delete", 
-                    style: "destructive", 
-                    onPress: async () => {
-                        setLoading(true);
-                        try {
-                            const res = await fetch(`${API_URL}/delete_session.php`, {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify({
-                                    group: groupName,
-                                    batch_id: selectedBatchId
-                                })
-                            });
-                            const data = await res.json();
-                            if (data.status === 'success') {
-                                setSelectedBatchId('all');
-                                fetchLeaderboard(groupName, deviceId, isGlobal, 'all');
-                                fetchUniversalSessions(deviceId, isGlobal); 
-                            } else {
-                                Alert.alert("Error", data.message);
-                            }
-                        } catch (e) { Alert.alert("Error", "Network error."); } 
-                        finally { setLoading(false); }
-                    }
+        const doDeleteSession = async () => {
+            setLoading(true);
+            try {
+                const res = await fetch(`${API_URL}/delete_session.php`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        group: groupName,
+                        batch_id: selectedBatchId
+                    })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    setSelectedBatchId('all');
+                    fetchLeaderboard(groupName, deviceId, isGlobal, 'all');
+                    fetchUniversalSessions(deviceId, isGlobal);
+                } else {
+                    Alert.alert("Error", data.message);
                 }
-            ]
-        );
+            } catch (e) { Alert.alert("Error", "Network error."); }
+            finally { setLoading(false); }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm("Delete Session?\n\nThis deletes ALL games in this session.")) doDeleteSession();
+        } else {
+            Alert.alert(
+                "Delete Session",
+                "This deletes ALL games in this session.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Delete", style: "destructive", onPress: doDeleteSession }
+                ]
+            );
+        }
     };
 
     return {
