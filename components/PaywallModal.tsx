@@ -31,7 +31,8 @@ export const PaywallModal: React.FC = () => {
     const {
         paywallVisible, paywallMessage, hidePaywall,
         isTrial, trialDaysRemaining, isPro,
-        offerings, purchaseSubscription, restorePurchases, purchaseLoading,
+        offerings, offeringsLoading, offeringsError, retryLoadOfferings,
+        purchaseSubscription, restorePurchases, purchaseLoading,
         purchaseViaStripe, redeemPromoCode,
     } = useSubscription();
     const { colors } = useTheme();
@@ -132,7 +133,26 @@ export const PaywallModal: React.FC = () => {
                     {/* Purchase Buttons */}
                     {!isPro && (
                         <View style={styles.purchaseSection}>
+                            {/* Loading offerings */}
+                            {!isWeb && offeringsLoading && (
+                                <View style={styles.offeringsStatus}>
+                                    <ActivityIndicator color={colors.accent} size="small" />
+                                    <Text style={styles.offeringsStatusText}>Loading subscription options...</Text>
+                                </View>
+                            )}
+
+                            {/* Error loading offerings */}
+                            {!isWeb && offeringsError && !offeringsLoading && (
+                                <View style={styles.offeringsStatus}>
+                                    <Text style={styles.offeringsErrorText}>Unable to load subscription options.</Text>
+                                    <TouchableOpacity style={styles.retryBtn} onPress={retryLoadOfferings} activeOpacity={0.8}>
+                                        <Text style={styles.retryBtnText}>Tap to Retry</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+
                             {/* Annual — Best Value */}
+                            {(isWeb || (!offeringsLoading && !offeringsError)) && (
                             <TouchableOpacity
                                 style={[styles.purchaseBtn, styles.purchaseBtnAnnual]}
                                 onPress={handlePurchaseAnnual}
@@ -152,8 +172,10 @@ export const PaywallModal: React.FC = () => {
                                     </>
                                 )}
                             </TouchableOpacity>
+                            )}
 
                             {/* Monthly */}
+                            {(isWeb || (!offeringsLoading && !offeringsError)) && (
                             <TouchableOpacity
                                 style={[styles.purchaseBtn, styles.purchaseBtnMonthly]}
                                 onPress={handlePurchaseMonthly}
@@ -169,6 +191,7 @@ export const PaywallModal: React.FC = () => {
                                     </>
                                 )}
                             </TouchableOpacity>
+                            )}
 
                             {/* Promo Code — web only (Apple guideline 3.1.1) */}
                             {isWeb && (
@@ -479,6 +502,33 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     legalDivider: {
         fontSize: 11,
         color: c.textMuted,
+    },
+    offeringsStatus: {
+        alignItems: 'center',
+        paddingVertical: 20,
+        gap: 10,
+    },
+    offeringsStatusText: {
+        fontFamily: FONT_BODY_MEDIUM,
+        fontSize: 13,
+        color: c.textMuted,
+    },
+    offeringsErrorText: {
+        fontFamily: FONT_BODY_MEDIUM,
+        fontSize: 14,
+        color: c.textMuted,
+        textAlign: 'center',
+    },
+    retryBtn: {
+        backgroundColor: c.accent,
+        paddingHorizontal: 24,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    retryBtnText: {
+        fontFamily: FONT_DISPLAY_BOLD,
+        fontSize: 14,
+        color: '#ffffff',
     },
     promoRow: {
         flexDirection: 'row',

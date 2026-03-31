@@ -53,6 +53,9 @@ interface SubscriptionContextType {
     refreshSubscription: () => Promise<void>;
     // RevenueCat methods (native)
     offerings: { monthly: PurchasesPackage | null; annual: PurchasesPackage | null };
+    offeringsLoading: boolean;
+    offeringsError: boolean;
+    retryLoadOfferings: () => Promise<void>;
     purchaseSubscription: (pkg: PurchasesPackage) => Promise<boolean>;
     restorePurchases: () => Promise<boolean>;
     purchaseLoading: boolean;
@@ -84,6 +87,9 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
     hidePaywall: () => {},
     refreshSubscription: async () => {},
     offerings: { monthly: null, annual: null },
+    offeringsLoading: false,
+    offeringsError: false,
+    retryLoadOfferings: async () => {},
     purchaseSubscription: async () => false,
     restorePurchases: async () => false,
     purchaseLoading: false,
@@ -102,11 +108,39 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         monthly: null,
         annual: null,
     });
+    const [offeringsLoading, setOfferingsLoading] = useState(!isWeb);
+    const [offeringsError, setOfferingsError] = useState(false);
     const rcInitialized = useRef(false);
+
+    // Load offerings from RevenueCat (can be called to retry)
+    const loadOfferings = useCallback(async () => {
+        if (isWeb) return;
+        setOfferingsLoading(true);
+        setOfferingsError(false);
+        try {
+            const offers = await getOfferings();
+            const current = offers.current;
+            if (current && (current.monthly || current.annual)) {
+                setOfferings({
+                    monthly: current.monthly,
+                    annual: current.annual,
+                });
+            } else {
+                // No current offering or no packages available
+                setOfferingsError(true);
+            }
+        } catch (e) {
+            console.error('Failed to load offerings:', e);
+            setOfferingsError(true);
+        }
+        setOfferingsLoading(false);
+    }, []);
 
     // Initialize RevenueCat and fetch offerings (skip on web)
     const initRC = useCallback(async () => {
         if (isWeb || rcInitialized.current) return;
+        setOfferingsLoading(true);
+        setOfferingsError(false);
         try {
             const userId = await AsyncStorage.getItem('user_id');
             await initializePurchases(userId || undefined);
@@ -118,18 +152,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             }
 
             // Fetch offerings
-            const offers = await getOfferings();
-            const current = offers.current;
-            if (current) {
-                setOfferings({
-                    monthly: current.monthly,
-                    annual: current.annual,
-                });
-            }
+            await loadOfferings();
         } catch (e) {
             console.error('RevenueCat init error:', e);
+            setOfferingsError(true);
+            setOfferingsLoading(false);
         }
-    }, []);
+    }, [loadOfferings]);
 
     // Fetch subscription from your backend
     const fetchSubscription = useCallback(async () => {
@@ -219,7 +248,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const showPaywall = useCallback((message?: string) => {
         setPaywallMessage(message || 'Upgrade to Pro to unlock this feature!');
         setPaywallVisible(true);
-    }, []);
+        // Retry loading offerings if they previously failed
+        if (!isWeb && offeringsError && !offeringsLoading) {
+            loadOfferings();
+        }
+    }, [offeringsError, offeringsLoading, loadOfferings]);
 
     const hidePaywall = useCallback(() => {
         setPaywallVisible(false);
@@ -390,6 +423,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             hidePaywall,
             refreshSubscription,
             offerings,
+            offeringsLoading,
+            offeringsError,
+            retryLoadOfferings: loadOfferings,
             purchaseSubscription,
             restorePurchases: handleRestorePurchases,
             purchaseLoading,
