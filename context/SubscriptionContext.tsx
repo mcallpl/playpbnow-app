@@ -112,12 +112,25 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [offeringsError, setOfferingsError] = useState(false);
     const rcInitialized = useRef(false);
 
-    // Load offerings from RevenueCat (can be called to retry)
-    const loadOfferings = useCallback(async () => {
+    // Initialize RevenueCat and fetch offerings (skip on web).
+    // Also serves as the retry function — re-attempts init if it previously failed.
+    const initAndLoadOfferings = useCallback(async () => {
         if (isWeb) return;
         setOfferingsLoading(true);
         setOfferingsError(false);
         try {
+            // Initialize RevenueCat if not already done
+            if (!rcInitialized.current) {
+                const userId = await AsyncStorage.getItem('user_id');
+                await initializePurchases(userId || undefined);
+                rcInitialized.current = true;
+
+                if (userId) {
+                    await identifyUser(userId);
+                }
+            }
+
+            // Fetch offerings
             const offers = await getOfferings();
             const current = offers.current;
             if (current && (current.monthly || current.annual)) {
@@ -130,35 +143,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 setOfferingsError(true);
             }
         } catch (e) {
-            console.error('Failed to load offerings:', e);
+            console.error('RevenueCat init/offerings error:', e);
             setOfferingsError(true);
         }
         setOfferingsLoading(false);
     }, []);
-
-    // Initialize RevenueCat and fetch offerings (skip on web)
-    const initRC = useCallback(async () => {
-        if (isWeb || rcInitialized.current) return;
-        setOfferingsLoading(true);
-        setOfferingsError(false);
-        try {
-            const userId = await AsyncStorage.getItem('user_id');
-            await initializePurchases(userId || undefined);
-            rcInitialized.current = true;
-
-            // Identify user if we have an ID
-            if (userId) {
-                await identifyUser(userId);
-            }
-
-            // Fetch offerings
-            await loadOfferings();
-        } catch (e) {
-            console.error('RevenueCat init error:', e);
-            setOfferingsError(true);
-            setOfferingsLoading(false);
-        }
-    }, [loadOfferings]);
 
     // Fetch subscription from your backend
     const fetchSubscription = useCallback(async () => {
@@ -220,8 +209,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             } catch (e) {
                 console.error('Failed to load cached subscription:', e);
             }
-            // Initialize RevenueCat
-            await initRC();
+            // Initialize RevenueCat and load offerings
+            await initAndLoadOfferings();
             // Refresh from server
             fetchSubscription();
         })();
@@ -250,9 +239,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setPaywallVisible(true);
         // Retry loading offerings if they previously failed
         if (!isWeb && offeringsError && !offeringsLoading) {
-            loadOfferings();
+            initAndLoadOfferings();
         }
-    }, [offeringsError, offeringsLoading, loadOfferings]);
+    }, [offeringsError, offeringsLoading, initAndLoadOfferings]);
 
     const hidePaywall = useCallback(() => {
         setPaywallVisible(false);
@@ -425,7 +414,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             offerings,
             offeringsLoading,
             offeringsError,
-            retryLoadOfferings: loadOfferings,
+            retryLoadOfferings: initAndLoadOfferings,
             purchaseSubscription,
             restorePurchases: handleRestorePurchases,
             purchaseLoading,
