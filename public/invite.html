@@ -22,8 +22,12 @@
 <meta name="twitter:image" content="https://peoplestar.com/PlayPBNow/og-invite.png">
 
 <script>
-// Redirect to player-signup.html with the same query params
-window.location.href = 'player-signup.html' + window.location.search;
+// Only redirect real browsers, not link preview crawlers (iMessage, Facebook, Twitter, etc.)
+// Crawlers don't execute JS the same way — but some do, so we add a delay
+// to let them read the OG tags before the redirect fires
+setTimeout(function() {
+  window.location.href = 'player-signup.html' + window.location.search;
+}, 100);
 </script>
 </head>
 <body>
