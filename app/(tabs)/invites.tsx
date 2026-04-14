@@ -262,6 +262,78 @@ export default function InvitesScreen() {
     );
   };
 
+  // MultiText local iMessage URL — only reachable from Chip's Mac/network
+  const MULTITEXT_URL = 'http://localhost:8080';
+
+  const sendViaMultiText = async (inviteId: number) => {
+    // Step 2a: Prepare invites (creates DB records, returns phone/message pairs)
+    const prepRes = await fetch(`${API_URL}/invite_api.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'prepare_send',
+        user_id: userId,
+        invite_id: inviteId,
+        player_ids: selectedPlayers,
+      }),
+    });
+    const prepData = await prepRes.json();
+    if (prepData.status !== 'success') {
+      throw new Error(prepData.message || 'Failed to prepare invites');
+    }
+
+    const { messages, skipped_names } = prepData;
+
+    // Step 2b: Send each message through MultiText (local iMessage)
+    const results: Array<{ player_id: number; player_name: string; success: boolean; error: string }> = [];
+    for (const msg of messages) {
+      try {
+        const mtRes = await fetch(`${MULTITEXT_URL}/api/send/now`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: msg.phone, message: msg.message }),
+        });
+        const mtData = await mtRes.json();
+        results.push({
+          player_id: msg.player_id,
+          player_name: msg.player_name,
+          success: mtData.status === 'success',
+          error: mtData.status !== 'success' ? (mtData.message || 'Send failed') : '',
+        });
+      } catch {
+        results.push({
+          player_id: msg.player_id,
+          player_name: msg.player_name,
+          success: false,
+          error: 'MultiText unreachable — is it running?',
+        });
+      }
+    }
+
+    // Step 2c: Confirm results back to the server
+    const confirmRes = await fetch(`${API_URL}/invite_api.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'confirm_send',
+        user_id: userId,
+        invite_id: inviteId,
+        results,
+      }),
+    });
+    const confirmData = await confirmRes.json();
+    if (confirmData.status !== 'success') {
+      throw new Error(confirmData.message || 'Failed to confirm send');
+    }
+
+    return {
+      sent_names: confirmData.sent_names || [],
+      failed_names: [...(skipped_names || []), ...(confirmData.failed_names || [])],
+      sent_count: confirmData.sent_count || 0,
+      failed_count: (confirmData.failed_count || 0) + (skipped_names?.length || 0),
+    };
+  };
+
   const handleSendInvites = async () => {
     if (selectedPlayers.length === 0) { setError('Select at least one player'); return; }
     if (!isAdmin && selectedPlayers.length > creditBalance) {
@@ -269,10 +341,13 @@ export default function InvitesScreen() {
       return;
     }
 
+    // Use MultiText (local iMessage) on web for admin only
+    const useMultiText = Platform.OS === 'web' && isAdmin;
+
     setError('');
     setSendingInvites(true);
     try {
-      // Step 1: Create the invite
+      // Step 1: Create the invite (same for both flows)
       const createRes = await fetch(`${API_URL}/invite_api.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -298,34 +373,48 @@ export default function InvitesScreen() {
 
       const inviteId = createData.invite_id;
 
-      // Step 2: Send the invites
-      const res = await fetch(`${API_URL}/invite_api.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'send',
-          user_id: userId,
-          invite_id: inviteId,
-          player_ids: selectedPlayers,
-        }),
-      });
-      const data = await res.json();
-      if (data.status === 'success') {
+      if (useMultiText) {
+        // MultiText flow: prepare → send via local iMessage → confirm
+        const data = await sendViaMultiText(inviteId);
         haptic.confirm();
         setSendResults({
-          sentNames: data.sent_names || [],
-          failedNames: data.failed_names || [],
-          sentCount: data.sent_count || 0,
-          failedCount: data.failed_count || 0,
+          sentNames: data.sent_names,
+          failedNames: data.failed_names,
+          sentCount: data.sent_count,
+          failedCount: data.failed_count,
         });
         setInviteStep('results');
         loadInvites();
-        loadCredits();
       } else {
-        setError(data.message || 'Failed to send invites');
+        // Standard Twilio flow (mobile app + non-admin web)
+        const res = await fetch(`${API_URL}/invite_api.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'send',
+            user_id: userId,
+            invite_id: inviteId,
+            player_ids: selectedPlayers,
+          }),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          haptic.confirm();
+          setSendResults({
+            sentNames: data.sent_names || [],
+            failedNames: data.failed_names || [],
+            sentCount: data.sent_count || 0,
+            failedCount: data.failed_count || 0,
+          });
+          setInviteStep('results');
+          loadInvites();
+          loadCredits();
+        } else {
+          setError(data.message || 'Failed to send invites');
+        }
       }
-    } catch {
-      setError('Network error. Please try again.');
+    } catch (e: any) {
+      setError(e?.message || 'Network error. Please try again.');
     }
     setSendingInvites(false);
   };
