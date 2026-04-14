@@ -285,15 +285,29 @@ export default function InvitesScreen() {
     const { messages, skipped_names } = prepData;
 
     // Step 2b: Send each message through MultiText (local iMessage)
+    // Two messages per player: invite details, then the link alone (for OG preview card)
     const results: Array<{ player_id: number; player_name: string; success: boolean; error: string }> = [];
     for (const msg of messages) {
       try {
+        // Send the invite details first
         const mtRes = await fetch(`${MULTITEXT_URL}/api/send/now`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: msg.phone, message: msg.message }),
         });
         const mtData = await mtRes.json();
+
+        if (mtData.status === 'success' && msg.link_message) {
+          // Brief pause so messages arrive in order
+          await new Promise(r => setTimeout(r, 1500));
+          // Send the link as a separate message so iMessage shows the rich preview
+          await fetch(`${MULTITEXT_URL}/api/send/now`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: msg.phone, message: msg.link_message }),
+          });
+        }
+
         results.push({
           player_id: msg.player_id,
           player_name: msg.player_name,
