@@ -298,14 +298,22 @@ export default function InvitesScreen() {
         const mtData = await mtRes.json();
 
         if (mtData.status === 'success' && msg.link_message) {
-          // Brief pause so messages arrive in order
-          await new Promise(r => setTimeout(r, 1500));
-          // Send the link as a separate message so iMessage shows the rich preview
-          await fetch(`${MULTITEXT_URL}/api/send/now`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: msg.phone, message: msg.link_message }),
-          });
+          // Wait for iMessage to finish sending the first message before queuing the second
+          await new Promise(r => setTimeout(r, 3000));
+          // Send the RSVP link as a separate message so iMessage shows the rich preview card
+          try {
+            const linkRes = await fetch(`${MULTITEXT_URL}/api/send/now`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phone: msg.phone, message: msg.link_message }),
+            });
+            const linkData = await linkRes.json();
+            if (linkData.status !== 'success') {
+              console.warn('Link message failed:', linkData.message);
+            }
+          } catch (linkErr) {
+            console.warn('Link message send error:', linkErr);
+          }
         }
 
         results.push({
@@ -355,9 +363,6 @@ export default function InvitesScreen() {
       return;
     }
 
-    // Use MultiText (local iMessage) on web for admin only
-    const useMultiText = Platform.OS === 'web' && isAdmin;
-
     setError('');
     setSendingInvites(true);
     try {
@@ -387,20 +392,36 @@ export default function InvitesScreen() {
 
       const inviteId = createData.invite_id;
 
-      if (useMultiText) {
-        // MultiText flow: prepare → send via local iMessage → confirm
-        const data = await sendViaMultiText(inviteId);
-        haptic.confirm();
-        setSendResults({
-          sentNames: data.sent_names,
-          failedNames: data.failed_names,
-          sentCount: data.sent_count,
-          failedCount: data.failed_count,
-        });
-        setInviteStep('results');
-        loadInvites();
-      } else {
-        // Standard Twilio flow (mobile app + non-admin web)
+      // Admin on web: try MultiText first, fall back to Twilio if unreachable
+      // (MultiText only works from the Mac where it's running locally)
+      let usedMultiText = false;
+      if (Platform.OS === 'web' && isAdmin) {
+        try {
+          // Quick check: can we reach MultiText?
+          const ping = await Promise.race([
+            fetch(`${MULTITEXT_URL}/api/send/hours`),
+            new Promise<Response>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
+          ]);
+          if (ping.ok) {
+            const data = await sendViaMultiText(inviteId);
+            haptic.confirm();
+            setSendResults({
+              sentNames: data.sent_names,
+              failedNames: data.failed_names,
+              sentCount: data.sent_count,
+              failedCount: data.failed_count,
+            });
+            setInviteStep('results');
+            loadInvites();
+            usedMultiText = true;
+          }
+        } catch {
+          // MultiText not reachable — fall through to Twilio
+        }
+      }
+
+      if (!usedMultiText) {
+        // Standard Twilio flow (mobile app, non-admin, or MultiText unreachable)
         const res = await fetch(`${API_URL}/invite_api.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
