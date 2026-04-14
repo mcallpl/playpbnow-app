@@ -262,106 +262,15 @@ export default function InvitesScreen() {
     );
   };
 
-  // MultiText local iMessage URL — only reachable from Chip's Mac/network
-  const MULTITEXT_URL = 'http://localhost:8080';
-
-  const sendViaMultiText = async (inviteId: number) => {
-    // Step 2a: Prepare invites (creates DB records, returns phone/message pairs)
-    const prepRes = await fetch(`${API_URL}/invite_api.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'prepare_send',
-        user_id: userId,
-        invite_id: inviteId,
-        player_ids: selectedPlayers,
-      }),
-    });
-    const prepData = await prepRes.json();
-    if (prepData.status !== 'success') {
-      throw new Error(prepData.message || 'Failed to prepare invites');
-    }
-
-    const { messages, skipped_names } = prepData;
-
-    // Step 2b: Send each message through MultiText (local iMessage)
-    // Two messages per player: invite details, then the link alone (for OG preview card)
-    const results: Array<{ player_id: number; player_name: string; success: boolean; error: string }> = [];
-    for (const msg of messages) {
-      try {
-        // Send the invite details first
-        const mtRes = await fetch(`${MULTITEXT_URL}/api/send/now`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: msg.phone, message: msg.message }),
-        });
-        const mtData = await mtRes.json();
-
-        if (mtData.status === 'success' && msg.link_message) {
-          // Wait for iMessage to finish sending the first message before queuing the second
-          await new Promise(r => setTimeout(r, 3000));
-          // Send the RSVP link as a separate message so iMessage shows the rich preview card
-          try {
-            const linkRes = await fetch(`${MULTITEXT_URL}/api/send/now`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ phone: msg.phone, message: msg.link_message }),
-            });
-            const linkData = await linkRes.json();
-            if (linkData.status !== 'success') {
-              console.warn('Link message failed:', linkData.message);
-            }
-          } catch (linkErr) {
-            console.warn('Link message send error:', linkErr);
-          }
-        }
-
-        results.push({
-          player_id: msg.player_id,
-          player_name: msg.player_name,
-          success: mtData.status === 'success',
-          error: mtData.status !== 'success' ? (mtData.message || 'Send failed') : '',
-        });
-      } catch {
-        results.push({
-          player_id: msg.player_id,
-          player_name: msg.player_name,
-          success: false,
-          error: 'MultiText unreachable — is it running?',
-        });
-      }
-    }
-
-    // Step 2c: Confirm results back to the server
-    const confirmRes = await fetch(`${API_URL}/invite_api.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'confirm_send',
-        user_id: userId,
-        invite_id: inviteId,
-        results,
-      }),
-    });
-    const confirmData = await confirmRes.json();
-    if (confirmData.status !== 'success') {
-      throw new Error(confirmData.message || 'Failed to confirm send');
-    }
-
-    return {
-      sent_names: confirmData.sent_names || [],
-      failed_names: [...(skipped_names || []), ...(confirmData.failed_names || [])],
-      sent_count: confirmData.sent_count || 0,
-      failed_count: (confirmData.failed_count || 0) + (skipped_names?.length || 0),
-    };
-  };
-
   const handleSendInvites = async () => {
     if (selectedPlayers.length === 0) { setError('Select at least one player'); return; }
     if (!isAdmin && selectedPlayers.length > creditBalance) {
       setError(`Not enough credits. You need ${selectedPlayers.length} but have ${creditBalance}.`);
       return;
     }
+
+    // Admin on web uses iMessage (queued for Mac sender daemon), everyone else uses Twilio
+    const useIMessage = Platform.OS === 'web' && isAdmin;
 
     setError('');
     setSendingInvites(true);
@@ -392,61 +301,31 @@ export default function InvitesScreen() {
 
       const inviteId = createData.invite_id;
 
-      // Admin on web: try MultiText first, fall back to Twilio if unreachable
-      // (MultiText only works from the Mac where it's running locally)
-      let usedMultiText = false;
-      if (Platform.OS === 'web' && isAdmin) {
-        try {
-          // Quick check: can we reach MultiText?
-          const ping = await Promise.race([
-            fetch(`${MULTITEXT_URL}/api/send/hours`),
-            new Promise<Response>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
-          ]);
-          if (ping.ok) {
-            const data = await sendViaMultiText(inviteId);
-            haptic.confirm();
-            setSendResults({
-              sentNames: data.sent_names,
-              failedNames: data.failed_names,
-              sentCount: data.sent_count,
-              failedCount: data.failed_count,
-            });
-            setInviteStep('results');
-            loadInvites();
-            usedMultiText = true;
-          }
-        } catch {
-          // MultiText not reachable — fall through to Twilio
-        }
-      }
-
-      if (!usedMultiText) {
-        // Standard Twilio flow (mobile app, non-admin, or MultiText unreachable)
-        const res = await fetch(`${API_URL}/invite_api.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'send',
-            user_id: userId,
-            invite_id: inviteId,
-            player_ids: selectedPlayers,
-          }),
+      // Step 2: Send invites via the appropriate channel
+      const res = await fetch(`${API_URL}/invite_api.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: useIMessage ? 'send_imessage' : 'send',
+          user_id: userId,
+          invite_id: inviteId,
+          player_ids: selectedPlayers,
+        }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        haptic.confirm();
+        setSendResults({
+          sentNames: data.sent_names || [],
+          failedNames: data.failed_names || [],
+          sentCount: data.sent_count || 0,
+          failedCount: data.failed_count || 0,
         });
-        const data = await res.json();
-        if (data.status === 'success') {
-          haptic.confirm();
-          setSendResults({
-            sentNames: data.sent_names || [],
-            failedNames: data.failed_names || [],
-            sentCount: data.sent_count || 0,
-            failedCount: data.failed_count || 0,
-          });
-          setInviteStep('results');
-          loadInvites();
-          loadCredits();
-        } else {
-          setError(data.message || 'Failed to send invites');
-        }
+        setInviteStep('results');
+        loadInvites();
+        if (!useIMessage) loadCredits();
+      } else {
+        setError(data.message || 'Failed to send invites');
       }
     } catch (e: any) {
       setError(e?.message || 'Network error. Please try again.');
