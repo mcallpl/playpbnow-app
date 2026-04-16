@@ -1209,6 +1209,63 @@ export default function InvitesScreen() {
                   )}
                 </View>
 
+                {/* Message Preview */}
+                {(() => {
+                  const useIMessage = Platform.OS === 'web' && isAdmin;
+                  const samplePlayer = poolPlayers.find(p => selectedPlayers.includes(p.id));
+                  const sampleName = samplePlayer?.first_name || 'Player';
+                  const d = matchDate ? new Date(matchDate + 'T12:00:00') : null;
+                  const costDisplay = (cost && cost.toLowerCase() !== 'free') ? `Cost: ${cost}` : 'No cost to play';
+                  const matchTypeDisplay = matchType || 'Open Play';
+
+                  let previewText: string;
+                  if (useIMessage) {
+                    const fullDate = d ? d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : matchDate;
+                    const fullTime = matchTime ? (() => { const [h, m] = matchTime.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`; })() : matchTime;
+                    previewText = `Hi ${sampleName}! You're invited to play pickleball!\n\n${matchTypeDisplay}\n${fullDate} at ${fullTime}\n${courtName}${courtAddress ? '\n' + courtAddress : ''}\n${costDisplay}`;
+                    if (messagebody.trim()) {
+                      previewText += `\n\n${messagebody.trim()}`;
+                    }
+                    previewText += `\n\nWe'd love to have you on the court. Spots are limited, so don't wait!\n\nTap the link in my next message to RSVP.\n\n— Chip McAllister, Play PB Now`;
+                  } else {
+                    const shortDate = d ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : matchDate;
+                    const shortTime = matchTime ? (() => { const [h, m] = matchTime.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${m}${hr >= 12 ? 'PM' : 'AM'}`; })() : matchTime;
+                    previewText = `${sampleName}, pickleball ${shortDate} ${shortTime} @ ${courtName}. RSVP: https://peoplestar.com/PlayPBNow/invite.html?code=XXXXXX&player_id=...`;
+                  }
+
+                  return (
+                    <View style={{ marginTop: 20 }}>
+                      <Text style={styles.inputLabel}>Message Preview {useIMessage ? '(iMessage)' : '(SMS)'}</Text>
+                      <View style={{
+                        backgroundColor: colors.card,
+                        borderRadius: 16,
+                        padding: 16,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}>
+                        <Text style={{
+                          fontFamily: FONT_BODY_REGULAR,
+                          fontSize: 14,
+                          color: colors.text,
+                          lineHeight: 20,
+                        }}>
+                          {previewText}
+                        </Text>
+                        {useIMessage && (
+                          <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+                            <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>
+                              + Second message with RSVP link:
+                            </Text>
+                            <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: colors.accent }}>
+                              https://go.peoplestar.com/...
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })()}
+
                 {!isAdmin && creditBalance < selectedPlayers.length && (
                   <View style={{ marginTop: 16 }}>
                     <View style={styles.errorBanner}>
