@@ -30,7 +30,7 @@ import {
   ANIMATION,
 } from '../../constants/theme';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 
 // Abstract court geometry motif — thin lines at very low opacity
 function CourtGeometry({ width, height, color }: { width: number; height: number; color: string }) {

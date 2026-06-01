@@ -45,7 +45,7 @@ import {
 } from '../../constants/theme';
 import { haptic } from '../../utils/haptics';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 
 interface SearchResult { id: string; name: string; source: string; }
 

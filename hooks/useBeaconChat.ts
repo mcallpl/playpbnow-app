@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { playChatPing } from '../utils/sounds';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://peoplestar.com/PlayPBNow/api';
-const SHARED_BEACON_URL = 'https://peoplestar.com/shared/beacon/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? '/api';
+const SHARED_BEACON_URL = '/shared/beacon/api';
 const POLL_INTERVAL = 3000;
 
 export interface ChatMessage {

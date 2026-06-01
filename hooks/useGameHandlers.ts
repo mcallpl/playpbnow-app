@@ -1,7 +1,7 @@
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 
 export function useGameHandlers(props: any) {
   const {

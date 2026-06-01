@@ -14,7 +14,7 @@ import {
 
 const isWeb = Platform.OS === 'web';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 const STORAGE_KEY = 'subscription_data';
 
 export interface SubscriptionFeatures {

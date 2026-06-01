@@ -33,7 +33,7 @@ import { useInviteChat, InviteChatMessage } from '../../hooks/useInviteChat';
 import { KeyboardAvoidingView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 
 interface CourtItem {
   id: number;
@@ -1230,7 +1230,7 @@ export default function InvitesScreen() {
                   } else {
                     const shortDate = d ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : matchDate;
                     const shortTime = matchTime ? (() => { const [h, m] = matchTime.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${m}${hr >= 12 ? 'PM' : 'AM'}`; })() : matchTime;
-                    previewText = `${sampleName}, pickleball ${shortDate} ${shortTime} @ ${courtName}. RSVP: https://peoplestar.com/PlayPBNow/invite.html?code=XXXXXX&player_id=...`;
+                    previewText = `${sampleName}, pickleball ${shortDate} ${shortTime} @ ${courtName}. RSVP: /invite.html?code=XXXXXX&player_id=...`;
                   }
 
                   return (

@@ -34,7 +34,7 @@ import {
   FONT_DISPLAY_EXTRABOLD,
 } from '../constants/theme';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 
 SplashScreen.preventAutoHideAsync();
 

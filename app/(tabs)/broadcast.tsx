@@ -32,7 +32,7 @@ import {
 import { haptic } from '../../utils/haptics';
 import * as ImagePicker from 'expo-image-picker';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 
 // ── Types ──
 
@@ -802,7 +802,7 @@ export default function AdminDashboard() {
 
     const draft = await saveDraft();
     if (draft) {
-      const previewUrl = `https://peoplestar.com/PlayPBNow/broadcast.html?code=${draft.code}`;
+      const previewUrl = `/broadcast.html?code=${draft.code}`;
       Linking.openURL(previewUrl);
     }
     setPreviewing(false);
@@ -1934,9 +1934,9 @@ export default function AdminDashboard() {
 
                 <View style={[s.resultsCard, { marginTop: 16 }]}>
                   <Text style={s.resultsLabel}>LANDING PAGE</Text>
-                  <TouchableOpacity onPress={() => Linking.openURL(`https://peoplestar.com/PlayPBNow/broadcast.html?code=${sendResults.broadcastCode}`)}>
+                  <TouchableOpacity onPress={() => Linking.openURL(`/broadcast.html?code=${sendResults.broadcastCode}`)}>
                     <Text style={s.resultsLink} numberOfLines={2}>
-                      https://peoplestar.com/PlayPBNow/broadcast.html?code={sendResults.broadcastCode}
+                      /broadcast.html?code={sendResults.broadcastCode}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -2167,7 +2167,7 @@ export default function AdminDashboard() {
               renderItem={({ item }) => (
                 <View style={s.historyCard}>
                   <TouchableOpacity
-                    onPress={() => Linking.openURL(`https://peoplestar.com/PlayPBNow/broadcast.html?code=${item.broadcast_code}`)}
+                    onPress={() => Linking.openURL(`/broadcast.html?code=${item.broadcast_code}`)}
                     style={{ flex: 1 }}
                   >
                     <View style={s.activityRow}>
@@ -2216,7 +2216,7 @@ export default function AdminDashboard() {
                   <Text style={s.previewSmsLabel}>SMS PREVIEW</Text>
                   <View style={s.previewSmsBubble}>
                     <Text style={s.previewSmsText}>
-                      {smsText || 'SMS text'}{'\n\n'}Details: https://peoplestar.com/PlayPBNow/broadcast.html?code=XXXXXXXX
+                      {smsText || 'SMS text'}{'\n\n'}Details: /broadcast.html?code=XXXXXXXX
                     </Text>
                   </View>
                   <Text style={s.previewSmsInfo}>{smsCharCount} chars + ~70 char link = ~{smsCharCount + 70} total</Text>

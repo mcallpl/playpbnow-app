@@ -3,7 +3,7 @@ import React, { createContext, useContext, useRef, useState, useCallback, useEff
 import { useLocation, UserLocation } from '../hooks/useLocation';
 import { playBeaconChime } from '../utils/sounds';
 
-const SHARED_BEACON_URL = 'https://peoplestar.com/shared/beacon/api';
+const SHARED_BEACON_URL = '/shared/beacon/api';
 
 interface BeaconContextValue {
   hasActiveBeacons: boolean;

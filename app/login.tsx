@@ -28,7 +28,7 @@ import {
     FONT_BODY_SEMIBOLD,
 } from '../constants/theme';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -366,12 +366,12 @@ export default function LoginScreen() {
                         <Text style={styles.footerText}>
                             By continuing, you agree to our{' '}
                             <Text style={styles.footerLink} onPress={() => {
-                                const url = 'https://peoplestar.com/PlayPBNow/api/terms.html';
+                                const url = '/api/terms.html';
                                 Platform.OS === 'web' ? window.open(url, '_blank') : Linking.openURL(url);
                             }}>Terms of Service</Text>
                             {' '}and{' '}
                             <Text style={styles.footerLink} onPress={() => {
-                                const url = 'https://peoplestar.com/PlayPBNow/api/privacy.html';
+                                const url = '/api/privacy.html';
                                 Platform.OS === 'web' ? window.open(url, '_blank') : Linking.openURL(url);
                             }}>Privacy Policy</Text>.
                         </Text>

@@ -61,7 +61,7 @@ interface SearchResult {
 
 interface RoundConfig { type: 'mixed' | 'gender' | 'mixer'; }
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 
 export default function SetupScreen() {
   const router = useRouter();

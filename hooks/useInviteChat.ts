@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { playChatPing } from '../utils/sounds';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 const POLL_INTERVAL = 3000;
 
 export interface InviteChatMessage {

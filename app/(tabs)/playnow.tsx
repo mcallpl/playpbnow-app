@@ -47,7 +47,7 @@ import { playChatPing } from '../../utils/sounds';
 import { useBeaconChat } from '../../hooks/useBeaconChat';
 import { haptic } from '../../utils/haptics';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 
 type BeaconView = 'feed' | 'mode_select' | 'create_casual' | 'create_structured' | 'lobby' | 'locked';
 

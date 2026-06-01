@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import { Player } from './useSetupState';
 import { storeNavData } from '../utils/navData';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = '/api';
 
 export function useSetupHandlers(props: any) {
     const {
