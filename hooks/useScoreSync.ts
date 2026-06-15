@@ -20,6 +20,10 @@ export function useScoreSync({ isCollaborator, shareCode, setScores }: ScoreSync
         const pollInterval = setInterval(async () => {
             try {
                 const response = await fetch(`${API_URL}/get_live_session.php?share_code=${shareCode}`);
+                if (!response.ok) {
+                    console.error('Poll error: HTTP', response.status);
+                    return;
+                }
                 const data = await response.json();
 
                 if (data.status === 'success') {

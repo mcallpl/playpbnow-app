@@ -182,7 +182,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     },
                 };
                 setSubscription(subData);
-                await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(subData));
+                try {
+                    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(subData));
+                } catch (storageError) {
+                    console.error('Failed to cache subscription:', storageError);
+                }
             }
         } catch (e) {
             console.error('Failed to fetch subscription:', e);
@@ -325,8 +329,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: userId, plan }),
             });
+            if (!response.ok) {
+                throw new Error(`Checkout API error: ${response.status}`);
+            }
             const data = await response.json();
-            if (data.checkout_url) {
+            if (data.checkout_url && typeof data.checkout_url === 'string' && data.checkout_url.startsWith('http')) {
                 if (isWeb) {
                     window.location.href = data.checkout_url;
                 } else {

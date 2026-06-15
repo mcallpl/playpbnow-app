@@ -113,8 +113,12 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             })
         );
 
-        await Promise.all(promises);
-        console.log(`📤 Pushed ${Object.keys(gameMap).length} games to server`);
+        const results = await Promise.allSettled(promises);
+        const failed = results.filter(r => r.status === 'rejected').length;
+        console.log(`📤 Pushed ${Object.keys(gameMap).length - failed}/${Object.keys(gameMap).length} games to server`);
+        if (failed > 0) {
+            console.warn(`⚠️ ${failed} score updates failed to sync`);
+        }
     }, [fetchWithRetry]);
 
     // ── PULL ALL: Get every score from server, REPLACE local ─────
