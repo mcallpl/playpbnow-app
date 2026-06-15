@@ -146,7 +146,7 @@ export default function LoginScreen() {
     };
 
     const startForgotPassword = () => {
-        setResetPhone(phone.trim());
+        setResetPhone(email.trim());
         setResetStep('phone');
     };
 
@@ -170,13 +170,18 @@ export default function LoginScreen() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'request_code', phone: resetPhone.trim() }),
             });
+            if (!res.ok) {
+                Alert.alert('Error', `Server error: ${res.status}`);
+                return;
+            }
             const data = await res.json();
             if (data.status === 'success') {
                 setResetStep('code');
             } else {
-                Alert.alert('Error', data.message);
+                Alert.alert('Error', data.message || 'Failed to send code. Please try again.');
             }
-        } catch {
+        } catch (error) {
+            console.error('Request code error:', error);
             Alert.alert('Error', 'Network error. Please try again.');
         } finally {
             setResetLoading(false);
@@ -195,13 +200,18 @@ export default function LoginScreen() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'verify_code', phone: resetPhone.trim(), code: resetCode.trim() }),
             });
+            if (!res.ok) {
+                Alert.alert('Error', `Server error: ${res.status}`);
+                return;
+            }
             const data = await res.json();
             if (data.status === 'success') {
                 setResetStep('newpass');
             } else {
-                Alert.alert('Error', data.message);
+                Alert.alert('Error', data.message || 'Code verification failed. Please try again.');
             }
-        } catch {
+        } catch (error) {
+            console.error('Verify code error:', error);
             Alert.alert('Error', 'Network error. Please try again.');
         } finally {
             setResetLoading(false);
@@ -229,14 +239,19 @@ export default function LoginScreen() {
                     new_password: resetPassword,
                 }),
             });
+            if (!res.ok) {
+                Alert.alert('Error', `Server error: ${res.status}`);
+                return;
+            }
             const data = await res.json();
             if (data.status === 'success') {
                 Alert.alert('Success', 'Your password has been reset. You can now sign in.');
                 cancelReset();
             } else {
-                Alert.alert('Error', data.message);
+                Alert.alert('Error', data.message || 'Password reset failed. Please try again.');
             }
-        } catch {
+        } catch (error) {
+            console.error('Reset password error:', error);
             Alert.alert('Error', 'Network error. Please try again.');
         } finally {
             setResetLoading(false);
