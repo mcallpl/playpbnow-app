@@ -85,8 +85,6 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 }
 .hero-bg{
   position:absolute;inset:0;z-index:0;
-  background-image:url('/hero-court.png');
-  background-size:cover;background-position:center;background-repeat:no-repeat;
 }
 .hero-bg::before{
   content:'';position:absolute;top:-40%;left:-30%;width:160%;height:160%;
@@ -479,6 +477,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 <!-- ════════════ HERO ════════════ -->
 <section class="hero" id="top">
   <div class="hero-bg">
+    <img src="hero-court.png" alt="Pickleball court" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1">
     <div class="hero-ball"></div>
     <div class="hero-ball"></div>
     <div class="hero-ball"></div>
