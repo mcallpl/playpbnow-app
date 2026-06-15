@@ -178,11 +178,17 @@ export default function InvitesScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'list', user_id: userId }),
       });
+      if (!res.ok) {
+        console.error(`Invites API error: ${res.status}`);
+        return;
+      }
       const data = await res.json();
       if (data.status === 'success') {
         setInvites(data.invites || []);
       }
-    } catch {}
+    } catch (error) {
+      console.error('Load invites error:', error);
+    }
   };
 
   const loadCredits = async () => {
@@ -192,11 +198,17 @@ export default function InvitesScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'balance', user_id: userId }),
       });
+      if (!res.ok) {
+        console.error(`Credits API error: ${res.status}`);
+        return;
+      }
       const data = await res.json();
       if (data.status === 'success') {
         setCreditBalance(data.credits || 0);
       }
-    } catch {}
+    } catch (error) {
+      console.error('Load credits error:', error);
+    }
   };
 
   const loadPlayers = async (page = 1, append = false, searchOverride?: string) => {
@@ -215,6 +227,11 @@ export default function InvitesScreen() {
           ...playerFilter,
         }),
       });
+      if (!res.ok) {
+        console.error(`Pool players API error: ${res.status}`);
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
       if (data.status === 'success') {
         if (append) {
@@ -224,7 +241,9 @@ export default function InvitesScreen() {
         }
         setHasMorePlayers((data.players || []).length === 500);
       }
-    } catch {}
+    } catch (error) {
+      console.error('Load players error:', error);
+    }
     setLoading(false);
   };
 

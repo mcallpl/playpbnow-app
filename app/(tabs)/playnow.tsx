@@ -444,6 +444,9 @@ export default function PlayNowTab() {
     // 1. Try to load profile from server (permanent storage)
     try {
       const profileRes = await fetch(`${API_URL}/user_profile_get.php?user_id=${uid}`);
+      if (!profileRes.ok) {
+        throw new Error(`Server error: ${profileRes.status}`);
+      }
       const profileData = await profileRes.json();
       if (profileData.status === 'success' && profileData.profile && profileData.profile.first_name && profileData.profile.phone) {
         const p = profileData.profile;
@@ -458,7 +461,8 @@ export default function PlayNowTab() {
         await AsyncStorage.setItem('user_last_name', p.last_name || '');
         return;
       }
-    } catch {
+    } catch (error) {
+      console.error('Load profile error:', error);
       // Server unavailable — check local cache
     }
 
@@ -530,11 +534,15 @@ export default function PlayNowTab() {
         setLoadingCourts(true);
         try {
           const courtsRes = await fetch(`${API_URL}/get_courts.php`);
+          if (!courtsRes.ok) {
+            throw new Error(`Courts API error: ${courtsRes.status}`);
+          }
           const courtsData = await courtsRes.json();
           if (courtsData.status === 'success') {
             setCreateCourts(courtsData.courts || []);
           }
-        } catch {
+        } catch (error) {
+          console.error('Load courts error:', error);
           setCreateCourts(courts);
         } finally {
           setLoadingCourts(false);

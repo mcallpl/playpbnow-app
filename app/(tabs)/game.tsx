@@ -322,8 +322,13 @@ export default function GameScreen() {
           setIsSearching(true);
           try {
               const res = await fetch(`${API_URL}/search_players.php?q=${encodeURIComponent(newPlayerName)}`);
-              const data = await res.json();
-              if (data.status === 'success') setSearchResults(data.results);
+              if (!res.ok) {
+                  console.error(`Search API error: ${res.status}`);
+                  setSearchResults([]);
+              } else {
+                  const data = await res.json();
+                  if (data.status === 'success') setSearchResults(data.results);
+              }
           } catch(e) { console.log("Search error", e); }
           finally { setIsSearching(false); }
       }, 300);

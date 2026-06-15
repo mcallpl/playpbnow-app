@@ -106,6 +106,12 @@ export default function LoginScreen() {
                 body: JSON.stringify(body),
             });
 
+            if (!response.ok) {
+                setLoading(false);
+                setErrorMessage('Server error. Please try again later.');
+                return;
+            }
+
             const data = await response.json();
 
             if (data.status === 'success') {
