@@ -133,9 +133,19 @@ export default function SetupScreen() {
             // Load all courts for edit player dropdown
             try {
                 const courtsRes = await fetch(`${API_URL}/get_courts.php`);
+                if (!courtsRes.ok) {
+                    console.error('Failed to fetch courts: HTTP', courtsRes.status);
+                    return;
+                }
                 const courtsData = await courtsRes.json();
-                if (courtsData.status === 'success') setAllCourts(courtsData.courts || []);
-            } catch (e) {}
+                if (courtsData.status === 'success') {
+                    setAllCourts(courtsData.courts || []);
+                } else {
+                    console.error('Failed to fetch courts:', courtsData.message);
+                }
+            } catch (e) {
+                console.error('Error loading courts:', e);
+            }
 
             // Load preselected players from navData (AsyncStorage) or legacy URL params
             if (params.navId) {
