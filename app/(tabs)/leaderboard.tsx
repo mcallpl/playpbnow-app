@@ -355,7 +355,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   };
 
   const isSessionOwner = (session: any) => {
-      return session?.isYours === true || String(session?.device_id).trim() == String(deviceId).trim();
+      return session?.isYours === true || String(session?.device_id).trim() === String(deviceId).trim();
   }
 
   const renderLeaderboardRow = ({ item, index }: {item: LeaderboardItem, index: number}) => {

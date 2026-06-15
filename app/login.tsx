@@ -137,6 +137,14 @@ export default function LoginScreen() {
         setErrorMessage('');
     };
 
+    const openLegalUrl = (url: string) => {
+        if (Platform.OS === 'web') {
+            window.open(url, '_blank');
+        } else {
+            Linking.openURL(url);
+        }
+    };
+
     const startForgotPassword = () => {
         setResetPhone(phone.trim());
         setResetStep('phone');
@@ -365,15 +373,9 @@ export default function LoginScreen() {
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>
                             By continuing, you agree to our{' '}
-                            <Text style={styles.footerLink} onPress={() => {
-                                const url = '/api/terms.html';
-                                Platform.OS === 'web' ? window.open(url, '_blank') : Linking.openURL(url);
-                            }}>Terms of Service</Text>
+                            <Text style={styles.footerLink} onPress={() => openLegalUrl('/api/terms.html')}>Terms of Service</Text>
                             {' '}and{' '}
-                            <Text style={styles.footerLink} onPress={() => {
-                                const url = '/api/privacy.html';
-                                Platform.OS === 'web' ? window.open(url, '_blank') : Linking.openURL(url);
-                            }}>Privacy Policy</Text>.
+                            <Text style={styles.footerLink} onPress={() => openLegalUrl('/api/privacy.html')}>Privacy Policy</Text>.
                         </Text>
                     </View>
                 </ScrollView>
@@ -389,7 +391,7 @@ export default function LoginScreen() {
 
                             {resetStep === 'phone' && (
                                 <>
-                                    <Text style={styles.resetHint}>Enter your phone number and we'll text you a 6-digit reset code.</Text>
+                                    <Text style={styles.resetHint}>{"Enter your phone number and we'll text you a 6-digit reset code."}</Text>
                                     <TextInput
                                         style={styles.input}
                                         placeholder="(949) 735-9415"

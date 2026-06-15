@@ -230,7 +230,7 @@ export default function LiveMatchScreen() {
                             <BrandedIcon name="tennisball" size={64} color={colors.textMuted} />
                             <Text style={styles.emptyText}>No scores yet</Text>
                             <Text style={styles.emptySubtext}>
-                                Scores will appear here as they're entered
+                                {"Scores will appear here as they're entered"}
                             </Text>
                         </View>
                     }

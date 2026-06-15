@@ -6,7 +6,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
@@ -41,7 +40,7 @@ import {
   FONT_BODY_REGULAR,
   SPACING,
 } from '../../constants/theme';
-import { useBeacon, Beacon, Court, ReplacementRequest, BeaconResponse } from '../../hooks/useBeacon';
+import { useBeacon, Beacon, Court } from '../../hooks/useBeacon';
 import { useBeaconStatus } from '../../context/BeaconContext';
 import { playChatPing } from '../../utils/sounds';
 import { useBeaconChat } from '../../hooks/useBeaconChat';
@@ -255,7 +254,7 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
       {beacon.message && !beacon.is_mine && (
         <View style={{ paddingHorizontal: SPACING.cardPadding, paddingBottom: 8 }}>
           <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 13, color: colors.textMuted, fontStyle: 'italic' }} numberOfLines={2}>
-            "{beacon.message}"
+            {`"${beacon.message}"`}
           </Text>
         </View>
       )}
@@ -1361,7 +1360,7 @@ export default function PlayNowTab() {
           <BrandedIcon name="live" size={32} color={colors.accent} />
           <Text style={styles.modeCardTitle}>More Info</Text>
           <Text style={styles.modeCardSubtitle}>
-            I'm already at the court. Looking for people to come play!
+            {"I'm already at the court. Looking for people to come play!"}
           </Text>
           <View style={styles.casualBadge}>
             <Text style={styles.casualBadgeText}>Casual</Text>
@@ -1519,7 +1518,7 @@ export default function PlayNowTab() {
           ) : (
             <>
               <BrandedIcon name="live" size={20} color="#ffffff" />
-              <Text style={styles.goLiveText}>I'm Here — Come Play!</Text>
+              <Text style={styles.goLiveText}>{"I'm Here — Come Play!"}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -1893,7 +1892,7 @@ export default function PlayNowTab() {
               }}
             >
               <BrandedIcon name="sync" size={16} color={colors.danger} />
-              <Text style={styles.dangerButtonLargeText}>Can't Make It</Text>
+              <Text style={styles.dangerButtonLargeText}>{"Can't Make It"}</Text>
             </TouchableOpacity>
           </>
         )}

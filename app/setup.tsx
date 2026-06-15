@@ -158,6 +158,9 @@ export default function SetupScreen() {
         };
         load().then(() => {
             setTimeout(() => nameInputRef.current?.focus(), 300);
+        }).catch((err) => {
+            console.error('Failed to load players:', err);
+            setTimeout(() => nameInputRef.current?.focus(), 300);
         });
         // Also focus whenever this screen regains focus
         setTimeout(() => nameInputRef.current?.focus(), 500);
@@ -311,7 +314,7 @@ export default function SetupScreen() {
     setEditingPlayer(player);
     setEditName(player.first_name);
     setEditLastName(player.last_name || '');
-    setEditGender(player.gender);
+    setEditGender((player.gender?.toLowerCase() || '').startsWith('f') ? 'female' : 'male');
     setEditPhone(player.cell_phone || '');
     setEditDupr(player.dupr_rating || '');
     setEditHomeCourtId(player.home_court_id || null);

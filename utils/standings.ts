@@ -120,6 +120,7 @@ export function generateSemifinals(standings: TeamStanding[]): RoundData[] {
         id: `playoff-sf1-${Date.now()}`,
         type: 'semifinal',
         games: [{
+            id: `playoff-sf1-game-${Date.now()}`,
             team1: standings[0].players,
             team2: standings[3].players,
         }],
@@ -129,6 +130,7 @@ export function generateSemifinals(standings: TeamStanding[]): RoundData[] {
         id: `playoff-sf2-${Date.now()}`,
         type: 'semifinal',
         games: [{
+            id: `playoff-sf2-game-${Date.now()}`,
             team1: standings[1].players,
             team2: standings[2].players,
         }],
@@ -162,13 +164,13 @@ export function generateFinals(
     const goldMatch: RoundData = {
         id: `playoff-gold-${Date.now()}`,
         type: 'gold',
-        games: [{ team1: sf1Winner, team2: sf2Winner }],
+        games: [{ id: `playoff-gold-game-${Date.now()}`, team1: sf1Winner, team2: sf2Winner }],
         byes: [],
     };
     const bronzeMatch: RoundData = {
         id: `playoff-bronze-${Date.now()}`,
         type: 'bronze',
-        games: [{ team1: sf1Loser, team2: sf2Loser }],
+        games: [{ id: `playoff-bronze-game-${Date.now()}`, team1: sf1Loser, team2: sf2Loser }],
         byes: [],
     };
     return [bronzeMatch, goldMatch]; // bronze first, then gold (grand finale)

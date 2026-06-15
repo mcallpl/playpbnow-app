@@ -1803,7 +1803,7 @@ export default function AdminDashboard() {
               <BrandedIcon name={quickPersonalize ? 'checkbox' : 'checkboxEmpty'} size={22}
                 color={quickPersonalize ? colors.accent : colors.textMuted} />
               <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 14, color: colors.textMuted }}>
-                Prepend recipient's first name
+                {"Prepend recipient's first name"}
               </Text>
             </TouchableOpacity>
 
@@ -2016,7 +2016,6 @@ export default function AdminDashboard() {
               {/* Media Upload — drag & drop on web, picker on native */}
               <TouchableOpacity
                 testID="media-drop-zone"
-                nativeID="media-drop-zone"
                 style={{
                   flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
                   marginTop: 12, paddingVertical: Platform.OS === 'web' ? 40 : 14, paddingHorizontal: 20,

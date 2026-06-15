@@ -161,7 +161,7 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
                         </View>
                         <View style={styles.feature}>
                             <BrandedIcon name="groups" size={18} color={colors.accent} />
-                            <Text style={styles.featureText}>See who's connected</Text>
+                            <Text style={styles.featureText}>{"See who's connected"}</Text>
                         </View>
                     </View>
                 </View>

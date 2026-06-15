@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -29,8 +30,7 @@ import {
   FONT_BODY_SEMIBOLD,
 } from '../../constants/theme';
 import { haptic } from '../../utils/haptics';
-import { useInviteChat, InviteChatMessage } from '../../hooks/useInviteChat';
-import { KeyboardAvoidingView } from 'react-native';
+import { useInviteChat } from '../../hooks/useInviteChat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = '/api';
@@ -1275,7 +1275,7 @@ export default function InvitesScreen() {
                     </View>
                     <Text style={[styles.inputLabel, { marginTop: 16 }]}>Buy Credits to Continue</Text>
                     <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 13, color: colors.textMuted, marginBottom: 12 }}>
-                      Purchase credits below — you'll return right here to send your invites.
+                      {"Purchase credits below — you'll return right here to send your invites."}
                     </Text>
                     {CREDIT_PACKAGES.slice(0, 4).map(pkg => (
                       <TouchableOpacity

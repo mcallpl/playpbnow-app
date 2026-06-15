@@ -719,7 +719,7 @@ export default function PlayersScreen() {
                         ) : (
                             <ScrollView style={styles.mergeScroll}>
                                 <Text style={styles.mergeIntro}>
-                                    Select which players are the same person, then tap MERGE. If two players share a name but are different people, tap "Not Same Person" to stop flagging them.
+                                    {'Select which players are the same person, then tap MERGE. If two players share a name but are different people, tap "Not Same Person" to stop flagging them.'}
                                 </Text>
 
                                 {duplicateGroups.length > 0 && (
@@ -751,7 +751,7 @@ export default function PlayersScreen() {
                                         <View key={idx} style={styles.dupGroupCard}>
                                             <View style={styles.dupGroupHeader}>
                                                 <View style={{ flex: 1 }}>
-                                                    <Text style={styles.dupGroupName}>"{group.name}"</Text>
+                                                    <Text style={styles.dupGroupName}>{`"${group.name}"`}</Text>
                                                     <Text style={styles.dupGroupCount}>
                                                         {group.count} records — tap to select same person
                                                     </Text>

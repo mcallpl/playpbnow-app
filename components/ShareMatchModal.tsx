@@ -101,7 +101,7 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
                         </View>
                         <View style={styles.feature}>
                             <BrandedIcon name="groups" size={20} color={colors.accent} />
-                            <Text style={styles.featureText}>View who's connected</Text>
+                            <Text style={styles.featureText}>{"View who's connected"}</Text>
                         </View>
                     </View>
                 </View>

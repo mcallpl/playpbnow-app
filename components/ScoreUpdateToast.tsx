@@ -1,5 +1,5 @@
 import { BrandedIcon } from '../components/BrandedIcon';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
     Animated,
     StyleSheet,
@@ -20,6 +20,23 @@ export function ScoreUpdateToast({ visible, message, onHide }: ScoreUpdateToastP
     const opacityAnim = useRef(new Animated.Value(0)).current;
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
+
+    const hideToast = useCallback(() => {
+        Animated.parallel([
+            Animated.timing(slideAnim, {
+                toValue: -100,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+            Animated.timing(opacityAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+        ]).start(() => {
+            onHide();
+        });
+    }, [onHide, opacityAnim, slideAnim]);
 
     useEffect(() => {
         if (visible) {
@@ -45,24 +62,7 @@ export function ScoreUpdateToast({ visible, message, onHide }: ScoreUpdateToastP
 
             return () => clearTimeout(timer);
         }
-    }, [visible]);
-
-    const hideToast = () => {
-        Animated.parallel([
-            Animated.timing(slideAnim, {
-                toValue: -100,
-                duration: 300,
-                useNativeDriver: true,
-            }),
-            Animated.timing(opacityAnim, {
-                toValue: 0,
-                duration: 300,
-                useNativeDriver: true,
-            }),
-        ]).start(() => {
-            onHide();
-        });
-    };
+    }, [hideToast, opacityAnim, slideAnim, visible]);
 
     if (!visible && slideAnim.__getValue() === -100) {
         return null;

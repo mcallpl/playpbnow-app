@@ -1,11 +1,13 @@
-import { useEffect } from 'react';
+import { Dispatch, SetStateAction, useEffect } from 'react';
 
 const API_URL = '/api';
+
+type ScoreMap = Record<string, string>;
 
 interface ScoreSyncHookParams {
     isCollaborator: boolean;
     shareCode: string;
-    setScores: (scores: any) => void;
+    setScores: Dispatch<SetStateAction<ScoreMap>>;
 }
 
 export function useScoreSync({ isCollaborator, shareCode, setScores }: ScoreSyncHookParams) {
@@ -22,7 +24,7 @@ export function useScoreSync({ isCollaborator, shareCode, setScores }: ScoreSync
 
                 if (data.status === 'success') {
                     // Update scores from server - MERGE with existing, don't replace
-                    setScores(prevScores => {
+                    setScores((prevScores: ScoreMap) => {
                         const updatedScores = { ...prevScores };
                         data.schedule.forEach((round: any, roundIdx: number) => {
                             round.games.forEach((game: any, gameIdx: number) => {

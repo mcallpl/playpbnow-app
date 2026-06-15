@@ -62,14 +62,24 @@ export default function GameScreen() {
   const [showCourtPicker, setShowCourtPicker] = useState(false);
 
   // Nav data loaded from AsyncStorage (large payloads) or fallback to URL params
+  const safeParse = (json: string | undefined, defaultValue: any) => {
+      if (!json) return defaultValue;
+      try {
+          return JSON.parse(json);
+      } catch (e) {
+          console.error('JSON parse error:', e);
+          return defaultValue;
+      }
+  };
+
   const [navScheduleJson, setNavScheduleJson] = useState<string | undefined>(
       params.schedule ? (params.schedule as string) : undefined
   );
   const [navPlayersData, setNavPlayersData] = useState<Player[]>(
-      params.players ? JSON.parse(params.players as string) : []
+      safeParse(params.players as string | undefined, [])
   );
   const [navCollabScores, setNavCollabScores] = useState<any>(
-      params.collabScores ? JSON.parse(params.collabScores as string) : null
+      safeParse(params.collabScores as string | undefined, null)
   );
   const [navDataLoaded, setNavDataLoaded] = useState(false);
   const [isFixedTeams, setIsFixedTeams] = useState(params.isFixedTeams === 'true');
@@ -282,7 +292,7 @@ export default function GameScreen() {
               players: currentRoster,
           });
       }
-  }, [params.isCollaborator, params.shareCode, params.sessionId]);
+  }, [params.isCollaborator, params.shareCode, params.sessionId, navCollabScores, schedule, joinAndSync, flatListRef, groupName, groupKey, saveTitle, courtName, currentRoster]);
 
   // When a collaborator finishes the match, redirect all other devices to podium
   useEffect(() => {
@@ -407,6 +417,10 @@ export default function GameScreen() {
 
   const doShareImage = async () => {
       const shareUrl = generatedImageShareUrl || generatedImageUrl;
+      if (!shareUrl) {
+          Alert.alert("No Image", "Please generate the preview first.");
+          return;
+      }
       try {
           // Format date with ordinal suffix (e.g. "Friday, February 20th")
           const day = selectedDate.getDate();
