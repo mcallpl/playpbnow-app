@@ -127,6 +127,15 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="help"
+        options={{
+          title: 'HELP',
+          tabBarIcon: ({ color }) => (
+            <BrandedIcon name="info" size={24} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
