@@ -1,5 +1,5 @@
 import { BrandedIcon } from '../components/BrandedIcon';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
     StyleSheet,
@@ -18,6 +18,7 @@ interface ScoreUpdateToastProps {
 export function ScoreUpdateToast({ visible, message, onHide }: ScoreUpdateToastProps) {
     const slideAnim = useRef(new Animated.Value(-100)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
+    const [shouldRender, setShouldRender] = useState(false);
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -34,12 +35,14 @@ export function ScoreUpdateToast({ visible, message, onHide }: ScoreUpdateToastP
                 useNativeDriver: true,
             }),
         ]).start(() => {
+            setShouldRender(false);
             onHide();
         });
     }, [onHide, opacityAnim, slideAnim]);
 
     useEffect(() => {
         if (visible) {
+            setShouldRender(true);
             // Slide in and fade in
             Animated.parallel([
                 Animated.spring(slideAnim, {
@@ -61,10 +64,12 @@ export function ScoreUpdateToast({ visible, message, onHide }: ScoreUpdateToastP
             }, 3000);
 
             return () => clearTimeout(timer);
+        } else {
+            hideToast();
         }
-    }, [hideToast, opacityAnim, slideAnim, visible]);
+    }, [hideToast, visible]);
 
-    if (!visible && slideAnim.__getValue() === -100) {
+    if (!shouldRender) {
         return null;
     }
 
