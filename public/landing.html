@@ -80,27 +80,9 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
   height:114px;width:auto;object-fit:contain;
   filter:drop-shadow(0 0 12px var(--accent-glow));
 }
-.nav-logo-text{
-  font-family:'Outfit',sans-serif;font-weight:700;font-size:18px;color:var(--accent);
-  filter:drop-shadow(0 0 8px var(--accent-glow));
-}
 .footer-logo-img{
   height:114px;width:auto;object-fit:contain;
   filter:drop-shadow(0 0 12px var(--accent-glow));
-}
-.footer-logo-text{
-  font-family:'Outfit',sans-serif;font-weight:700;font-size:24px;color:var(--accent);
-  filter:drop-shadow(0 0 8px var(--accent-glow));
-}
-.stat-icon-img{
-  height:32px;width:32px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(135,202,55,0.3));
-}
-.feature-icon-img{
-  height:56px;width:56px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(135,202,55,0.3));
-}
-.pb-emoji-inline{
-  height:22px;width:auto;object-fit:contain;margin:0 4px;vertical-align:middle;
-  filter:drop-shadow(0 1px 3px rgba(135,202,55,0.2));
 }
 .nav-links{display:flex;align-items:center;gap:6px}
 .nav-links a{
@@ -498,7 +480,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 <nav class="nav" id="nav">
   <div class="container nav-inner">
     <a href="#top" class="nav-logo">
-      <span class="nav-logo-text">🎾 PlayPBNow</span>
+      <img src="/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" class="nav-logo-img">
     </a>
     <div class="nav-links" id="navLinks">
       <a href="#features">Features</a>
@@ -518,7 +500,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 <!-- ════════════ HERO ════════════ -->
 <section class="hero" id="top">
   <div class="hero-bg">
-    <img src="/hero-court.png" alt="Pickleball court" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1">
+    <img src="hero-court.png" alt="Pickleball court" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1">
     <div class="hero-ball"></div>
     <div class="hero-ball"></div>
     <div class="hero-ball"></div>
@@ -563,7 +545,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 <div class="stats">
   <div class="container stats-inner reveal">
     <div class="stat-item">
-      <img src="/emoticon-pickleball.svg" alt="Pickleball" class="stat-icon-img">
+      <span class="stat-icon"><img src="/images/pickleball_and_paddle_emoji.png" alt="Pickleball"></span>
       <div class="stat-content">
         <div class="stat-number">500+</div>
         <div class="stat-label">Eager Players</div>
@@ -571,7 +553,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
     </div>
     <div class="stat-divider"></div>
     <div class="stat-item">
-      <img src="/emoticon-paddle.svg" alt="Paddle" class="stat-icon-img">
+      <span class="stat-icon">&#9889;</span>
       <div class="stat-content">
         <div class="stat-number">Minutes</div>
         <div class="stat-label">To Fill a Foursome</div>
@@ -579,7 +561,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
     </div>
     <div class="stat-divider"></div>
     <div class="stat-item">
-      <img src="/emoticon-court.svg" alt="Court" class="stat-icon-img">
+      <span class="stat-icon">&#128205;</span>
       <div class="stat-content">
         <div class="stat-number">223</div>
         <div class="stat-label">Courts</div>
@@ -587,10 +569,10 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
     </div>
     <div class="stat-divider"></div>
     <div class="stat-item">
-      <img src="/emoticon-pickleball.svg" alt="Pickleball" class="stat-icon-img">
+      <span class="stat-icon">&#129351;</span>
       <div class="stat-content">
-        <div class="stat-number">Pro Players</div>
-        <div class="stat-label">2.0 to 5.0 Skill</div>
+        <div class="stat-number">&#129351;&#129352;&#129353;</div>
+        <div class="stat-label">Gold Silver Bronze</div>
       </div>
     </div>
   </div>
@@ -607,12 +589,12 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 
     <div class="features-grid">
       <div class="feature-card reveal stagger-1">
-        <div class="feature-icon"><img src="/emoticon-paddle.svg" alt="Paddle" class="feature-icon-img"></div>
+        <div class="feature-icon">&#9889;</div>
         <h3>Fill Courts in Minutes</h3>
         <p>Need a foursome? Send SMS invites to hundreds of players and watch confirmations roll in. Your court is full before your coffee gets cold.</p>
       </div>
       <div class="feature-card reveal stagger-2">
-        <div class="feature-icon"><img src="/emoticon-pickleball.svg" alt="Pickleball" class="feature-icon-img"></div>
+        <div class="feature-icon"><img src="/images/pickleball_and_paddle_emoji.png" class="pb-emoji-lg" alt="Pickleball"></div>
         <h3>Beginners to Pros</h3>
         <p>500+ players at every skill level — 2.0 to 5.0. Filter by level, city, and availability. The perfect matchup is always a tap away.</p>
       </div>
@@ -734,7 +716,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
                 Awesome! Can't wait. Should I bring extra balls?
               </div>
               <div class="phone-msg out" style="animation-delay:.8s">
-                Yes please! See you at 9 <img src="/emoticon-paddle.svg" alt="Paddle" class="pb-emoji-inline">
+                Yes please! See you at 9 <img src="/images/paddle_emoji.png" class="pb-emoji" alt="paddle">
               </div>
               <div class="phone-msg system" style="animation-delay:1.1s">Kim McAllister is IN!</div>
               <div class="phone-msg in" style="animation-delay:1.4s">
@@ -798,7 +780,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
     <div class="footer-grid">
       <div class="footer-brand">
         <a href="#top" class="nav-logo" style="display:inline-flex">
-          <span class="footer-logo-text">🎾 PlayPBNow</span>
+          <img src="/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" class="footer-logo-img">
         </a>
         <p>Play Pickleball NOW. The only app that connects coordinators with hundreds of eager players — from beginners to pros — and fills courts in minutes.</p>
       </div>
