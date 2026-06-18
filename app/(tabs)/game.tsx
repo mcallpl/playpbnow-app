@@ -436,20 +436,15 @@ export default function GameScreen() {
           const shareMessage = `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtInfo}\n${shareUrl}`;
 
           if (Platform.OS === 'web') {
-              // Web: Share the actual PNG image file along with the link
+              // Web: Share URL + message (image file sharing drops the message text)
               try {
-                  const imgResponse = await fetch(shareUrl);
-                  const blob = await imgResponse.blob();
-                  const file = new File([blob], 'match_report.png', { type: 'image/png' });
-                  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                      await navigator.share({ text: shareMessage, files: [file] });
-                  } else if (navigator.share) {
-                      await navigator.share({ title: `Match Schedule - ${reportTitle}`, text: shareMessage, url: shareUrl });
+                  if (navigator.share) {
+                      await navigator.share({ title: `Match Schedule - ${reportTitle}`, text: shareMessage });
                   } else {
                       window.open(shareUrl, '_blank');
                   }
               } catch (shareErr) {
-                  console.log('File share failed, falling back:', shareErr);
+                  console.log('Share failed, falling back:', shareErr);
                   window.open(shareUrl, '_blank');
               }
           } else {
