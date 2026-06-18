@@ -453,14 +453,14 @@ export default function GameScreen() {
                   window.open(shareUrl, '_blank');
               }
           } else {
-              // Native: Download image to local cache and share the actual image
-              const filename = shareUrl.split('/').pop() || 'match_report.png';
-              const localUri = FileSystem.cacheDirectory + filename;
-              const download = await FileSystem.downloadAsync(shareUrl, localUri);
-
+              // Native: Share the URL directly so message text is included
               if (Platform.OS === 'ios') {
-                  await Share.share({ message: shareMessage, url: download.uri });
+                  await Share.share({ message: shareMessage, url: shareUrl });
               } else {
+                  // Android: Download image to local cache and share the actual image
+                  const filename = shareUrl.split('/').pop() || 'match_report.png';
+                  const localUri = FileSystem.cacheDirectory + filename;
+                  const download = await FileSystem.downloadAsync(shareUrl, localUri);
                   await Sharing.shareAsync(download.uri, { mimeType: 'image/png', dialogTitle: shareMessage });
               }
           }
