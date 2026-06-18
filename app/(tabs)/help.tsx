@@ -13,33 +13,55 @@ import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGUL
 import { BrandedIcon } from '../../components/BrandedIcon';
 import { HELP_TOPICS, HelpTopic } from '../../utils/helpContent';
 
-// Parse markdown **bold** text and render with proper styling
-const renderMarkdownContent = (text: string, baseStyle: any, boldStyle: any) => {
+// Component to render markdown **bold** text
+interface MarkdownTextProps {
+  text: string;
+  style?: any;
+  boldStyle?: any;
+  numberOfLines?: number;
+}
+
+const MarkdownText: React.FC<MarkdownTextProps> = ({ text, style, boldStyle, numberOfLines }) => {
   const parts: (React.ReactNode)[] = [];
   const regex = /\*\*([^*]+)\*\*/g;
   let lastIndex = 0;
   let match;
+  let partIndex = 0;
 
   while ((match = regex.exec(text)) !== null) {
     // Add text before the bold part
     if (match.index > lastIndex) {
-      parts.push(text.substring(lastIndex, match.index));
+      parts.push(
+        <Text key={`text-${partIndex}`} style={style}>
+          {text.substring(lastIndex, match.index)}
+        </Text>
+      );
+      partIndex++;
     }
     // Add the bold part
     parts.push(
-      <Text key={`bold-${match.index}`} style={boldStyle}>
+      <Text key={`bold-${partIndex}`} style={[style, boldStyle, { fontFamily: FONT_BODY_SEMIBOLD }]}>
         {match[1]}
       </Text>
     );
+    partIndex++;
     lastIndex = regex.lastIndex;
   }
 
   // Add remaining text
   if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
+    parts.push(
+      <Text key={`text-${partIndex}`} style={style}>
+        {text.substring(lastIndex)}
+      </Text>
+    );
   }
 
-  return parts.length > 0 ? parts : text;
+  return (
+    <Text style={style} numberOfLines={numberOfLines}>
+      {parts.length > 0 ? parts : text}
+    </Text>
+  );
 };
 
 export default function HelpScreen() {
@@ -160,12 +182,8 @@ export default function HelpScreen() {
                       onPress={() => setSelectedTopic(topic)}
                     >
                       <View style={styles.topicContent}>
-                        <Text style={styles.topicTitle}>
-                          {renderMarkdownContent(topic.title, styles.topicTitle, { ...styles.topicTitle, fontFamily: FONT_BODY_SEMIBOLD })}
-                        </Text>
-                        <Text style={styles.topicPreview} numberOfLines={1}>
-                          {renderMarkdownContent(topic.content.split('\n')[0], styles.topicPreview, { ...styles.topicPreview, fontFamily: FONT_BODY_SEMIBOLD })}
-                        </Text>
+                        <MarkdownText text={topic.title} style={styles.topicTitle} boldStyle={{ fontFamily: FONT_BODY_SEMIBOLD }} />
+                        <MarkdownText text={topic.content.split('\n')[0]} style={styles.topicPreview} boldStyle={{ fontFamily: FONT_BODY_SEMIBOLD }} numberOfLines={1} />
                       </View>
                       <BrandedIcon
                         name="chevronRight"
@@ -208,9 +226,7 @@ export default function HelpScreen() {
 
       {/* Topic Title */}
       <View style={styles.topicHeader}>
-        <Text style={styles.topicDetailTitle}>
-          {renderMarkdownContent(selectedTopic.title, styles.topicDetailTitle, { ...styles.topicDetailTitle, fontFamily: FONT_BODY_SEMIBOLD })}
-        </Text>
+        <MarkdownText text={selectedTopic.title} style={styles.topicDetailTitle} boldStyle={{ fontFamily: FONT_BODY_SEMIBOLD }} />
       </View>
 
       {/* Topic Content */}
@@ -219,9 +235,7 @@ export default function HelpScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <Text style={styles.topicDetailContent}>
-          {renderMarkdownContent(selectedTopic.content, styles.topicDetailContent, { ...styles.topicDetailContent, fontFamily: FONT_BODY_SEMIBOLD })}
-        </Text>
+        <MarkdownText text={selectedTopic.content} style={styles.topicDetailContent} boldStyle={{ fontFamily: FONT_BODY_SEMIBOLD }} />
 
         {/* Related Topics */}
         <View style={styles.relatedSection}>
@@ -238,12 +252,8 @@ export default function HelpScreen() {
                   onPress={() => setSelectedTopic(topic)}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.relatedItemText}>
-                      {renderMarkdownContent(topic.title, styles.relatedItemText, { ...styles.relatedItemText, fontFamily: FONT_BODY_SEMIBOLD })}
-                    </Text>
-                    <Text style={styles.relatedItemPreview} numberOfLines={1}>
-                      {renderMarkdownContent(topic.content.split('\n')[0], styles.relatedItemPreview, { ...styles.relatedItemPreview, fontFamily: FONT_BODY_SEMIBOLD })}
-                    </Text>
+                    <MarkdownText text={topic.title} style={styles.relatedItemText} boldStyle={{ fontFamily: FONT_BODY_SEMIBOLD }} />
+                    <MarkdownText text={topic.content.split('\n')[0]} style={styles.relatedItemPreview} boldStyle={{ fontFamily: FONT_BODY_SEMIBOLD }} numberOfLines={1} />
                   </View>
                   <BrandedIcon name="chevronRight" size={16} color={colors.accent} />
                 </TouchableOpacity>
