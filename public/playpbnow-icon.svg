@@ -1,0 +1,66 @@
+<svg viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f1b2d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a2f4a;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#87ca37;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9dd957;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="192" height="192" rx="44" fill="url(#bgGradient)"/>
+
+  <!-- Outer glow circle -->
+  <circle cx="96" cy="96" r="85" fill="none" stroke="#87ca37" stroke-width="2" opacity="0.2"/>
+
+  <!-- Pickleball paddle -->
+  <g filter="url(#shadow)">
+    <!-- Paddle handle -->
+    <rect x="82" y="110" width="28" height="55" rx="14" fill="#87ca37" opacity="0.9"/>
+
+    <!-- Paddle head -->
+    <ellipse cx="96" cy="70" rx="42" ry="45" fill="url(#accentGradient)" opacity="0.95"/>
+
+    <!-- Paddle edge highlight -->
+    <ellipse cx="96" cy="70" rx="42" ry="45" fill="none" stroke="#fff" stroke-width="2" opacity="0.3"/>
+
+    <!-- Paddle face texture -->
+    <g opacity="0.2">
+      <line x1="70" y1="50" x2="122" y2="50" stroke="#fff" stroke-width="1"/>
+      <line x1="68" y1="62" x2="124" y2="62" stroke="#fff" stroke-width="1"/>
+      <line x1="66" y1="74" x2="126" y2="74" stroke="#fff" stroke-width="1"/>
+      <line x1="66" y1="86" x2="126" y2="86" stroke="#fff" stroke-width="1"/>
+      <line x1="68" y1="98" x2="124" y2="98" stroke="#fff" stroke-width="1"/>
+    </g>
+  </g>
+
+  <!-- Pickleball -->
+  <g filter="url(#shadow)">
+    <!-- Ball -->
+    <circle cx="130" cy="85" r="22" fill="#87ca37" opacity="0.95"/>
+
+    <!-- Ball highlight -->
+    <circle cx="130" cy="85" r="22" fill="none" stroke="#fff" stroke-width="2" opacity="0.4"/>
+
+    <!-- Ball holes pattern -->
+    <circle cx="130" cy="78" r="2" fill="rgba(15, 27, 45, 0.6)"/>
+    <circle cx="125" cy="82" r="2" fill="rgba(15, 27, 45, 0.6)"/>
+    <circle cx="135" cy="82" r="2" fill="rgba(15, 27, 45, 0.6)"/>
+    <circle cx="128" cy="90" r="2" fill="rgba(15, 27, 45, 0.6)"/>
+    <circle cx="132" cy="90" r="2" fill="rgba(15, 27, 45, 0.6)"/>
+    <circle cx="130" cy="95" r="2" fill="rgba(15, 27, 45, 0.6)"/>
+  </g>
+
+  <!-- Accent corner element -->
+  <g opacity="0.3">
+    <circle cx="154" cy="38" r="18" fill="#87ca37"/>
+    <circle cx="154" cy="38" r="18" fill="none" stroke="#fff" stroke-width="1"/>
+  </g>
+</svg>
