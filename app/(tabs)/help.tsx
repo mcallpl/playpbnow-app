@@ -160,9 +160,11 @@ export default function HelpScreen() {
                       onPress={() => setSelectedTopic(topic)}
                     >
                       <View style={styles.topicContent}>
-                        <Text style={styles.topicTitle}>{topic.title}</Text>
+                        <Text style={styles.topicTitle}>
+                          {renderMarkdownContent(topic.title, styles.topicTitle, { ...styles.topicTitle, fontFamily: FONT_BODY_SEMIBOLD })}
+                        </Text>
                         <Text style={styles.topicPreview} numberOfLines={1}>
-                          {topic.content.split('\n')[0]}
+                          {renderMarkdownContent(topic.content.split('\n')[0], styles.topicPreview, { ...styles.topicPreview, fontFamily: FONT_BODY_SEMIBOLD })}
                         </Text>
                       </View>
                       <BrandedIcon
@@ -206,7 +208,9 @@ export default function HelpScreen() {
 
       {/* Topic Title */}
       <View style={styles.topicHeader}>
-        <Text style={styles.topicDetailTitle}>{selectedTopic.title}</Text>
+        <Text style={styles.topicDetailTitle}>
+          {renderMarkdownContent(selectedTopic.title, styles.topicDetailTitle, { ...styles.topicDetailTitle, fontFamily: FONT_BODY_SEMIBOLD })}
+        </Text>
       </View>
 
       {/* Topic Content */}
@@ -233,7 +237,14 @@ export default function HelpScreen() {
                   style={styles.relatedItem}
                   onPress={() => setSelectedTopic(topic)}
                 >
-                  <Text style={styles.relatedItemText}>{topic.title}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.relatedItemText}>
+                      {renderMarkdownContent(topic.title, styles.relatedItemText, { ...styles.relatedItemText, fontFamily: FONT_BODY_SEMIBOLD })}
+                    </Text>
+                    <Text style={styles.relatedItemPreview} numberOfLines={1}>
+                      {renderMarkdownContent(topic.content.split('\n')[0], styles.relatedItemPreview, { ...styles.relatedItemPreview, fontFamily: FONT_BODY_SEMIBOLD })}
+                    </Text>
+                  </View>
                   <BrandedIcon name="chevronRight" size={16} color={colors.accent} />
                 </TouchableOpacity>
               ))}
@@ -461,6 +472,12 @@ const createStyles = (c: ThemeColors) =>
       fontFamily: FONT_BODY_MEDIUM,
       color: c.text,
       flex: 1,
+    },
+    relatedItemPreview: {
+      fontSize: 11,
+      fontFamily: FONT_BODY_REGULAR,
+      color: c.textMuted,
+      marginTop: 2,
     },
     bottomPadding: {
       height: 40,
