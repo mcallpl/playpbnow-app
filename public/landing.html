@@ -80,9 +80,17 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
   height:114px;width:auto;object-fit:contain;
   filter:drop-shadow(0 0 12px var(--accent-glow));
 }
+.nav-logo-text{
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:18px;color:var(--accent);
+  filter:drop-shadow(0 0 8px var(--accent-glow));
+}
 .footer-logo-img{
   height:114px;width:auto;object-fit:contain;
   filter:drop-shadow(0 0 12px var(--accent-glow));
+}
+.footer-logo-text{
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:24px;color:var(--accent);
+  filter:drop-shadow(0 0 8px var(--accent-glow));
 }
 .nav-links{display:flex;align-items:center;gap:6px}
 .nav-links a{
@@ -480,7 +488,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 <nav class="nav" id="nav">
   <div class="container nav-inner">
     <a href="#top" class="nav-logo">
-      <img src="/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" class="nav-logo-img">
+      <span class="nav-logo-text">🎾 PlayPBNow</span>
     </a>
     <div class="nav-links" id="navLinks">
       <a href="#features">Features</a>
@@ -500,7 +508,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 <!-- ════════════ HERO ════════════ -->
 <section class="hero" id="top">
   <div class="hero-bg">
-    <img src="hero-court.png" alt="Pickleball court" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1">
+    <img src="/hero-court.png" alt="Pickleball court" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1">
     <div class="hero-ball"></div>
     <div class="hero-ball"></div>
     <div class="hero-ball"></div>
@@ -545,7 +553,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 <div class="stats">
   <div class="container stats-inner reveal">
     <div class="stat-item">
-      <span class="stat-icon"><img src="/images/pickleball_and_paddle_emoji.png" alt="Pickleball"></span>
+      <span class="stat-icon">🎾</span>
       <div class="stat-content">
         <div class="stat-number">500+</div>
         <div class="stat-label">Eager Players</div>
@@ -594,7 +602,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
         <p>Need a foursome? Send SMS invites to hundreds of players and watch confirmations roll in. Your court is full before your coffee gets cold.</p>
       </div>
       <div class="feature-card reveal stagger-2">
-        <div class="feature-icon"><img src="/images/pickleball_and_paddle_emoji.png" class="pb-emoji-lg" alt="Pickleball"></div>
+        <div class="feature-icon">🎾</div>
         <h3>Beginners to Pros</h3>
         <p>500+ players at every skill level — 2.0 to 5.0. Filter by level, city, and availability. The perfect matchup is always a tap away.</p>
       </div>
@@ -716,7 +724,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
                 Awesome! Can't wait. Should I bring extra balls?
               </div>
               <div class="phone-msg out" style="animation-delay:.8s">
-                Yes please! See you at 9 <img src="/images/paddle_emoji.png" class="pb-emoji" alt="paddle">
+                Yes please! See you at 9 🏓
               </div>
               <div class="phone-msg system" style="animation-delay:1.1s">Kim McAllister is IN!</div>
               <div class="phone-msg in" style="animation-delay:1.4s">
@@ -780,7 +788,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
     <div class="footer-grid">
       <div class="footer-brand">
         <a href="#top" class="nav-logo" style="display:inline-flex">
-          <img src="/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" class="footer-logo-img">
+          <span class="footer-logo-text">🎾 PlayPBNow</span>
         </a>
         <p>Play Pickleball NOW. The only app that connects coordinators with hundreds of eager players — from beginners to pros — and fills courts in minutes.</p>
       </div>
