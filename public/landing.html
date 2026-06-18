@@ -92,6 +92,16 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
   font-family:'Outfit',sans-serif;font-weight:700;font-size:24px;color:var(--accent);
   filter:drop-shadow(0 0 8px var(--accent-glow));
 }
+.stat-icon-img{
+  height:32px;width:32px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(135,202,55,0.3));
+}
+.feature-icon-img{
+  height:56px;width:56px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(135,202,55,0.3));
+}
+.pb-emoji-inline{
+  height:22px;width:auto;object-fit:contain;margin:0 4px;vertical-align:middle;
+  filter:drop-shadow(0 1px 3px rgba(135,202,55,0.2));
+}
 .nav-links{display:flex;align-items:center;gap:6px}
 .nav-links a{
   color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;
@@ -553,7 +563,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 <div class="stats">
   <div class="container stats-inner reveal">
     <div class="stat-item">
-      <span class="stat-icon">🎾</span>
+      <img src="/emoticon-pickleball.svg" alt="Pickleball" class="stat-icon-img">
       <div class="stat-content">
         <div class="stat-number">500+</div>
         <div class="stat-label">Eager Players</div>
@@ -602,7 +612,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
         <p>Need a foursome? Send SMS invites to hundreds of players and watch confirmations roll in. Your court is full before your coffee gets cold.</p>
       </div>
       <div class="feature-card reveal stagger-2">
-        <div class="feature-icon">🎾</div>
+        <div class="feature-icon"><img src="/emoticon-pickleball.svg" alt="Pickleball" class="feature-icon-img"></div>
         <h3>Beginners to Pros</h3>
         <p>500+ players at every skill level — 2.0 to 5.0. Filter by level, city, and availability. The perfect matchup is always a tap away.</p>
       </div>
@@ -724,7 +734,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
                 Awesome! Can't wait. Should I bring extra balls?
               </div>
               <div class="phone-msg out" style="animation-delay:.8s">
-                Yes please! See you at 9 🏓
+                Yes please! See you at 9 <img src="/emoticon-paddle.svg" alt="Paddle" class="pb-emoji-inline">
               </div>
               <div class="phone-msg system" style="animation-delay:1.1s">Kim McAllister is IN!</div>
               <div class="phone-msg in" style="animation-delay:1.4s">

@@ -1,0 +1,33 @@
+<svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="paddleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#87ca37;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9dd957;stop-opacity:1" />
+    </linearGradient>
+    <filter id="paddleShadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Handle -->
+  <rect x="48" y="95" width="24" height="50" rx="12" fill="#87ca37" opacity="0.9" filter="url(#paddleShadow)"/>
+
+  <!-- Paddle head -->
+  <ellipse cx="60" cy="50" rx="38" ry="42" fill="url(#paddleGrad)" filter="url(#paddleShadow)"/>
+
+  <!-- Paddle edge highlight -->
+  <ellipse cx="60" cy="50" rx="38" ry="42" fill="none" stroke="#fff" stroke-width="2" opacity="0.35"/>
+
+  <!-- Paddle face texture -->
+  <g opacity="0.25" stroke="#fff" stroke-width="0.8">
+    <line x1="35" y1="25" x2="85" y2="25"/>
+    <line x1="32" y1="35" x2="88" y2="35"/>
+    <line x1="30" y1="45" x2="90" y2="45"/>
+    <line x1="30" y1="55" x2="90" y2="55"/>
+    <line x1="32" y1="65" x2="88" y2="65"/>
+    <line x1="35" y1="75" x2="85" y2="75"/>
+  </g>
+
+  <!-- Center sweet spot -->
+  <circle cx="60" cy="50" r="8" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.4"/>
+</svg>
