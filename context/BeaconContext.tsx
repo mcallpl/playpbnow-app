@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useLocation, UserLocation } from '../hooks/useLocation';
 import { playBeaconChime } from '../utils/sounds';
 
@@ -20,7 +20,7 @@ interface BeaconContextValue {
   initialCheckDone: boolean;
 }
 
-const BeaconContext = createContext<BeaconContextValue>({
+export const BeaconContext = createContext<BeaconContextValue>({
   hasActiveBeacons: false,
   hasOtherBeacons: false,
   hasOwnBeacon: false,
@@ -38,7 +38,7 @@ export function useBeaconStatus() {
   return useContext(BeaconContext);
 }
 
-export function BeaconProvider({ children }: { children: React.ReactNode }) {
+function BeaconProviderComponent({ children }: { children: React.ReactNode }) {
   const [activeBeaconCount, setActiveBeaconCount] = useState(0);
   const [otherBeaconCount, setOtherBeaconCount] = useState(0);
   const [hasOwnBeacon, setHasOwnBeacon] = useState(false);
@@ -120,21 +120,42 @@ export function BeaconProvider({ children }: { children: React.ReactNode }) {
     };
   }, [location?.latitude, location?.longitude]);
 
+  // Memoize computed values to prevent unnecessary re-renders
+  const hasActiveBeacons = useMemo(() => activeBeaconCount > 0, [activeBeaconCount]);
+  const hasOtherBeacons = useMemo(() => otherBeaconCount > 0, [otherBeaconCount]);
+
+  // Memoize context value so reference only changes when values actually change
+  const value = useMemo(() => ({
+    hasActiveBeacons,
+    hasOtherBeacons,
+    hasOwnBeacon,
+    activeBeaconCount,
+    otherBeaconCount,
+    reportBeaconCounts,
+    location,
+    locationPermissionDenied,
+    requestLocation,
+    showLocationDeniedAlert,
+    initialCheckDone,
+  }), [
+    hasActiveBeacons,
+    hasOtherBeacons,
+    hasOwnBeacon,
+    activeBeaconCount,
+    otherBeaconCount,
+    reportBeaconCounts,
+    location,
+    locationPermissionDenied,
+    requestLocation,
+    showLocationDeniedAlert,
+    initialCheckDone,
+  ]);
+
   return (
-    <BeaconContext.Provider value={{
-      hasActiveBeacons: activeBeaconCount > 0,
-      hasOtherBeacons: otherBeaconCount > 0,
-      hasOwnBeacon,
-      activeBeaconCount,
-      otherBeaconCount,
-      reportBeaconCounts,
-      location,
-      locationPermissionDenied,
-      requestLocation,
-      showLocationDeniedAlert,
-      initialCheckDone,
-    }}>
+    <BeaconContext.Provider value={value}>
       {children}
     </BeaconContext.Provider>
   );
 }
+
+export const BeaconProvider = React.memo(BeaconProviderComponent);
