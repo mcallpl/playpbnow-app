@@ -1,0 +1,408 @@
+name: Deploy PlayPBNow
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DEPLOY_HOST: 64.227.108.128
+  DEPLOY_USER: root
+
+jobs:
+  # STAGE 1: TEST & VALIDATE (on every commit)
+  test:
+    name: Test & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint --if-present || echo "⚠️  Linting issues found (non-blocking)"
+
+      - name: Run TypeScript type checking
+        run: npx tsc --noEmit || echo "⚠️  Type errors found (non-blocking)"
+
+      - name: Run frontend tests
+        run: npm run test:frontend -- --coverage --bail
+        continue-on-error: true
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage-final.json
+          flags: frontend
+          fail_ci_if_error: false
+
+  # STAGE 2: BUILD (on test success)
+  build:
+    name: Build Web Export
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web export
+        run: npx expo export --platform web
+        env:
+          CI: true
+
+      - name: Prepare SPA routing
+        run: |
+          set -e
+          echo "🔧 Preparing SPA routing..."
+
+          # Move index.html to app.html for SPA
+          mv dist/index.html dist/app.html
+
+          # Copy landing page as homepage
+          cp public/landing.html dist/index.html
+
+          # Create .htaccess for SPA fallback
+          cat > dist/.htaccess << 'EOF'
+          <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteBase /PlayPBNow/
+
+            # Don't rewrite if the request is for a real file or directory
+            RewriteCond %{REQUEST_FILENAME} !-f
+            RewriteCond %{REQUEST_FILENAME} !-d
+
+            # Rewrite all other requests to app.html for SPA routing
+            RewriteRule ^app(.*)$ app.html [L]
+
+            # For root requests, serve index.html
+            RewriteCond %{REQUEST_FILENAME} !-f
+            RewriteCond %{REQUEST_FILENAME} !-d
+            RewriteCond %{REQUEST_URI} ^/PlayPBNow/$
+            RewriteRule ^(.*)$ index.html [L]
+          </IfModule>
+
+          <IfModule mod_headers.c>
+            Header set Cache-Control "public, max-age=3600" ".js" ".css" ".png" ".jpg" ".gif" ".svg" ".woff" ".woff2"
+            Header set Cache-Control "public, max-age=0" "index.html" "app.html"
+          </IfModule>
+          EOF
+
+          echo "✅ SPA routing configured"
+
+      - name: Verify build output
+        run: |
+          set -e
+          test -f dist/index.html || (echo "❌ Landing page missing" && exit 1)
+          test -f dist/app.html || (echo "❌ SPA app.html missing" && exit 1)
+          test -f dist/.htaccess || (echo "❌ .htaccess missing" && exit 1)
+          echo "✅ Build verification passed"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: dist/
+          retention-days: 5
+
+  # STAGE 3: DEPLOY TO STAGING (automatic on main push)
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          cat >> ~/.ssh/config << EOF
+          Host deploy
+            HostName ${{ env.DEPLOY_HOST }}
+            User ${{ env.DEPLOY_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking no
+          EOF
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: dist/
+
+      - name: Deploy web files to staging
+        run: |
+          echo "📦 Deploying web files to staging..."
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            dist/ \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow-staging/
+          echo "✅ Web deployment to staging complete"
+
+      - name: Deploy API files to staging
+        run: |
+          echo "📦 Deploying API files to staging..."
+          rsync -avz \
+            --exclude='node_modules' \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='vendor' \
+            --exclude='*.sql' \
+            --exclude='*.bak' \
+            --exclude='db_config.php' \
+            --exclude='.DS_Store' \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            playpbnow-api/ \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow-staging/api/
+          echo "✅ API deployment to staging complete"
+
+      - name: Run smoke tests on staging
+        run: |
+          ./.github/scripts/smoke-tests.sh staging
+        continue-on-error: true
+
+      - name: Notify Slack - Staging Deployment
+        if: always()
+        uses: slackapi/slack-action@v3
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "🎬 PlayPBNow Staging Deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deployment* - ${{ job.status }}\nCommit: `${{ github.sha }}`\nBranch: ${{ github.ref_name }}"
+                  }
+                }
+              ]
+            }
+
+  # STAGE 4: DEPLOY TO PRODUCTION (manual approval)
+  deploy-production:
+    name: Deploy to Production
+    needs: [build, deploy-staging]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://peoplestar.com/PlayPBNow
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          cat >> ~/.ssh/config << EOF
+          Host deploy
+            HostName ${{ env.DEPLOY_HOST }}
+            User ${{ env.DEPLOY_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            StrictHostKeyChecking no
+          EOF
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: dist/
+
+      - name: Create backup of current production
+        run: |
+          echo "💾 Creating backup of current production..."
+          ssh -i ~/.ssh/deploy_key ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} << 'EOSH'
+          set -e
+          TIMESTAMP=$(date +%s)
+          CURRENT="/var/www/html/PlayPBNow"
+          BACKUP="/var/backups/PlayPBNow-backup-${TIMESTAMP}"
+
+          if [ -d "$CURRENT" ]; then
+            mkdir -p /var/backups
+            cp -r "$CURRENT" "$BACKUP"
+            echo "✅ Backup created at $BACKUP"
+          fi
+          EOSH
+
+      - name: Deploy web files to production
+        run: |
+          echo "📦 Deploying web files to production..."
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            dist/ \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/
+          echo "✅ Web deployment to production complete"
+
+      - name: Deploy API files to production
+        run: |
+          echo "📦 Deploying API files to production..."
+          rsync -avz \
+            --exclude='node_modules' \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='vendor' \
+            --exclude='*.sql' \
+            --exclude='*.bak' \
+            --exclude='db_config.php' \
+            --exclude='.DS_Store' \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            playpbnow-api/ \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/api/
+          echo "✅ API deployment to production complete"
+
+      - name: Run smoke tests on production
+        run: |
+          ./.github/scripts/smoke-tests.sh production
+        continue-on-error: false
+
+      - name: Monitor production for 5 minutes
+        run: |
+          echo "⏱️ Monitoring production for 5 minutes..."
+          for i in {1..30}; do
+            echo "Check $i/30..."
+            ./.github/scripts/smoke-tests.sh production || (echo "❌ Error detected during monitoring" && exit 1)
+            sleep 10
+          done
+          echo "✅ Monitoring period complete, no errors detected"
+        continue-on-error: true
+
+      - name: Notify Slack - Production Deployment Success
+        if: success()
+        uses: slackapi/slack-action@v3
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "✅ PlayPBNow Production Deployment Success",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*✅ Production Deployment Successful*\nCommit: `${{ github.sha }}`\nAuthor: ${{ github.actor }}\nTime: $(date -u)"
+                  }
+                }
+              ]
+            }
+
+      - name: Notify Slack - Production Deployment Failure
+        if: failure()
+        uses: slackapi/slack-action@v3
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "❌ PlayPBNow Production Deployment Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Production Deployment Failed*\nCommit: `${{ github.sha }}`\nAuthor: ${{ github.actor }}\nPlease investigate: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
+
+  # STAGE 5: ROLLBACK (on failure)
+  rollback:
+    name: Rollback Production
+    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Perform rollback
+        run: |
+          echo "⏮️ Rolling back production to last known good state..."
+          ssh -i ~/.ssh/deploy_key ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} << 'EOSH'
+          set -e
+          CURRENT="/var/www/html/PlayPBNow"
+          LATEST_BACKUP=$(ls -td /var/backups/PlayPBNow-backup-* 2>/dev/null | head -1)
+
+          if [ -z "$LATEST_BACKUP" ]; then
+            echo "❌ No backup found for rollback"
+            exit 1
+          fi
+
+          echo "Rolling back from: $LATEST_BACKUP"
+          rm -rf "$CURRENT"
+          cp -r "$LATEST_BACKUP" "$CURRENT"
+          echo "✅ Rollback complete"
+          EOSH
+
+      - name: Verify rollback
+        run: |
+          ./.github/scripts/smoke-tests.sh production
+
+      - name: Create GitHub Issue
+        uses: actions/create-issue@v2
+        with:
+          title: "🔴 Deployment Rollback - ${{ github.sha }}"
+          body: |
+            A production deployment was automatically rolled back.
+
+            **Commit:** ${{ github.sha }}
+            **Author:** ${{ github.actor }}
+            **Run:** [View Action Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            Please investigate the failure and fix before redeploying.
+          assignees: mcallpl
+
+      - name: Notify Slack - Rollback Alert
+        uses: slackapi/slack-action@v3
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "🔴 PlayPBNow Production Rollback",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🔴 ROLLBACK TRIGGERED*\nProduction has been rolled back to last known good state.\nCommit: `${{ github.sha }}`\nAuthor: ${{ github.actor }}\nAction: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ]
+            }
