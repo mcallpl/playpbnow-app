@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { ActiveMatchStateContext } from './ActiveMatchStateContext';
+import { ActiveMatchDispatchContext } from './ActiveMatchDispatchContext';
 
 const STORAGE_KEY = 'active_match';
 
@@ -15,26 +17,22 @@ export interface ActiveMatchData {
     players: any[];
 }
 
-interface ActiveMatchContextType {
-    activeMatch: ActiveMatchData | null;
-    setActiveMatch: (match: ActiveMatchData) => void;
-    clearActiveMatch: () => void;
-}
+// Convenience hook for backwards compatibility (returns combined context)
+export const useActiveMatch = () => {
+    const state = useContext(ActiveMatchStateContext);
+    const dispatch = useContext(ActiveMatchDispatchContext);
+    return { activeMatch: state.activeMatch, ...dispatch };
+};
 
-const ActiveMatchContext = createContext<ActiveMatchContextType>({
-    activeMatch: null,
-    setActiveMatch: () => {},
-    clearActiveMatch: () => {},
-});
-
-export const useActiveMatch = () => useContext(ActiveMatchContext);
-
-export const ActiveMatchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ActiveMatchProviderComponent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [activeMatch, setActiveMatchState] = useState<ActiveMatchData | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Load from AsyncStorage on mount
     useEffect(() => {
         (async () => {
+            setIsLoading(true);
             try {
                 const stored = await AsyncStorage.getItem(STORAGE_KEY);
                 if (stored) {
@@ -42,27 +40,51 @@ export const ActiveMatchProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 }
             } catch (e) {
                 console.error('Failed to load active match:', e);
+                setError('Failed to load active match');
+            } finally {
+                setIsLoading(false);
             }
         })();
     }, []);
 
     const setActiveMatch = useCallback((match: ActiveMatchData) => {
         setActiveMatchState(match);
-        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(match)).catch(e =>
-            console.error('Failed to save active match:', e)
-        );
+        setError(null);
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(match)).catch(e => {
+            console.error('Failed to save active match:', e);
+            setError('Failed to save active match');
+        });
     }, []);
 
     const clearActiveMatch = useCallback(() => {
         setActiveMatchState(null);
-        AsyncStorage.removeItem(STORAGE_KEY).catch(e =>
-            console.error('Failed to clear active match:', e)
-        );
+        setError(null);
+        AsyncStorage.removeItem(STORAGE_KEY).catch(e => {
+            console.error('Failed to clear active match:', e);
+            setError('Failed to clear active match');
+        });
     }, []);
 
+    // Memoize state value
+    const stateValue = useMemo(() => ({
+        activeMatch,
+        isLoading,
+        error,
+    }), [activeMatch, isLoading, error]);
+
+    // Memoize dispatch value
+    const dispatchValue = useMemo(() => ({
+        setActiveMatch,
+        clearActiveMatch,
+    }), [setActiveMatch, clearActiveMatch]);
+
     return (
-        <ActiveMatchContext.Provider value={{ activeMatch, setActiveMatch, clearActiveMatch }}>
-            {children}
-        </ActiveMatchContext.Provider>
+        <ActiveMatchStateContext.Provider value={stateValue}>
+            <ActiveMatchDispatchContext.Provider value={dispatchValue}>
+                {children}
+            </ActiveMatchDispatchContext.Provider>
+        </ActiveMatchStateContext.Provider>
     );
 };
+
+export const ActiveMatchProvider = React.memo(ActiveMatchProviderComponent);
