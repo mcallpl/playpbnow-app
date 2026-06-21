@@ -2261,17 +2261,17 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     // Header
     header: {
       flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const,
-      paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border,
+      paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border,
     },
     headerTitle: { fontFamily: FONT_DISPLAY_BLACK, fontSize: 28, color: colors.text, letterSpacing: 2 },
-    adminBadge: { backgroundColor: colors.accent, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
-    adminBadgeText: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 11, color: '#0f1b2d', letterSpacing: 1 },
+    adminBadge: { backgroundColor: colors.accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+    adminBadgeText: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 11, color: colors.accentText, letterSpacing: 1 },
 
     // Tab scroller
-    tabScroller: { paddingHorizontal: 12, paddingVertical: 10, gap: 6 },
+    tabScroller: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
     tabChip: {
-      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
-      paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20,
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8,
+      paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8,
       backgroundColor: colors.glassBg, borderWidth: 1, borderColor: colors.border,
     },
     tabChipActive: { backgroundColor: isDark ? 'rgba(135,202,55,0.12)' : 'rgba(109,184,44,0.12)', borderColor: isDark ? 'rgba(135,202,55,0.3)' : 'rgba(109,184,44,0.3)' },
@@ -2279,10 +2279,10 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     tabChipTextActive: { color: colors.accent },
 
     // Sub tabs (broadcast)
-    subTabBar: { flexDirection: 'row' as const, paddingHorizontal: 16, paddingTop: 8, gap: 8 },
-    subTab: { flex: 1, paddingVertical: 8, alignItems: 'center' as const, borderRadius: 10, backgroundColor: colors.glassBg },
+    subTabBar: { flexDirection: 'row' as const, paddingHorizontal: 16, paddingTop: 12, gap: 12 },
+    subTab: { flex: 1, paddingVertical: 8, alignItems: 'center' as const, borderRadius: 8, backgroundColor: colors.glassBg },
     subTabActive: { backgroundColor: isDark ? 'rgba(135,202,55,0.12)' : 'rgba(109,184,44,0.12)' },
-    subTabText: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 13, color: colors.textMuted },
+    subTabText: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 12, color: colors.textMuted },
     subTabTextActive: { color: colors.accent },
 
     // Error
@@ -2290,7 +2290,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     errorText: { fontFamily: FONT_BODY_MEDIUM, fontSize: 14, color: '#ff6b7a' },
 
     // Section labels
-    sectionLabel: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 11, color: colors.textMuted, letterSpacing: 1.5, textTransform: 'uppercase' as const, marginTop: 20, marginBottom: 8 },
+    sectionLabel: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 11, color: colors.textMuted, letterSpacing: 1.5, textTransform: 'uppercase' as const, marginTop: 16, marginBottom: 12 },
     sectionTitle: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 18, color: colors.text },
 
     // Stat grid
@@ -2300,14 +2300,14 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       minWidth: 100, flex: 1, alignItems: 'center' as const,
     },
     statValue: { fontFamily: FONT_DISPLAY_BLACK, fontSize: 28, color: colors.text },
-    statLabel: { fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: colors.textMuted, textAlign: 'center' as const, marginTop: 4 },
+    statLabel: { fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, textAlign: 'center' as const, marginTop: 8 },
 
     // Activity cards
-    activityCard: { backgroundColor: colors.card, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: colors.border },
+    activityCard: { backgroundColor: colors.card, borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colors.border },
     activityRow: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const },
     activityTitle: { fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text, flex: 1 },
     activityMeta: { fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, marginTop: 4 },
-    activityTime: { fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: colors.textMuted, marginTop: 4 },
+    activityTime: { fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, marginTop: 4 },
     activityBadge: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 12, color: colors.textMuted },
     subBadge: {
       fontFamily: FONT_BODY_BOLD, fontSize: 10, color: colors.textMuted, letterSpacing: 0.5,
@@ -2336,11 +2336,11 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     leaderboardRank: { fontFamily: FONT_DISPLAY_BLACK, fontSize: 20, color: colors.textMuted, width: 32, textAlign: 'center' as const },
     wlBox: { alignItems: 'flex-end' as const },
     wlText: { fontFamily: FONT_DISPLAY_BOLD, fontSize: 13 },
-    wlPct: { fontFamily: FONT_BODY_MEDIUM, fontSize: 11, color: colors.textMuted, marginTop: 2 },
+    wlPct: { fontFamily: FONT_BODY_MEDIUM, fontSize: 12, color: colors.textMuted, marginTop: 4 },
 
     // Filter chips
     filterChip: {
-      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, marginRight: 6,
+      paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, marginRight: 8,
       backgroundColor: colors.glassBg, borderWidth: 1, borderColor: colors.border,
     },
     filterChipActive: { backgroundColor: isDark ? 'rgba(135,202,55,0.12)' : 'rgba(109,184,44,0.12)', borderColor: isDark ? 'rgba(135,202,55,0.3)' : 'rgba(109,184,44,0.3)' },
@@ -2408,7 +2408,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     inputHint: { fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, marginBottom: 6 },
     input: {
       backgroundColor: colors.inputBg, borderWidth: 1, borderColor: colors.inputBorder,
-      borderRadius: 12, padding: 14, fontFamily: FONT_BODY_REGULAR, fontSize: 16, color: colors.inputText,
+      borderRadius: 8, padding: 12, fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: colors.inputText,
     },
     warningText: { fontFamily: FONT_BODY_MEDIUM, fontSize: 12, color: colors.gold, marginTop: 4 },
     divider: { height: 1, backgroundColor: colors.border, marginTop: 24, marginBottom: 8 },

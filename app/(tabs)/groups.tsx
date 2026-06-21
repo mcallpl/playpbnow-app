@@ -34,6 +34,7 @@ import {
   FONT_BODY_MEDIUM,
   FONT_BODY_BOLD,
   FONT_BODY_SEMIBOLD,
+  ANIMATION,
 } from '../../constants/theme';
 import { haptic } from '../../utils/haptics';
 
@@ -607,7 +608,7 @@ export default function HomeScreen() {
       </View>
 
       {/* GROUP MODAL */}
-      <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={closeModal}>
+      <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={closeModal} hardwareAccelerated>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             {renderModalContent()}
@@ -616,7 +617,7 @@ export default function HomeScreen() {
       </Modal>
 
       {/* SETTINGS MODAL */}
-      <Modal animationType="slide" transparent visible={settingsVisible} onRequestClose={() => setSettingsVisible(false)}>
+      <Modal animationType="slide" transparent visible={settingsVisible} onRequestClose={() => setSettingsVisible(false)} hardwareAccelerated>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -705,10 +706,10 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      <Modal animationType="slide" transparent visible={changePasswordVisible} onRequestClose={() => setChangePasswordVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24 }}>
-            <Text style={{ fontFamily: FONT_DISPLAY_BOLD, fontSize: 20, color: colors.text, marginBottom: 20 }}>Change Password</Text>
+      <Modal animationType="slide" transparent visible={changePasswordVisible} onRequestClose={() => setChangePasswordVisible(false)} hardwareAccelerated>
+        <View style={{ flex: 1, backgroundColor: colors.modalOverlay, justifyContent: 'center', padding: 16 }}>
+          <View style={{ backgroundColor: colors.modalBg, borderRadius: 16, padding: 24 }}>
+            <Text style={{ fontFamily: FONT_DISPLAY_BOLD, fontSize: 18, color: colors.text, marginBottom: 16 }}>Change Password</Text>
             <TextInput
               style={styles.passwordInput}
               placeholder="Current password"
@@ -736,22 +737,22 @@ export default function HomeScreen() {
               onChangeText={setConfirmPassword}
               autoCapitalize="none"
             />
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
               <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: colors.border, alignItems: 'center' }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.border, alignItems: 'center' }}
                 onPress={() => { setChangePasswordVisible(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}
               >
-                <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: colors.text }}>Cancel</Text>
+                <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: colors.accent, alignItems: 'center', opacity: passwordLoading ? 0.6 : 1 }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.accent, alignItems: 'center', opacity: passwordLoading ? 0.6 : 1 }}
                 onPress={handleChangePassword}
                 disabled={passwordLoading}
               >
                 {passwordLoading ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: '#fff' }}>Update</Text>
+                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.bg }}>Update</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -760,10 +761,10 @@ export default function HomeScreen() {
       </Modal>
 
       {/* DELETE ACCOUNT MODAL */}
-      <Modal animationType="slide" transparent visible={deleteAccountVisible} onRequestClose={() => setDeleteAccountVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24 }}>
-            <Text style={{ fontFamily: FONT_DISPLAY_BOLD, fontSize: 20, color: colors.danger, marginBottom: 8 }}>Delete Account</Text>
+      <Modal animationType="slide" transparent visible={deleteAccountVisible} onRequestClose={() => setDeleteAccountVisible(false)} hardwareAccelerated>
+        <View style={{ flex: 1, backgroundColor: colors.modalOverlay, justifyContent: 'center', padding: 16 }}>
+          <View style={{ backgroundColor: colors.modalBg, borderRadius: 16, padding: 24 }}>
+            <Text style={{ fontFamily: FONT_DISPLAY_BOLD, fontSize: 18, color: colors.danger, marginBottom: 8 }}>Delete Account</Text>
             <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: colors.textMuted, marginBottom: 20 }}>
               This will permanently delete your account and all associated data including groups, players, matches, SMS credits, and invites. This cannot be undone.
             </Text>
@@ -780,22 +781,22 @@ export default function HomeScreen() {
             {deleteError ? (
               <Text style={{ color: colors.danger, fontFamily: FONT_BODY_MEDIUM, fontSize: 13, marginBottom: 8 }}>{deleteError}</Text>
             ) : null}
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
               <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: colors.border, alignItems: 'center' }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.border, alignItems: 'center' }}
                 onPress={() => { setDeleteAccountVisible(false); setDeletePassword(''); setDeleteError(''); }}
               >
-                <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: colors.text }}>Cancel</Text>
+                <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: colors.danger, alignItems: 'center', opacity: deleteLoading ? 0.6 : 1 }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.danger, alignItems: 'center', opacity: deleteLoading ? 0.6 : 1 }}
                 onPress={confirmDeleteAccount}
                 disabled={deleteLoading}
               >
                 {deleteLoading ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: '#fff' }}>Delete Forever</Text>
+                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.bg }}>Delete Forever</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -834,22 +835,22 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   headerBtn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 8,
     backgroundColor: c.surface,
     borderWidth: 1,
     borderColor: c.glassStroke,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 12,
+    marginLeft: 16,
   },
   loadingContainer: { alignItems: 'center', marginTop: 40 },
-  listContent: { paddingHorizontal: 20, paddingBottom: 150 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 150 },
 
   card: {
     backgroundColor: c.card,
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 14,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: c.border,
   },
@@ -871,14 +872,14 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   },
   playerBadge: {
     position: 'absolute',
-    top: 20,
-    right: 20,
+    top: 16,
+    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: c.accentSoft,
-    borderRadius: 12,
-    paddingHorizontal: 14,
+    borderRadius: 8,
+    paddingHorizontal: 12,
     paddingVertical: 8,
   },
   playerBadgeText: {
@@ -890,16 +891,16 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 14,
-    paddingTop: 14,
+    marginTop: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: c.border,
   },
   genderRow: { flexDirection: 'row', gap: 16 },
-  genderDot: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  genderDot: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   genderText: { fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: c.textSoft },
-  actionRow: { flexDirection: 'row', gap: 12 },
+  actionRow: { flexDirection: 'row', gap: 16 },
   iconBtn: { padding: 4 },
 
   emptyState: { alignItems: 'center', marginTop: 60 },
@@ -910,20 +911,20 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   createBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 50,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
     backgroundColor: c.accent,
-    gap: 10,
+    gap: 8,
   },
   createBtnPlus: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: FONT_DISPLAY_EXTRABOLD,
     color: c.bg,
   },
   createBtnText: {
     fontFamily: FONT_DISPLAY_EXTRABOLD,
-    fontSize: 15,
+    fontSize: 14,
     color: c.bg,
     letterSpacing: 0.5,
   },
@@ -938,21 +939,21 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: c.modalOverlay, justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: c.modalBg, borderRadius: 20, padding: 25, maxHeight: '85%' },
+  modalOverlay: { flex: 1, backgroundColor: c.modalOverlay, justifyContent: 'center', padding: 16 },
+  modalContent: { backgroundColor: c.modalBg, borderRadius: 16, padding: 24, maxHeight: '85%' },
   modalTitle: {
     fontFamily: FONT_DISPLAY_EXTRABOLD,
-    fontSize: 24,
+    fontSize: 18,
     color: c.text,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  modalTitleInline: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 20, color: c.text },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+  modalTitleInline: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 18, color: c.text },
 
-  stepSection: { marginBottom: 20 },
+  stepSection: { marginBottom: 24 },
   stepLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: FONT_BODY_BOLD,
     color: c.textMuted,
     letterSpacing: 1,
@@ -962,36 +963,37 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   courtSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     backgroundColor: c.inputBg,
-    padding: 15,
-    borderRadius: 14,
+    padding: 12,
+    borderRadius: 8,
     borderWidth: 2,
     borderColor: c.inputBorder,
   },
   courtSelectorSelected: { borderColor: c.accent, backgroundColor: c.accentSoft },
-  courtSelectorText: { fontSize: 16, fontFamily: FONT_BODY_REGULAR, color: c.textMuted },
+  courtSelectorText: { fontSize: 14, fontFamily: FONT_BODY_REGULAR, color: c.textMuted },
 
   input: {
     backgroundColor: c.inputBg,
-    padding: 15,
-    borderRadius: 14,
-    fontSize: 18,
-    fontFamily: FONT_BODY_MEDIUM,
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 14,
+    fontFamily: FONT_BODY_REGULAR,
     color: c.inputText,
     borderWidth: 1,
     borderColor: c.inputBorder,
-    marginBottom: 12,
+    marginBottom: 16,
+    height: 48,
   },
   fieldLabel: {
     fontSize: 12,
     fontFamily: FONT_BODY_BOLD,
     color: c.textMuted,
-    marginBottom: 6,
+    marginBottom: 8,
   },
 
-  modalButtons: { flexDirection: 'row', gap: 15, marginTop: 10 },
-  modalBtn: { flex: 1, padding: 15, borderRadius: 14, alignItems: 'center' },
+  modalButtons: { flexDirection: 'row', gap: 16, marginTop: 16 },
+  modalBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
   cancelBtn: { backgroundColor: c.surfaceLight },
   cancelBtnText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.textSoft },
   saveBtn: { backgroundColor: c.accent },
@@ -1001,26 +1003,26 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   courtOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderColor: c.border,
   },
-  courtOptionSelected: { backgroundColor: c.accentSoft, borderRadius: 10 },
-  courtNameText: { fontSize: 16, fontFamily: FONT_BODY_SEMIBOLD, color: c.text },
-  courtCity: { fontSize: 12, fontFamily: FONT_BODY_REGULAR, color: c.textMuted, marginTop: 2 },
+  courtOptionSelected: { backgroundColor: c.accentSoft, borderRadius: 8 },
+  courtNameText: { fontSize: 14, fontFamily: FONT_BODY_SEMIBOLD, color: c.text },
+  courtCity: { fontSize: 12, fontFamily: FONT_BODY_REGULAR, color: c.textMuted, marginTop: 4 },
 
   addCourtBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 15,
-    marginTop: 10,
+    paddingVertical: 12,
+    marginTop: 16,
     borderTopWidth: 1,
     borderColor: c.border,
   },
-  addCourtBtnText: { color: c.secondary, fontFamily: FONT_BODY_BOLD, fontSize: 15 },
+  addCourtBtnText: { color: c.secondary, fontFamily: FONT_BODY_BOLD, fontSize: 14 },
 
   saveCourtBtn: {
     flexDirection: 'row',
@@ -1028,32 +1030,32 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: c.accent,
-    padding: 15,
-    borderRadius: 14,
-    marginTop: 10,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
   },
-  saveCourtBtnText: { color: c.bg, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16 },
+  saveCourtBtnText: { color: c.bg, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14 },
 
-  closeBtn: { marginTop: 15, alignItems: 'center', padding: 10 },
+  closeBtn: { marginTop: 16, alignItems: 'center', padding: 8 },
   closeBtnText: { color: c.textMuted, fontFamily: FONT_BODY_BOLD },
 
   // Settings
-  settingsSection: { marginBottom: 20 },
+  settingsSection: { marginBottom: 24 },
   settingsSectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: FONT_BODY_BOLD,
     color: c.textMuted,
     letterSpacing: 1.5,
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  settingsActionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
-  settingsActionText: { color: c.text, fontSize: 15, fontFamily: FONT_BODY_SEMIBOLD },
-  passwordInput: { backgroundColor: c.bg, borderRadius: 10, padding: 14, fontSize: 15, fontFamily: FONT_BODY_REGULAR, color: c.text, marginBottom: 12 },
-  tierBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  tierBadgeText: { color: 'white', fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 11, letterSpacing: 1 },
-  upgradeBtn: { backgroundColor: '#ff6b35', padding: 12, borderRadius: 12, alignItems: 'center', marginVertical: 8 },
+  settingsActionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  settingsActionText: { color: c.text, fontSize: 14, fontFamily: FONT_BODY_SEMIBOLD },
+  passwordInput: { backgroundColor: c.bg, borderRadius: 8, padding: 12, fontSize: 14, fontFamily: FONT_BODY_REGULAR, color: c.text, marginBottom: 12, height: 48 },
+  tierBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
+  tierBadgeText: { color: 'white', fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 12, letterSpacing: 1 },
+  upgradeBtn: { backgroundColor: c.secondary, padding: 12, borderRadius: 8, alignItems: 'center', marginVertical: 8 },
   upgradeBtnText: { color: 'white', fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14 },
-  manageBtn: { backgroundColor: c.surfaceLight, padding: 12, borderRadius: 12, alignItems: 'center', marginVertical: 8 },
+  manageBtn: { backgroundColor: c.surfaceLight, padding: 12, borderRadius: 8, alignItems: 'center', marginVertical: 8 },
   manageBtnText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 14 },
-  appVersion: { textAlign: 'center', color: c.textMuted, fontFamily: FONT_BODY_REGULAR, fontSize: 12, marginTop: 10 },
+  appVersion: { textAlign: 'center', color: c.textMuted, fontFamily: FONT_BODY_REGULAR, fontSize: 12, marginTop: 16 },
 });

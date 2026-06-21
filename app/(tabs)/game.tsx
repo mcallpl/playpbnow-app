@@ -993,7 +993,7 @@ export default function GameScreen() {
               <View style={styles.wtsContainer}>
                   <Text style={styles.wtsLabel}>PLAY TO:</Text>
                   <TextInput style={styles.wtsInput} keyboardType="numeric" value={winningScore.toString()}
-                      onChangeText={setWinningScore} maxLength={2} />
+                      onChangeText={setWinningScore} maxLength={2} placeholder="21" placeholderTextColor={colors.inputPlaceholder} />
               </View>
               <View style={styles.headerRightControls}>
                   <TouchableOpacity onPress={handleThunderboltPress} style={styles.shuffleBtn}>
@@ -1018,16 +1018,16 @@ export default function GameScreen() {
           </View>
           {/* Tournament toggle — visible when scoring is on */}
           {isMatchScored && tournamentPhase === 'round-robin' && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 6, paddingHorizontal: 20, gap: 8 }}>
-                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 12, color: isTournament ? '#DAA520' : colors.textMuted }}>TOURNAMENT</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 16, gap: 8 }}>
+                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 12, color: isTournament ? colors.accent : colors.textMuted }}>TOURNAMENT</Text>
                   <Switch value={isTournament} onValueChange={setIsTournament}
-                    trackColor={{ false: colors.border, true: '#FFD700' }} thumbColor="white"
+                    trackColor={{ false: colors.border, true: colors.accent }} thumbColor={colors.text}
                     style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }} />
               </View>
           )}
           {isTournament && tournamentPhase !== 'round-robin' && (
-              <View style={{ alignItems: 'center', paddingVertical: 4 }}>
-                  <Text style={{ fontFamily: FONT_BODY_BOLD, fontSize: 11, color: '#DAA520', letterSpacing: 1 }}>
+              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                  <Text style={{ fontFamily: FONT_BODY_BOLD, fontSize: 12, color: colors.accent, letterSpacing: 1 }}>
                       {tournamentPhase === 'semifinals' ? 'SEMIFINALS' : tournamentPhase === 'finals' ? 'FINALS' : 'TOURNAMENT'}
                   </Text>
               </View>
@@ -1060,9 +1060,9 @@ export default function GameScreen() {
               </View>
           }
           renderItem={({ item, index }) => (
-            <View style={[styles.roundBlock, item.type === 'gold' && { borderColor: '#FFD700', borderWidth: 2 }, item.type === 'bronze' && { borderColor: '#CD7F32', borderWidth: 2 }, item.type === 'semifinal' && { borderColor: colors.accent, borderWidth: 2 }]}>
-                <View style={[styles.roundHeader, item.type === 'gold' && { backgroundColor: 'rgba(255,215,0,0.15)' }, item.type === 'bronze' && { backgroundColor: 'rgba(205,127,50,0.15)' }, item.type === 'semifinal' && { backgroundColor: 'rgba(109,184,44,0.15)' }]}>
-                    <Text style={[styles.roundTitle, item.type === 'gold' && { color: '#DAA520' }, item.type === 'bronze' && { color: '#CD7F32' }]}>
+            <View style={[styles.roundBlock, item.type === 'gold' && { borderColor: colors.accent, borderWidth: 2 }, item.type === 'bronze' && { borderColor: colors.accent, borderWidth: 2, opacity: 0.7 }, item.type === 'semifinal' && { borderColor: colors.accent, borderWidth: 2 }]}>
+                <View style={[styles.roundHeader, item.type === 'gold' && { backgroundColor: 'rgba(109,184,44,0.1)' }, item.type === 'bronze' && { backgroundColor: 'rgba(109,184,44,0.05)' }, item.type === 'semifinal' && { backgroundColor: 'rgba(109,184,44,0.08)' }]}>
+                    <Text style={[styles.roundTitle, item.type === 'gold' && { color: colors.accent }, item.type === 'bronze' && { color: colors.accent, opacity: 0.7 }]}>
                         {getRoundLabel(item, index)}
                     </Text>
                 </View>
@@ -1083,14 +1083,14 @@ export default function GameScreen() {
             </TouchableOpacity>
             {/* Tournament: START PLAYOFFS button */}
             {isTournament && isMatchScored && roundRobinComplete && tournamentPhase === 'round-robin' && (
-                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FFD700' }]} onPress={handleStartPlayoffs} activeOpacity={0.8}>
-                    <Text style={[styles.btnText, { color: '#000' }]}>START PLAYOFFS</Text>
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.accent }]} onPress={handleStartPlayoffs} activeOpacity={0.8}>
+                    <Text style={[styles.btnText, { color: colors.accentText }]}>START PLAYOFFS</Text>
                 </TouchableOpacity>
             )}
             {/* Tournament: GENERATE FINALS button */}
             {isTournament && isMatchScored && semifinalsComplete && tournamentPhase === 'semifinals' && (
-                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FFD700' }]} onPress={handleGenerateFinals} activeOpacity={0.8}>
-                    <Text style={[styles.btnText, { color: '#000' }]}>GENERATE FINALS</Text>
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.accent }]} onPress={handleGenerateFinals} activeOpacity={0.8}>
+                    <Text style={[styles.btnText, { color: colors.accentText }]}>GENERATE FINALS</Text>
                 </TouchableOpacity>
             )}
             {/* Normal FINISH button — hide during tournament round-robin/semis phases */}
@@ -1116,19 +1116,19 @@ export default function GameScreen() {
                 <TextInput style={styles.modalInput} value={reportTitle} onChangeText={(t) => { setReportTitle(t); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} placeholder="Enter Title" placeholderTextColor={colors.inputPlaceholder} />
                 <Text style={styles.label}>Court / Location</Text>
                 <TouchableOpacity style={styles.modalInput} onPress={() => setShowCourtPicker(!showCourtPicker)}>
-                    <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 16, color: courtName ? colors.inputText : colors.inputPlaceholder }}>{courtName || '(none)'}</Text>
+                    <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 14, color: courtName ? colors.inputText : colors.inputPlaceholder }}>{courtName || '(none)'}</Text>
                 </TouchableOpacity>
                 {showCourtPicker && (
-                    <View style={{ backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginBottom: 10, maxHeight: 160 }}>
+                    <View style={{ backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 16, maxHeight: 160 }}>
                         <ScrollView nestedScrollEnabled>
-                            <TouchableOpacity style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border }} onPress={() => { setCourtName(''); setShowCourtPicker(false); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }}>
+                            <TouchableOpacity style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderColor: colors.border }} onPress={() => { setCourtName(''); setShowCourtPicker(false); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }}>
                                 <Text style={{ color: colors.danger, fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14 }}>Clear Court</Text>
                             </TouchableOpacity>
                             {allCourts.map(court => (
-                                <TouchableOpacity key={court.id} style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: court.name === courtName ? colors.accentSoft : 'transparent' }}
+                                <TouchableOpacity key={court.id} style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: court.name === courtName ? colors.accentSoft : 'transparent' }}
                                     onPress={() => { setCourtName(court.name); setShowCourtPicker(false); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }}>
                                     <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text }}>{court.name}</Text>
-                                    {court.city && <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: colors.textMuted }}>{court.city}</Text>}
+                                    {court.city && <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted }}>{court.city}</Text>}
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
@@ -1168,19 +1168,19 @@ export default function GameScreen() {
                 <TextInput style={styles.modalInput} value={saveTitle} onChangeText={setSaveTitle} placeholder="Enter Title" placeholderTextColor={colors.inputPlaceholder} />
                 <Text style={styles.label}>Court / Location</Text>
                 <TouchableOpacity style={styles.modalInput} onPress={() => setShowCourtPicker(!showCourtPicker)}>
-                    <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 16, color: courtName ? colors.inputText : colors.inputPlaceholder }}>{courtName || '(none)'}</Text>
+                    <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 14, color: courtName ? colors.inputText : colors.inputPlaceholder }}>{courtName || '(none)'}</Text>
                 </TouchableOpacity>
                 {showCourtPicker && (
-                    <View style={{ backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginBottom: 10, maxHeight: 160 }}>
+                    <View style={{ backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 16, maxHeight: 160 }}>
                         <ScrollView nestedScrollEnabled>
-                            <TouchableOpacity style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border }} onPress={() => { setCourtName(''); setShowCourtPicker(false); }}>
+                            <TouchableOpacity style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderColor: colors.border }} onPress={() => { setCourtName(''); setShowCourtPicker(false); }}>
                                 <Text style={{ color: colors.danger, fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14 }}>Clear Court</Text>
                             </TouchableOpacity>
                             {allCourts.map(court => (
-                                <TouchableOpacity key={court.id} style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: court.name === courtName ? colors.accentSoft : 'transparent' }}
+                                <TouchableOpacity key={court.id} style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderColor: colors.border, backgroundColor: court.name === courtName ? colors.accentSoft : 'transparent' }}
                                     onPress={() => { setCourtName(court.name); setShowCourtPicker(false); }}>
                                     <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text }}>{court.name}</Text>
-                                    {court.city && <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: colors.textMuted }}>{court.city}</Text>}
+                                    {court.city && <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted }}>{court.city}</Text>}
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
@@ -1239,72 +1239,72 @@ export default function GameScreen() {
 
 const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg },
-  header: { paddingHorizontal: 15, paddingVertical: 10, backgroundColor: c.surface, borderBottomWidth: 1, borderColor: c.border },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  backButton: { padding: 5 },
-  headerTitle: { color: c.text, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 20, textTransform: 'uppercase', flex: 1, textAlign: 'center' },
+  header: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: c.surface, borderBottomWidth: 1, borderColor: c.border },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  backButton: { padding: 8 },
+  headerTitle: { color: c.text, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 18, textTransform: 'uppercase', flex: 1, textAlign: 'center' },
   controlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   wtsContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   wtsLabel: { color: c.accent, fontSize: 12, fontFamily: FONT_BODY_BOLD },
-  wtsInput: { backgroundColor: c.inputBg, color: c.inputText, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, minWidth: 40, textAlign: 'center', borderWidth: 1, borderColor: c.inputBorder },
-  headerRightControls: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  shuffleBtn: { padding: 5 },
+  wtsInput: { backgroundColor: c.inputBg, color: c.inputText, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, minWidth: 40, textAlign: 'center', borderWidth: 1, borderColor: c.inputBorder },
+  headerRightControls: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  shuffleBtn: { padding: 8 },
   connectedBadge: { backgroundColor: c.accent, borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: -8 },
-  connectedText: { color: c.text, fontSize: 10, fontFamily: FONT_DISPLAY_EXTRABOLD },
-  collabStatusBar: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderColor: c.border },
-  collabStatusText: { color: c.accent, fontSize: 11, fontFamily: FONT_BODY_BOLD, letterSpacing: 0.5 },
-  subHeaderAction: { alignItems: 'center', marginVertical: 10 },
-  addPlayerBtn: { flexDirection: 'row', backgroundColor: c.surfaceLight, padding: 8, paddingHorizontal: 15, borderRadius: 20, alignItems: 'center', gap: 5 },
+  connectedText: { color: c.accentText, fontSize: 10, fontFamily: FONT_DISPLAY_EXTRABOLD },
+  collabStatusBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderColor: c.border },
+  collabStatusText: { color: c.accent, fontSize: 12, fontFamily: FONT_BODY_BOLD, letterSpacing: 0.5 },
+  subHeaderAction: { alignItems: 'center', marginVertical: 12 },
+  addPlayerBtn: { flexDirection: 'row', backgroundColor: c.surfaceLight, padding: 8, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', gap: 8 },
   addPlayerText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 12 },
-  listContent: { padding: 15, paddingBottom: 120 },
-  roundBlock: { marginBottom: 25, backgroundColor: c.card, borderRadius: 18, padding: 15, borderWidth: 1, borderColor: c.border },
-  roundHeader: { marginBottom: 10 },
+  listContent: { padding: 16, paddingBottom: 120 },
+  roundBlock: { marginBottom: 24, backgroundColor: c.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: c.border },
+  roundHeader: { marginBottom: 12 },
   roundTitle: { color: c.textSoft, fontFamily: FONT_BODY_BOLD, fontSize: 16 },
-  separator: { height: 1, backgroundColor: c.border, marginBottom: 15 },
-  gameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, height: 110 },
+  separator: { height: 1, backgroundColor: c.border, marginBottom: 16 },
+  gameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, height: 110 },
   sideScoreContainer: { width: 50, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
   teamWrapper: { flex: 1, height: '100%', borderColor: c.border, borderWidth: 1, borderRadius: 8, padding: 2, marginHorizontal: 2 },
   teamContainer: { flex: 1, flexDirection: 'column', justifyContent: 'space-between', gap: 2 },
   centerVS: { width: 40, justifyContent: 'center', alignItems: 'center' },
-  playerBox: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 6 },
+  playerBox: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 8 },
   selectedBox: { borderWidth: 3, borderColor: c.accent },
-  emptyBox: { flex: 1, backgroundColor: c.surfaceLight, borderRadius: 6 },
-  pText: { fontFamily: FONT_BODY_BOLD, fontSize: 16 },
-  vsText: { color: c.textMuted, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 18 },
-  crtText: { fontFamily: FONT_BODY_BOLD, color: c.textMuted, fontSize: 10, marginTop: 4 },
-  scoreInput: { width: 45, height: 45, backgroundColor: c.inputBg, borderRadius: 8, textAlign: 'center', fontSize: 20, fontFamily: FONT_BODY_BOLD, color: c.inputText, borderWidth: 1, borderColor: c.border, elevation: 2 },
-  byeRow: { flexDirection: 'row', marginTop: 15, alignItems: 'center', gap: 5, paddingTop: 10, borderTopWidth: 1, borderColor: c.border },
+  emptyBox: { flex: 1, backgroundColor: c.surfaceLight, borderRadius: 8 },
+  pText: { fontFamily: FONT_BODY_BOLD, fontSize: 14 },
+  vsText: { color: c.textMuted, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16 },
+  crtText: { fontFamily: FONT_BODY_BOLD, color: c.textMuted, fontSize: 12, marginTop: 4 },
+  scoreInput: { width: 48, height: 48, backgroundColor: c.inputBg, borderRadius: 8, textAlign: 'center', fontSize: 16, fontFamily: FONT_BODY_BOLD, color: c.inputText, borderWidth: 1, borderColor: c.border, elevation: 2 },
+  byeRow: { flexDirection: 'row', marginTop: 12, alignItems: 'center', gap: 8, paddingTop: 12, borderTopWidth: 1, borderColor: c.border },
   byeLabel: { color: c.textSoft, fontSize: 12, fontFamily: FONT_BODY_BOLD },
   byeName: { color: c.text, fontSize: 12, fontFamily: FONT_BODY_BOLD },
-  footer: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 20, gap: 15, backgroundColor: c.bg, position: 'absolute', bottom: 0, width: '100%' },
-  actionBtn: { flex: 1, height: 55, justifyContent: 'center', alignItems: 'center', borderRadius: 27.5, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 3 },
+  footer: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 16, gap: 12, backgroundColor: c.bg, position: 'absolute', bottom: 0, width: '100%' },
+  actionBtn: { flex: 1, height: 48, justifyContent: 'center', alignItems: 'center', borderRadius: 8, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 3 },
   textBtn: { backgroundColor: c.surfaceLight },
   finishBtn: { backgroundColor: c.accent },
-  btnText: { color: c.text, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, letterSpacing: 0.5 },
+  btnText: { color: c.text, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14, letterSpacing: 0.5 },
   modalOverlay: { flex: 1, backgroundColor: c.modalOverlay, justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: c.modalBg, padding: 25, borderRadius: 20, width: '90%', maxHeight: '90%' },
-  modalTitle: { fontSize: 20, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.text, marginBottom: 20, textAlign: 'center' },
-  label: { color: c.textMuted, fontFamily: FONT_BODY_BOLD, marginBottom: 5, fontSize: 12 },
-  modalInput: { backgroundColor: c.inputBg, padding: 15, borderRadius: 10, fontSize: 16, fontFamily: FONT_BODY_BOLD, marginBottom: 15, borderWidth: 1, borderColor: c.inputBorder, color: c.inputText },
-  searchResultsContainer: { maxHeight: 150, marginBottom: 15 },
-  searchLabel: { fontSize: 12, fontFamily: FONT_BODY_BOLD, color: c.textMuted, marginBottom: 5 },
-  searchItem: { padding: 10, borderBottomWidth: 1, borderColor: c.border, backgroundColor: c.surfaceLight, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalContent: { backgroundColor: c.modalBg, padding: 24, borderRadius: 16, width: '90%', maxHeight: '90%' },
+  modalTitle: { fontSize: 18, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.text, marginBottom: 16, textAlign: 'center' },
+  label: { color: c.textMuted, fontFamily: FONT_BODY_BOLD, marginBottom: 8, fontSize: 12 },
+  modalInput: { backgroundColor: c.inputBg, padding: 12, borderRadius: 8, fontSize: 14, fontFamily: FONT_BODY_BOLD, marginBottom: 16, borderWidth: 1, borderColor: c.inputBorder, color: c.inputText },
+  searchResultsContainer: { maxHeight: 150, marginBottom: 16 },
+  searchLabel: { fontSize: 12, fontFamily: FONT_BODY_BOLD, color: c.textMuted, marginBottom: 8 },
+  searchItem: { padding: 12, borderBottomWidth: 1, borderColor: c.border, backgroundColor: c.surfaceLight, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   searchName: { fontFamily: FONT_BODY_BOLD, color: c.text },
-  searchSource: { fontSize: 10, color: c.textMuted, fontFamily: FONT_BODY_REGULAR },
-  datePickerContainer: { marginBottom: 10 },
-  dateRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, backgroundColor: c.inputBg, padding: 10, borderRadius: 10 },
-  arrowBtn: { backgroundColor: c.surfaceLight, padding: 10, borderRadius: 8 },
-  dateValue: { fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.text, fontSize: 16, flex: 1, textAlign: 'center' },
-  previewText: { textAlign: 'center', color: c.accent, fontFamily: FONT_BODY_BOLD, fontSize: 16, marginBottom: 10 },
-  previewContainer: { height: 200, backgroundColor: c.surfaceLight, borderRadius: 10, marginBottom: 15, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  searchSource: { fontSize: 12, color: c.textMuted, fontFamily: FONT_BODY_REGULAR },
+  datePickerContainer: { marginBottom: 16 },
+  dateRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, backgroundColor: c.inputBg, padding: 12, borderRadius: 8 },
+  arrowBtn: { backgroundColor: c.surfaceLight, padding: 8, borderRadius: 8 },
+  dateValue: { fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.text, fontSize: 14, flex: 1, textAlign: 'center' },
+  previewText: { textAlign: 'center', color: c.accent, fontFamily: FONT_BODY_BOLD, fontSize: 14, marginBottom: 12 },
+  previewContainer: { height: 200, backgroundColor: c.surfaceLight, borderRadius: 8, marginBottom: 16, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   previewImage: { width: '100%', height: '100%' },
-  generateBtn: { padding: 15, backgroundColor: c.surfaceLight, borderRadius: 10, alignItems: 'center', marginBottom: 15 },
+  generateBtn: { padding: 12, backgroundColor: c.surfaceLight, borderRadius: 8, alignItems: 'center', marginBottom: 16 },
   generateBtnText: { fontFamily: FONT_BODY_BOLD, color: c.textMuted },
-  modalButtons: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  modalBtn: { flex: 1, padding: 15, borderRadius: 15, alignItems: 'center' },
+  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  modalBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
   cancelBtn: { backgroundColor: c.surfaceLight },
   saveBtn: { backgroundColor: c.accent },
   modalBtnText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14, color: c.text },
-  watermarkBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: isDark ? 'rgba(255,107,53,0.1)' : '#fff3e0', padding: 8, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#ff6b35' },
+  watermarkBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: isDark ? 'rgba(255,107,53,0.1)' : '#fff3e0', padding: 8, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: '#ff6b35' },
   watermarkBadgeText: { color: '#ff6b35', fontFamily: FONT_BODY_BOLD, fontSize: 12 },
 });

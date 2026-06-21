@@ -132,22 +132,22 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
     if (!isExpired && !isMine) {
       pulseScale.value = withRepeat(
         withSequence(
-          withTiming(2.5, { duration: 1400, easing: Easing.out(Easing.ease) }),
+          withTiming(2.5, { duration: 1200, easing: Easing.out(Easing.ease) }),
           withTiming(1, { duration: 0 }),
         ),
         -1, false,
       );
       pulseOpacity.value = withRepeat(
         withSequence(
-          withTiming(0, { duration: 1400, easing: Easing.out(Easing.ease) }),
+          withTiming(0, { duration: 1200, easing: Easing.out(Easing.ease) }),
           withTiming(0.7, { duration: 0 }),
         ),
         -1, false,
       );
       dotScale.value = withRepeat(
         withSequence(
-          withTiming(1.3, { duration: 700, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1.3, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
         ),
         -1, true,
       );
@@ -205,8 +205,8 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
           <View style={styles.beaconOverlayContainer}>
             {isMine ? (
               <>
-                <View style={[styles.pulseRing, { borderColor: '#cc0000', opacity: 0.4 }]} />
-                <View style={[styles.beaconDot, { backgroundColor: '#cc0000', shadowColor: '#cc0000' }]} />
+                <View style={[styles.pulseRing, { borderColor: colors.danger, opacity: 0.4 }]} />
+                <View style={[styles.beaconDot, { backgroundColor: colors.danger, shadowColor: colors.danger }]} />
               </>
             ) : (
               <>
@@ -219,7 +219,7 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
 
         {/* Time badge */}
         <View style={[styles.mapTimeBadge, isMine && { backgroundColor: 'rgba(204,0,0,0.75)' }]}>
-          <BrandedIcon name={isMine ? 'location' : 'live'} size={12} color={isExpired ? colors.danger : '#ffffff'} />
+          <BrandedIcon name={isMine ? 'location' : 'live'} size={12} color={isExpired ? colors.danger : colors.text} />
           <Text style={styles.mapTimeText}>{isMine ? `Your Beacon · ${timeLeft}` : timeLeft}</Text>
         </View>
       </View>
@@ -237,7 +237,7 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={isMine ? { backgroundColor: 'rgba(204,0,0,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 } : (isCasual ? styles.mapCardBadgeCasual : styles.mapCardBadgeStructured)}>
-            <Text style={isMine ? { fontFamily: FONT_BODY_BOLD, fontSize: 11, color: '#cc0000' } : (isCasual ? styles.mapCardBadgeCasualText : styles.mapCardBadgeStructuredText)}>
+            <Text style={isMine ? { fontFamily: FONT_BODY_BOLD, fontSize: 11, color: colors.danger } : (isCasual ? styles.mapCardBadgeCasualText : styles.mapCardBadgeStructuredText)}>
               {isMine ? 'Your Beacon' : (isCasual ? 'More Info' : 'Spot To Fill')}
             </Text>
           </View>
@@ -276,8 +276,8 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
             onPress={() => onExtend(beacon.id)}
             disabled={actionLoading || isExpired}
           >
-            <BrandedIcon name="sync" size={14} color={colors.text} />
-            <Text style={styles.secondaryButtonText}>Extend</Text>
+            <BrandedIcon name="sync" size={14} color={colors.accent} />
+            <Text style={[styles.secondaryButtonText, { color: colors.accent }]}>Extend</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.dangerButton}
@@ -2426,14 +2426,14 @@ const createStyles = (c: ThemeColors) =>
       gap: 8,
       backgroundColor: c.accent,
       paddingHorizontal: 24,
-      paddingVertical: 14,
-      borderRadius: 14,
+      paddingVertical: 12,
+      borderRadius: 8,
       marginTop: 16,
     },
     emptyCreateButtonText: {
       fontFamily: FONT_BODY_BOLD,
-      fontSize: 15,
-      color: '#ffffff',
+      fontSize: 14,
+      color: c.accentText,
     },
 
     // --- History Dropdown ---
@@ -2470,7 +2470,7 @@ const createStyles = (c: ThemeColors) =>
     courtChip: {
       paddingHorizontal: 16,
       paddingVertical: 8,
-      borderRadius: 20,
+      borderRadius: 8,
       backgroundColor: c.surfaceLight,
       borderWidth: 1,
       borderColor: c.border,
@@ -2481,11 +2481,11 @@ const createStyles = (c: ThemeColors) =>
     },
     courtChipText: {
       fontFamily: FONT_BODY_MEDIUM,
-      fontSize: 13,
+      fontSize: 12,
       color: c.textMuted,
     },
     courtChipTextActive: {
-      color: '#ffffff',
+      color: c.accentText,
     },
 
     // --- Feed ---
