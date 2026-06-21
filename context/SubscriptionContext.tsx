@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, AppStateStatus, Linking, Platform } from 'react-native';
 import { PurchasesPackage } from 'react-native-purchases';
 import {
@@ -11,95 +11,27 @@ import {
     getCustomerInfo,
     hasProEntitlement,
 } from '../utils/purchases';
+import {
+    SubscriptionStateContext,
+    SubscriptionData,
+    SubscriptionFeatures,
+    DEFAULT_FEATURES,
+} from './SubscriptionStateContext';
+import { SubscriptionDispatchContext } from './SubscriptionDispatchContext';
 
 const isWeb = Platform.OS === 'web';
 
 const API_URL = '/api';
 const STORAGE_KEY = 'subscription_data';
 
-export interface SubscriptionFeatures {
-    canGenerateCleanReports: boolean;
-    canEditMatches: boolean;
-    canDeleteMatches: boolean;
-    maxGroups: number;
-    maxCollabSessions: number;
-    maxPlayersPerGroup: number;
-}
-
-export interface SubscriptionData {
-    tier: 'free' | 'pro' | 'trial';
-    subscriptionStatus: string;
-    expiryDate: string | null;
-    trialStartDate: string | null;
-    trialDaysRemaining: number;
-    trialExpired: boolean;
-    isPro: boolean;
-    isAdmin: boolean;
-    features: SubscriptionFeatures;
-}
-
-interface SubscriptionContextType {
-    subscription: SubscriptionData | null;
-    isPro: boolean;
-    isAdmin: boolean;
-    isTrial: boolean;
-    isFree: boolean;
-    trialDaysRemaining: number;
-    features: SubscriptionFeatures;
-    paywallVisible: boolean;
-    paywallMessage: string;
-    showPaywall: (message?: string) => void;
-    hidePaywall: () => void;
-    refreshSubscription: () => Promise<void>;
-    // RevenueCat methods (native)
-    offerings: { monthly: PurchasesPackage | null; annual: PurchasesPackage | null };
-    offeringsLoading: boolean;
-    offeringsError: boolean;
-    retryLoadOfferings: () => Promise<void>;
-    purchaseSubscription: (pkg: PurchasesPackage) => Promise<boolean>;
-    restorePurchases: () => Promise<boolean>;
-    purchaseLoading: boolean;
-    // Stripe methods (web)
-    purchaseViaStripe: (plan: 'monthly' | 'annual') => Promise<void>;
-    redeemPromoCode: (code: string) => Promise<boolean>;
-}
-
-const DEFAULT_FEATURES: SubscriptionFeatures = {
-    canGenerateCleanReports: false,
-    canEditMatches: false,
-    canDeleteMatches: false,
-    maxGroups: 2,
-    maxCollabSessions: 1,
-    maxPlayersPerGroup: 100,
+// Convenience hook that combines both contexts (for backwards compatibility)
+export const useSubscription = () => {
+    const state = useContext(SubscriptionStateContext);
+    const dispatch = useContext(SubscriptionDispatchContext);
+    return { ...state, ...dispatch };
 };
 
-const SubscriptionContext = createContext<SubscriptionContextType>({
-    subscription: null,
-    isPro: false,
-    isAdmin: false,
-    isTrial: false,
-    isFree: true,
-    trialDaysRemaining: 0,
-    features: DEFAULT_FEATURES,
-    paywallVisible: false,
-    paywallMessage: '',
-    showPaywall: () => {},
-    hidePaywall: () => {},
-    refreshSubscription: async () => {},
-    offerings: { monthly: null, annual: null },
-    offeringsLoading: false,
-    offeringsError: false,
-    retryLoadOfferings: async () => {},
-    purchaseSubscription: async () => false,
-    restorePurchases: async () => false,
-    purchaseLoading: false,
-    purchaseViaStripe: async () => {},
-    redeemPromoCode: async () => false,
-});
-
-export const useSubscription = () => useContext(SubscriptionContext);
-
-export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
     const [paywallVisible, setPaywallVisible] = useState(false);
     const [paywallMessage, setPaywallMessage] = useState('');
@@ -231,12 +163,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return () => sub.remove();
     }, [fetchSubscription]);
 
-    const isPro = subscription?.isPro ?? false;
-    const isAdmin = subscription?.isAdmin ?? false;
-    const isTrial = subscription?.subscriptionStatus === 'trial';
-    const isFree = !isPro;
-    const trialDaysRemaining = subscription?.trialDaysRemaining ?? 0;
-    const features = subscription?.features ?? DEFAULT_FEATURES;
+    const isPro = useMemo(() => subscription?.isPro ?? false, [subscription?.isPro]);
+    const isAdmin = useMemo(() => subscription?.isAdmin ?? false, [subscription?.isAdmin]);
+    const isTrial = useMemo(() => subscription?.subscriptionStatus === 'trial', [subscription?.subscriptionStatus]);
+    const isFree = useMemo(() => !isPro, [isPro]);
+    const trialDaysRemaining = useMemo(() => subscription?.trialDaysRemaining ?? 0, [subscription?.trialDaysRemaining]);
+    const features = useMemo(() => subscription?.features ?? DEFAULT_FEATURES, [subscription?.features]);
 
     const showPaywall = useCallback((message?: string) => {
         setPaywallMessage(message || 'Upgrade to Pro to unlock this feature!');
@@ -404,31 +336,57 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
     }, [fetchSubscription]);
 
+    // Memoize state context value
+    const stateValue = useMemo(() => ({
+        subscription,
+        isPro,
+        isAdmin,
+        isTrial,
+        isFree,
+        trialDaysRemaining,
+        features,
+    }), [subscription, isPro, isAdmin, isTrial, isFree, trialDaysRemaining, features]);
+
+    // Memoize dispatch context value
+    const dispatchValue = useMemo(() => ({
+        paywallVisible,
+        paywallMessage,
+        showPaywall,
+        hidePaywall,
+        refreshSubscription,
+        offerings,
+        offeringsLoading,
+        offeringsError,
+        retryLoadOfferings: initAndLoadOfferings,
+        purchaseSubscription,
+        restorePurchases: handleRestorePurchases,
+        purchaseLoading,
+        purchaseViaStripe,
+        redeemPromoCode,
+    }), [
+        paywallVisible,
+        paywallMessage,
+        showPaywall,
+        hidePaywall,
+        refreshSubscription,
+        offerings,
+        offeringsLoading,
+        offeringsError,
+        initAndLoadOfferings,
+        purchaseSubscription,
+        handleRestorePurchases,
+        purchaseLoading,
+        purchaseViaStripe,
+        redeemPromoCode,
+    ]);
+
     return (
-        <SubscriptionContext.Provider value={{
-            subscription,
-            isPro,
-            isAdmin,
-            isTrial,
-            isFree,
-            trialDaysRemaining,
-            features,
-            paywallVisible,
-            paywallMessage,
-            showPaywall,
-            hidePaywall,
-            refreshSubscription,
-            offerings,
-            offeringsLoading,
-            offeringsError,
-            retryLoadOfferings: initAndLoadOfferings,
-            purchaseSubscription,
-            restorePurchases: handleRestorePurchases,
-            purchaseLoading,
-            purchaseViaStripe,
-            redeemPromoCode,
-        }}>
-            {children}
-        </SubscriptionContext.Provider>
+        <SubscriptionStateContext.Provider value={stateValue}>
+            <SubscriptionDispatchContext.Provider value={dispatchValue}>
+                {children}
+            </SubscriptionDispatchContext.Provider>
+        </SubscriptionStateContext.Provider>
     );
 };
+
+export const SubscriptionProvider = React.memo(SubscriptionProviderComponent);
