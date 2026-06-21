@@ -14,6 +14,35 @@ import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGUL
 import { BrandedIcon } from '../../components/BrandedIcon';
 import { HELP_TOPICS, HelpTopic } from '../../utils/helpContent';
 
+// Parse markdown **bold** text and render with proper styling
+const renderMarkdownContent = (text: string, baseStyle: any, boldStyle: any) => {
+  const parts: (React.ReactNode)[] = [];
+  const regex = /\*\*([^*]+)\*\*/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    // Add text before the bold part
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    // Add the bold part
+    parts.push(
+      <Text key={`bold-${match.index}`} style={boldStyle}>
+        {match[1]}
+      </Text>
+    );
+    lastIndex = regex.lastIndex;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+};
+
 export default function HelpScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -187,7 +216,9 @@ export default function HelpScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <Text style={styles.topicDetailContent}>{selectedTopic.content}</Text>
+        <Text style={styles.topicDetailContent}>
+          {renderMarkdownContent(selectedTopic.content, styles.topicDetailContent, { ...styles.topicDetailContent, fontFamily: FONT_BODY_SEMIBOLD })}
+        </Text>
 
         {/* Related Topics */}
         <View style={styles.relatedSection}>
