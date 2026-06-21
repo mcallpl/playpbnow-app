@@ -733,7 +733,7 @@ export default function InvitesScreen() {
               }
             }}
             onEndReachedThreshold={0.3}
-            ListFooterComponent={loading ? <ActivityIndicator color={colors.accent} style={{ padding: 20 }} /> : null}
+            ListFooterComponent={loading ? <ActivityIndicator color={colors.accent} style={{ padding: 16 }} /> : null}
             ListEmptyComponent={
               !loading ? (
                 <View style={styles.emptyState}>
@@ -853,7 +853,7 @@ export default function InvitesScreen() {
             )}
 
             {inviteStep === 'details' && (
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
                 <Text style={styles.inputLabel}>Court *</Text>
                 {selectedCourt ? (
                   <View style={styles.courtSelected}>
@@ -1092,7 +1092,7 @@ export default function InvitesScreen() {
                               flexDirection: 'row',
                               alignItems: 'center',
                               backgroundColor: colors.accent,
-                              borderRadius: 20,
+                              borderRadius: 8,
                               paddingHorizontal: 12,
                               paddingVertical: 6,
                               gap: 6,
@@ -1199,7 +1199,7 @@ export default function InvitesScreen() {
             )}
 
             {inviteStep === 'confirm' && (
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
                 <View style={styles.confirmCard}>
                   <Text style={styles.confirmLabel}>Court</Text>
                   <Text style={styles.confirmValue}>{courtName}</Text>
@@ -1334,7 +1334,7 @@ export default function InvitesScreen() {
             )}
 
             {inviteStep === 'results' && sendResults && (
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
                 <View style={{ alignItems: 'center', marginBottom: 24 }}>
                   <BrandedIcon name="checkmark" size={48} color={colors.accent} />
                   <Text style={[styles.premiumTitle, { marginTop: 12 }]}>
@@ -1429,7 +1429,7 @@ export default function InvitesScreen() {
                 </View>
 
                 {!showChat ? (
-                  <ScrollView contentContainerStyle={{ padding: 20 }}>
+                  <ScrollView contentContainerStyle={{ padding: 16 }}>
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Date</Text>
                       <Text style={styles.detailValue}>{formatDate(selectedInvite.match_date)}</Text>
@@ -1577,7 +1577,7 @@ export default function InvitesScreen() {
                           backgroundColor: colors.inputBg,
                           borderWidth: 1,
                           borderColor: colors.inputBorder,
-                          borderRadius: 20,
+                          borderRadius: 8,
                           paddingHorizontal: 16,
                           paddingVertical: 10,
                           fontFamily: FONT_BODY_REGULAR,
@@ -1634,7 +1634,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       flexDirection: 'row' as const,
       justifyContent: 'space-between' as const,
       alignItems: 'center' as const,
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingVertical: 16,
     },
     headerTitle: {
@@ -1650,7 +1650,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       backgroundColor: colors.card,
       paddingHorizontal: 14,
       paddingVertical: 8,
-      borderRadius: 20,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -1682,7 +1682,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       letterSpacing: 0.5,
     },
     tabLabelActive: {
-      color: '#0f1b2d',
+      color: colors.accentText,
     },
     createBtn: {
       flexDirection: 'row' as const,
@@ -1692,13 +1692,13 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       backgroundColor: colors.accent,
       marginHorizontal: 16,
       marginVertical: 12,
-      padding: 14,
-      borderRadius: 14,
+      padding: 12,
+      borderRadius: 8,
     },
     createBtnText: {
       fontFamily: FONT_DISPLAY_EXTRABOLD,
       fontSize: 15,
-      color: '#0f1b2d',
+      color: colors.accentText,
       letterSpacing: 1,
     },
     emptyState: {
@@ -1804,7 +1804,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       backgroundColor: colors.card,
-      borderRadius: 14,
+      borderRadius: 8,
       padding: 16,
       marginBottom: 8,
       borderWidth: 1,
@@ -1846,7 +1846,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     selectCircle: {
       width: 28,
       height: 28,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 2,
       borderColor: colors.border,
       alignItems: 'center' as const,
@@ -1860,7 +1860,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       justifyContent: 'space-between' as const,
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingVertical: 14,
       backgroundColor: colors.surface,
       borderTopWidth: 1,
@@ -1873,19 +1873,19 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     selectionBtn: {
       backgroundColor: colors.accent,
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingVertical: 10,
       borderRadius: 10,
     },
     selectionBtnText: {
       fontFamily: FONT_DISPLAY_EXTRABOLD,
       fontSize: 13,
-      color: '#0f1b2d',
+      color: colors.accentText,
       letterSpacing: 1,
     },
     creditCard: {
       backgroundColor: colors.card,
-      borderRadius: 20,
+      borderRadius: 8,
       padding: 32,
       alignItems: 'center' as const,
       borderWidth: 1,
@@ -1924,7 +1924,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       backgroundColor: colors.card,
-      borderRadius: 14,
+      borderRadius: 8,
       padding: 18,
       marginBottom: 10,
       borderWidth: 1,
@@ -1946,7 +1946,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     popularBadgeText: {
       fontFamily: FONT_DISPLAY_BOLD,
       fontSize: 10,
-      color: '#0f1b2d',
+      color: colors.accentText,
       letterSpacing: 0.5,
     },
     packageInfo: {
@@ -1964,7 +1964,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     packagePrice: {
       fontFamily: FONT_DISPLAY_EXTRABOLD,
-      fontSize: 20,
+      fontSize: 18,
       color: colors.accent,
     },
     premiumGate: {
@@ -1990,13 +1990,13 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       backgroundColor: colors.accent,
       paddingHorizontal: 32,
       paddingVertical: 14,
-      borderRadius: 14,
+      borderRadius: 8,
       marginTop: 8,
     },
     upgradeBtnText: {
       fontFamily: FONT_DISPLAY_EXTRABOLD,
       fontSize: 16,
-      color: '#0f1b2d',
+      color: colors.accentText,
       letterSpacing: 1,
     },
     modalOverlay: {
@@ -2014,14 +2014,14 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       flexDirection: 'row' as const,
       justifyContent: 'space-between' as const,
       alignItems: 'center' as const,
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingVertical: 18,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     modalTitle: {
       fontFamily: FONT_DISPLAY_BOLD,
-      fontSize: 20,
+      fontSize: 18,
       color: colors.text,
     },
     errorBanner: {
@@ -2029,7 +2029,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       borderWidth: 1,
       borderColor: 'rgba(255,71,87,0.3)',
       borderRadius: 12,
-      padding: 14,
+      padding: 12,
       marginHorizontal: 20,
       marginTop: 12,
     },
@@ -2052,7 +2052,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       borderWidth: 1,
       borderColor: colors.inputBorder,
       borderRadius: 12,
-      padding: 14,
+      padding: 12,
       fontFamily: FONT_BODY_REGULAR,
       fontSize: 16,
       color: colors.inputText,
@@ -2064,7 +2064,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       borderWidth: 1,
       borderColor: colors.accent,
       borderRadius: 12,
-      padding: 14,
+      padding: 12,
       gap: 12,
     },
     courtSelectedName: {
@@ -2124,23 +2124,23 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       fontSize: 14,
       color: colors.textMuted,
       textAlign: 'center' as const,
-      padding: 20,
+      padding: 16,
     },
     primaryBtn: {
       backgroundColor: colors.accent,
       padding: 16,
-      borderRadius: 14,
+      borderRadius: 8,
       alignItems: 'center' as const,
       marginTop: 24,
     },
     primaryBtnText: {
       fontFamily: FONT_DISPLAY_EXTRABOLD,
       fontSize: 15,
-      color: '#0f1b2d',
+      color: colors.accentText,
       letterSpacing: 1,
     },
     secondaryBtn: {
-      padding: 14,
+      padding: 12,
       borderRadius: 12,
       alignItems: 'center' as const,
       marginTop: 12,
@@ -2156,7 +2156,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     confirmCard: {
       backgroundColor: colors.card,
       borderRadius: 16,
-      padding: 20,
+      padding: 16,
       borderWidth: 1,
       borderColor: colors.border,
     },
