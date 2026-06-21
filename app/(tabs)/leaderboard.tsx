@@ -551,7 +551,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             keyExtractor={(i) => i.id}
             ListHeaderComponent={renderTeamPedestal}
             alwaysBounceHorizontal={false}
-            contentContainerStyle={{padding: 20, paddingBottom: 100}}
+            contentContainerStyle={{padding: 16, paddingBottom: 100}}
             ListEmptyComponent={<Text style={styles.empty}>{sortedTeamLeaderboard.length === 0 ? "No data found." : ""}</Text>}
         />
       ) : (
@@ -561,7 +561,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             keyExtractor={(i) => i.id}
             ListHeaderComponent={renderPedestal}
             alwaysBounceHorizontal={false}
-            contentContainerStyle={{padding: 20, paddingBottom: 100}}
+            contentContainerStyle={{padding: 16, paddingBottom: 100}}
             ListEmptyComponent={<Text style={styles.empty}>{leaderboard.length === 0 ? "No data found." : ""}</Text>}
         />
       )}
@@ -607,40 +607,40 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
 
 const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg },
-  header: { padding: 15, paddingTop: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: c.surface },
-  title: { color: c.accent, fontSize: 16, fontFamily: FONT_DISPLAY_EXTRABOLD, textTransform: 'uppercase', textAlign:'center', marginBottom: 5 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 },
-  toggleLabel: { color: c.textMuted, fontFamily: FONT_BODY_BOLD, fontSize: 10 },
+  header: { padding: 16, paddingTop: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: c.surface },
+  title: { color: c.accent, fontSize: 12, fontFamily: FONT_DISPLAY_EXTRABOLD, textTransform: 'uppercase', textAlign:'center', marginBottom: 8 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  toggleLabel: { color: c.textMuted, fontFamily: FONT_BODY_BOLD, fontSize: 11 },
   activeLabel: { color: c.text },
-  sortRow: { flexDirection: 'row', gap: 8, marginTop: 5 },
-  sortBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, backgroundColor: c.surfaceLight },
+  sortRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  sortBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: c.surfaceLight },
   sortBtnActive: { backgroundColor: isDark ? c.text : c.card, borderWidth: 1, borderColor: c.border },
-  sortBtnText: { color: c.textMuted, fontSize: 10, fontFamily: FONT_BODY_BOLD },
+  sortBtnText: { color: c.textMuted, fontSize: 11, fontFamily: FONT_BODY_BOLD },
   sortBtnTextActive: { color: isDark ? c.surface : c.text },
-  dateBar: { backgroundColor: c.surface, padding: 10, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: c.border },
+  dateBar: { backgroundColor: c.surface, padding: 12, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: c.border },
   dateBarText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 12 },
-  backBtn: { padding: 5 },
-  pedestalContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', height: 250, marginBottom: 30, marginTop: 30 },
+  backBtn: { padding: 8 },
+  pedestalContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', height: 250, marginBottom: 24, marginTop: 24 },
   podiumCol: { alignItems: 'center', width: SCREEN_WIDTH * 0.28 },
-  podiumBar: { width: '100%', borderTopLeftRadius: 10, borderTopRightRadius: 10, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 10 },
+  podiumBar: { width: '100%', borderTopLeftRadius: 8, borderTopRightRadius: 8, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 12 },
   barGold: { height: 120, backgroundColor: isDark ? 'rgba(255, 210, 63, 0.15)' : 'rgba(245, 166, 35, 0.15)', borderWidth: 2, borderColor: c.gold },
   barSilver: { height: 90, backgroundColor: isDark ? 'rgba(192, 199, 214, 0.15)' : 'rgba(142, 153, 164, 0.15)', borderWidth: 2, borderColor: c.silver },
   barBronze: { height: 70, backgroundColor: isDark ? 'rgba(232, 152, 90, 0.15)' : 'rgba(205, 127, 50, 0.15)', borderWidth: 2, borderColor: c.bronze },
-  placeText: { fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.text, opacity: 0.5, fontSize: 30 },
-  crown: { fontSize: 30, marginBottom: -10, zIndex: 20 },
-  avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: c.surfaceLight, justifyContent: 'center', alignItems: 'center', marginBottom: 5, borderWidth:2, borderColor: c.border },
+  placeText: { fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.text, opacity: 0.5, fontSize: 28 },
+  crown: { fontSize: 28, marginBottom: -8, zIndex: 20 },
+  avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: c.surfaceLight, justifyContent: 'center', alignItems: 'center', marginBottom: 8, borderWidth:2, borderColor: c.border },
   avatarGold: { borderColor: c.gold },
-  avatarText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 24, color: c.text },
-  podiumName: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 11, marginBottom: 2, textAlign: 'center' },
-  podiumStat: { color: c.textSoft, fontSize: 10, fontFamily: FONT_BODY_BOLD, marginBottom: 2 },
+  avatarText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 20, color: c.text },
+  podiumName: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 12, marginBottom: 4, textAlign: 'center' },
+  podiumStat: { color: c.textSoft, fontSize: 11, fontFamily: FONT_BODY_BOLD, marginBottom: 4 },
   textGold: { color: c.gold },
-  card: { backgroundColor: c.card, padding: 15, borderRadius: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: c.border },
+  card: { backgroundColor: c.card, padding: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 8, borderWidth: 1, borderColor: c.border },
   rankBox: { width: 30, alignItems: 'center' },
-  rankText: { fontSize: 16, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.textMuted },
-  nameBox: { flex: 1, paddingHorizontal: 10 },
-  name: { fontSize: 18, fontFamily: FONT_DISPLAY_BOLD, color: c.text },
-  record: { fontSize: 12, color: c.textSoft, fontFamily: FONT_BODY_MEDIUM, marginTop: 2 },
+  rankText: { fontSize: 14, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.textMuted },
+  nameBox: { flex: 1, paddingHorizontal: 12 },
+  name: { fontSize: 16, fontFamily: FONT_DISPLAY_BOLD, color: c.text },
+  record: { fontSize: 12, color: c.textSoft, fontFamily: FONT_BODY_MEDIUM, marginTop: 4 },
   pctBox: { alignItems: 'flex-end' },
-  pct: { fontSize: 20, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.accent },
+  pct: { fontSize: 18, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.accent },
   empty: { textAlign: 'center', color: c.text, fontFamily: FONT_BODY_REGULAR, marginTop: 50, opacity: 0.5 },
 });

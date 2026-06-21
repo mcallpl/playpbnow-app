@@ -274,7 +274,7 @@ const createStyles = (c: ThemeColors) =>
       backgroundColor: c.bg,
     },
     header: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 12,
       borderBottomWidth: 1,
@@ -428,13 +428,13 @@ const createStyles = (c: ThemeColors) =>
       borderRadius: 6,
     },
     topicHeader: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingVertical: 16,
       borderBottomWidth: 1,
       borderBottomColor: c.border,
     },
     topicDetailTitle: {
-      fontSize: 24,
+      fontSize: 20,
       fontFamily: FONT_DISPLAY_BOLD,
       color: c.text,
     },
@@ -446,12 +446,12 @@ const createStyles = (c: ThemeColors) =>
       fontFamily: FONT_BODY_REGULAR,
       color: c.text,
       lineHeight: 22,
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingTop: 16,
     },
     relatedSection: {
-      marginTop: 28,
-      paddingHorizontal: 20,
+      marginTop: 24,
+      paddingHorizontal: 16,
     },
     relatedTitle: {
       fontSize: 14,
