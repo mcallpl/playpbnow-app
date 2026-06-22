@@ -671,25 +671,22 @@ export default function PlayersScreen() {
             <PlayerInput onAddPlayer={handleAddPlayer} />
 
             {/* Player List */}
-            {playersLoading ? (
-                <ActivityIndicator size="large" color={colors.secondary} style={{ marginTop: 50 }} />
-            ) : (
-                <FlatList
-                    data={players}
-                    renderItem={renderPlayer}
-                    keyExtractor={(item) => item.id.toString()}
-                    alwaysBounceHorizontal={false}
-                    contentContainerStyle={[
-                        styles.listContent,
-                        selectionMode && selectedPlayerIds.length > 0 && styles.listContentWithSelector
-                    ]}
-                    ListEmptyComponent={
-                        <Text style={styles.emptyText}>
-                            No players yet. Add players when creating groups.
-                        </Text>
-                    }
-                />
-            )}
+            <FlatList
+                data={players}
+                renderItem={renderPlayer}
+                keyExtractor={(item) => item.id.toString()}
+                alwaysBounceHorizontal={false}
+                contentContainerStyle={[
+                    styles.listContent,
+                    selectionMode && selectedPlayerIds.length > 0 && styles.listContentWithSelector
+                ]}
+                refreshControl={<RefreshControl refreshing={playersLoading} onRefresh={loadPlayers} />}
+                ListEmptyComponent={
+                    <Text style={styles.emptyText}>
+                        No players yet. Add players when creating groups.
+                    </Text>
+                }
+            />
 
             {/* Group Selector - Shows when players are selected */}
             {selectionMode && (

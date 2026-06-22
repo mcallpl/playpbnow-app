@@ -13,6 +13,7 @@ import {
   Linking,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
 
@@ -598,6 +599,7 @@ export default function HomeScreen() {
         renderItem={renderGroupItem}
         alwaysBounceHorizontal={false}
         contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => loadGroups(userId)} />}
         ListEmptyComponent={!loading ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No groups yet</Text>

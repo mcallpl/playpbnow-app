@@ -628,7 +628,7 @@ export default function InvitesScreen() {
                 <Text style={styles.emptySubtext}>Create your first match invite and start inviting players!</Text>
               </View>
             }
-            refreshControl={<RefreshControl refreshing={false} onRefresh={loadInvites} />}
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={loadInvites} />}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.inviteCard}
