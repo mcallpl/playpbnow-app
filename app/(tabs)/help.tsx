@@ -6,12 +6,18 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Alert,
+    Modal,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_SEMIBOLD } from '../../constants/theme';
 import { BrandedIcon } from '../../components/BrandedIcon';
 import { HELP_TOPICS, HelpTopic } from '../../utils/helpContent';
+import { useAuth } from '../../hooks/useAuth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 
 // Component to render markdown **bold** text
 interface MarkdownTextProps {
@@ -67,10 +73,16 @@ const MarkdownText: React.FC<MarkdownTextProps> = ({ text, style, boldStyle, num
 export default function HelpScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { userId } = useAuth();
+  const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState<HelpTopic | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Match Management', 'Beacons']));
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   // Group topics by category
   const topicsByCategory = useMemo(() => {
@@ -116,6 +128,37 @@ export default function HelpScreen() {
       newExpanded.add(category);
     }
     setExpandedCategories(newExpanded);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      setDeleteError('Please enter your password');
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      const res = await fetch('/api/auth/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          password: deletePassword,
+        }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        await AsyncStorage.clear();
+        router.replace('/login');
+      } else {
+        setDeleteError(data.message || 'Failed to delete account');
+      }
+    } catch (error) {
+      setDeleteError('Network error. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // List View - Browse Topics
@@ -237,6 +280,31 @@ export default function HelpScreen() {
       >
         <MarkdownText text={selectedTopic.content} style={styles.topicDetailContent} boldStyle={{ fontFamily: FONT_BODY_SEMIBOLD }} />
 
+        {/* Delete Account Button - shown on Privacy Policy page */}
+        {selectedTopic.id === 'account-deletion' && (
+          <TouchableOpacity
+            style={{
+              marginVertical: 20,
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              backgroundColor: '#fee2e2',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: '#fecaca',
+            }}
+            onPress={() => setShowDeleteModal(true)}
+          >
+            <Text style={{
+              fontFamily: FONT_BODY_SEMIBOLD,
+              fontSize: 14,
+              color: '#dc2626',
+              textAlign: 'center',
+            }}>
+              Delete My Account
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Related Topics */}
         <View style={styles.relatedSection}>
           <Text style={styles.relatedTitle}>More in {selectedTopic.category}</Text>
@@ -263,6 +331,131 @@ export default function HelpScreen() {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* Delete Account Modal */}
+      <Modal visible={showDeleteModal} transparent animationType="fade">
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 24,
+        }}>
+          <View style={{
+            backgroundColor: colors.card,
+            borderRadius: 20,
+            padding: 24,
+            minWidth: 300,
+          }}>
+            <Text style={{
+              fontSize: 20,
+              fontFamily: FONT_DISPLAY_BOLD,
+              color: '#dc2626',
+              marginBottom: 12,
+            }}>
+              Delete Account?
+            </Text>
+            <Text style={{
+              fontSize: 14,
+              fontFamily: FONT_BODY_REGULAR,
+              color: colors.textMuted,
+              marginBottom: 20,
+              lineHeight: 20,
+            }}>
+              This action is permanent. All your data will be deleted. You cannot undo this.
+            </Text>
+
+            <Text style={{
+              fontSize: 12,
+              fontFamily: FONT_BODY_MEDIUM,
+              color: colors.text,
+              marginBottom: 8,
+            }}>
+              Enter your password to confirm:
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: colors.inputBg,
+                borderRadius: 12,
+                padding: 12,
+                fontSize: 16,
+                fontFamily: FONT_BODY_REGULAR,
+                color: colors.text,
+                marginBottom: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+              placeholder="Your password"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+            />
+
+            {deleteError !== '' && (
+              <Text style={{
+                color: '#dc2626',
+                fontSize: 13,
+                fontFamily: FONT_BODY_MEDIUM,
+                marginBottom: 12,
+              }}>
+                {deleteError}
+              </Text>
+            )}
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.surface,
+                  borderRadius: 12,
+                  padding: 12,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+                onPress={() => {
+                  setShowDeleteModal(false);
+                  setDeletePassword('');
+                  setDeleteError('');
+                }}
+              >
+                <Text style={{
+                  color: colors.text,
+                  fontSize: 14,
+                  fontFamily: FONT_BODY_BOLD,
+                }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: '#dc2626',
+                  borderRadius: 12,
+                  padding: 12,
+                  alignItems: 'center',
+                  opacity: deleting ? 0.5 : 1,
+                }}
+                onPress={handleDeleteAccount}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{
+                    color: '#fff',
+                    fontSize: 14,
+                    fontFamily: FONT_BODY_BOLD,
+                  }}>
+                    Permanently Delete
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
