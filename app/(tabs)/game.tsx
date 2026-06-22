@@ -277,6 +277,8 @@ export default function GameScreen() {
                       }, 300);
                   }
               }
+          }).catch(() => {
+              // Sync error handled gracefully
           });
 
           setActiveMatch({
@@ -388,7 +390,7 @@ export default function GameScreen() {
 
   const handleShuffle = () => {
     const doShuffle = () => {
-        performShuffle().then((s) => { if (s) clearScores(); });
+        performShuffle().then((s) => { if (s) clearScores(); }).catch(() => {});
     };
     if (Platform.OS === 'web') {
         if (typeof window !== 'undefined' && window.confirm("Shuffle Matchups?\n\nThis will generate completely NEW matchups. Current scores will be cleared.")) {
@@ -1249,14 +1251,14 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg },
   header: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: c.surface, borderBottomWidth: 1, borderColor: c.border },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  backButton: { padding: 8 },
+  backButton: { padding: 8, minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { color: c.text, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 18, textTransform: 'uppercase', flex: 1, textAlign: 'center' },
   controlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   wtsContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   wtsLabel: { color: c.accent, fontSize: 12, fontFamily: FONT_BODY_BOLD },
   wtsInput: { backgroundColor: c.inputBg, color: c.inputText, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, minWidth: 40, textAlign: 'center', borderWidth: 1, borderColor: c.inputBorder },
   headerRightControls: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  shuffleBtn: { padding: 8 },
+  shuffleBtn: { padding: 8, minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center' },
   connectedBadge: { backgroundColor: c.accent, borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: -8 },
   connectedText: { color: c.accentText, fontSize: 10, fontFamily: FONT_DISPLAY_EXTRABOLD },
   collabStatusBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderColor: c.border },

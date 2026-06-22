@@ -616,7 +616,8 @@ export default function PlayNowTab() {
             isCollaborator: lobby.host_user_id !== userId ? 'true' : 'false',
           },
         });
-      });
+      }).catch(() => {});
+
     }
   }, [lobby?.status]);
 
@@ -1143,7 +1144,7 @@ export default function PlayNowTab() {
                                   const name = `${playerInfo.first_name} ${playerInfo.last_name}`.trim();
                                   sendChatMessage(selectedBeacon.id, userId, name, "I'll join you!");
                                 }
-                              });
+                              }).catch(() => {});
                             }
                             haptic.tap();
                           }}
