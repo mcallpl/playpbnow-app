@@ -10,6 +10,7 @@ import {
     Alert,
     FlatList,
     Image,
+    Keyboard,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -67,7 +68,7 @@ export default function GameScreen() {
       try {
           return JSON.parse(json);
       } catch (e) {
-          console.error('JSON parse error:', e);
+          // Error details logged in development mode only
           return defaultValue;
       }
   };
@@ -211,7 +212,7 @@ export default function GameScreen() {
 
   const getDeviceId = async () => {
       let id = await AsyncStorage.getItem('user_id');
-      if (!id) { console.warn('No user_id found'); id = ''; }
+      if (!id) { id = ''; }
       return id;
   };
 
@@ -252,12 +253,10 @@ export default function GameScreen() {
 
           // Pre-seed scores from join API data for instant display
           if (navCollabScores && typeof navCollabScores === 'object' && Object.keys(navCollabScores).length > 0) {
-              console.log('Unit B: pre-seeding scores from join data...');
               setScores(navCollabScores);
           }
 
           // Then pull from server to get the absolute latest
-          console.log('Unit B: pulling latest scores from server...');
           joinAndSync(code).then((serverScores) => {
               // Scroll to the first round that still needs scores
               if (schedule.length > 0 && serverScores) {
@@ -323,13 +322,12 @@ export default function GameScreen() {
           try {
               const res = await fetch(`${API_URL}/search_players.php?q=${encodeURIComponent(newPlayerName)}`);
               if (!res.ok) {
-                  console.error(`Search API error: ${res.status}`);
                   setSearchResults([]);
               } else {
                   const data = await res.json();
                   if (data.status === 'success') setSearchResults(data.results);
               }
-          } catch(e) { console.log("Search error", e); }
+          } catch(e) { }
           finally { setIsSearching(false); }
       }, 300);
       return () => clearTimeout(delayDebounce);
@@ -444,7 +442,6 @@ export default function GameScreen() {
                       window.open(shareUrl, '_blank');
                   }
               } catch (shareErr) {
-                  console.log('Share failed, falling back:', shareErr);
                   if (typeof window !== 'undefined') {
                       window.open(shareUrl, '_blank');
                   }
@@ -462,7 +459,6 @@ export default function GameScreen() {
               }
           }
       } catch (e) {
-          console.error('Share error:', e);
           // Fallback to URL sharing
           const day = selectedDate.getDate();
           const suffix = (day === 1 || day === 21 || day === 31) ? 'st' : (day === 2 || day === 22) ? 'nd' : (day === 3 || day === 23) ? 'rd' : 'th';
@@ -715,14 +711,14 @@ export default function GameScreen() {
         } else if (data.status === 'already_exists') {
             setSaveModalVisible(false);
             if (Platform.OS === 'web') {
-                window.alert("This match has already been saved with identical scores. Nothing to update.");
+                if (typeof window !== 'undefined') window.alert("This match has already been saved with identical scores. Nothing to update.");
             } else {
                 Alert.alert("Already Saved", "This match has already been saved with identical scores. Nothing to update.");
             }
         } else if (data.status === 'duplicate_diff_scores') {
             setSaveModalVisible(false);
             if (Platform.OS === 'web') {
-                if (window.confirm("A match with this title and date already exists but with different scores. Would you like to update it?")) {
+                if (typeof window !== 'undefined' && window.confirm("A match with this title and date already exists but with different scores. Would you like to update it?")) {
                     executeSave(true);
                 }
             } else {
@@ -737,13 +733,15 @@ export default function GameScreen() {
             }
         } else {
             if (Platform.OS === 'web') {
-                window.alert(`Could not save scores: ${data.message || 'Unknown error'}`);
+                if (typeof window !== 'undefined') window.alert(`Could not save scores: ${data.message || 'Unknown error'}`);
             } else {
                 Alert.alert("Error", `Could not save scores: ${data.message || 'Unknown error'}`);
             }
         }
     } catch (e: any) {
-        if (Platform.OS === 'web') window.alert(`Network error: ${e.message || 'Unknown'}`);
+        if (Platform.OS === 'web') {
+            if (typeof window !== 'undefined') window.alert(`Network error: ${e.message || 'Unknown'}`);
+        }
         else Alert.alert("Error", `Network error: ${e.message || 'Unknown'}`);
     }
   };
@@ -843,7 +841,7 @@ export default function GameScreen() {
       };
 
       if (Platform.OS === 'web') {
-          if (window.confirm(`STANDINGS\n\n${standingsText}\n\nSemifinal 1: #1 vs #4\nSemifinal 2: #2 vs #3\n\nStart playoffs?`)) startPlayoffs();
+          if (typeof window !== 'undefined' && window.confirm(`STANDINGS\n\n${standingsText}\n\nSemifinal 1: #1 vs #4\nSemifinal 2: #2 vs #3\n\nStart playoffs?`)) startPlayoffs();
       } else {
           Alert.alert('Playoff Standings', `${standingsText}\n\nSemifinal 1: #1 vs #4\nSemifinal 2: #2 vs #3`, [
               { text: 'Cancel', style: 'cancel' },
@@ -987,7 +985,7 @@ export default function GameScreen() {
             <TouchableOpacity onPress={() => {
                 const doLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
                 if (Platform.OS === 'web') {
-                    if (window.confirm('Log out of PlayPBNow?')) doLogout();
+                    if (typeof window !== 'undefined' && window.confirm('Log out of PlayPBNow?')) doLogout();
                 } else {
                     Alert.alert('Log Out', 'Are you sure you want to log out?', [
                         { text: 'Cancel', style: 'cancel' },

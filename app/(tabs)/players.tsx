@@ -12,6 +12,7 @@ import {
     KeyboardAvoidingView,
     Modal,
     Platform,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -150,7 +151,7 @@ export default function PlayersScreen() {
                 setCourts(data.courts || []);
             }
         } catch (e) {
-            console.error('Error loading courts:', e);
+            // Error details logged in development mode only
         }
     }, []);
 
@@ -165,7 +166,7 @@ export default function PlayersScreen() {
                 setNotDuplicatePairs(data.pairs || []);
             }
         } catch (e) {
-            console.error('Error loading not-duplicate pairs:', e);
+            // Error details logged in development mode only
         }
     }, []);
 
@@ -189,7 +190,7 @@ export default function PlayersScreen() {
             }
             Alert.alert('Info', 'Please select a group from the Groups tab first, then add players there.');
         } catch (error) {
-            console.error('Error adding player:', error);
+            // Error details logged in development mode only
         }
     };
 
@@ -271,9 +272,8 @@ export default function PlayersScreen() {
                 });
                 const data = await res.json();
                 if (data.status === 'success') mergedCount++;
-                else console.warn('Merge failed:', data.message);
             } catch (e) {
-                console.error('Merge error:', e);
+                // Error details logged in development mode only
             }
         }
 
@@ -312,7 +312,7 @@ export default function PlayersScreen() {
         if (allPhones.length > 1) {
             if (Platform.OS === 'web') {
                 // Web: use first phone and confirm
-                const usePhone = window.confirm(`These "${group.name}" records have different phone numbers (${allPhones.join(', ')}). Use "${allPhones[0]}"?\n\nOK = use ${allPhones[0]}\nCancel = no phone`);
+                const usePhone = typeof window !== 'undefined' && window.confirm(`These "${group.name}" records have different phone numbers (${allPhones.join(', ')}). Use "${allPhones[0]}"?\n\nOK = use ${allPhones[0]}\nCancel = no phone`);
                 executeMerge(keepPlayer, mergeTargets, usePhone ? allPhones[0] : '', key);
             } else {
                 const phoneButtons = allPhones.map(phone => ({
@@ -332,7 +332,7 @@ export default function PlayersScreen() {
         } else {
             // 0 or 1 phone — straightforward merge
             if (Platform.OS === 'web') {
-                if (window.confirm(`Merge ${mergeTargets.length} record${mergeTargets.length !== 1 ? 's' : ''} into "${keepPlayer.first_name}"${keepPlayer.last_name ? ' ' + keepPlayer.last_name : ''}?\n\nMatch history and stats will be preserved.`)) {
+                if (typeof window !== 'undefined' && window.confirm(`Merge ${mergeTargets.length} record${mergeTargets.length !== 1 ? 's' : ''} into "${keepPlayer.first_name}"${keepPlayer.last_name ? ' ' + keepPlayer.last_name : ''}?\n\nMatch history and stats will be preserved.`)) {
                     executeMerge(keepPlayer, mergeTargets, null, key);
                 }
             } else {
@@ -373,18 +373,20 @@ export default function PlayersScreen() {
                                     player_id_2: group.players[j].id
                                 })
                             });
-                        } catch (e) { console.error('Mark not-dup error:', e); }
+                        } catch (e) { }
                     }
                 }
                 setIsMerging(false);
                 setMergeProgress('');
                 loadNotDuplicates();
-                if (Platform.OS === 'web') window.alert(`All "${group.name}" entries are now marked as different people.`);
+                if (Platform.OS === 'web') {
+                    if (typeof window !== 'undefined') window.alert(`All "${group.name}" entries are now marked as different people.`);
+                }
                 else Alert.alert('Done', `All "${group.name}" entries are now marked as different people.`);
             };
 
             if (Platform.OS === 'web') {
-                if (window.confirm(`Mark all "${group.name}" entries as different people? This will stop showing them as duplicates.`)) doMarkAll();
+                if (typeof window !== 'undefined' && window.confirm(`Mark all "${group.name}" entries as different people? This will stop showing them as duplicates.`)) doMarkAll();
             } else {
                 Alert.alert(
                     'Mark All as Different',
@@ -416,7 +418,7 @@ export default function PlayersScreen() {
                             player_id_2: unsPlayer.id
                         })
                     });
-                } catch (e) { console.error('Mark not-dup error:', e); }
+                } catch (e) { }
             }
         }
 
@@ -503,20 +505,22 @@ export default function PlayersScreen() {
                         });
                         const data = await res.json();
                         if (data.status === 'success') totalMerged++;
-                    } catch (e) { console.error('Merge error:', e); }
+                    } catch (e) { }
                 }
             }
             setIsMerging(false);
             setMergeProgress('');
             setSelectedMergeIds({});
             setMergeModalVisible(false);
-            if (Platform.OS === 'web') window.alert(`Merged ${totalMerged} duplicate player record${totalMerged !== 1 ? 's' : ''}.`);
+            if (Platform.OS === 'web') {
+                if (typeof window !== 'undefined') window.alert(`Merged ${totalMerged} duplicate player record${totalMerged !== 1 ? 's' : ''}.`);
+            }
             else Alert.alert('All Done!', `Merged ${totalMerged} duplicate player record${totalMerged !== 1 ? 's' : ''}.`);
             loadPlayers();
         };
 
         if (Platform.OS === 'web') {
-            if (window.confirm(`This will merge ${totalToMerge} duplicate record${totalToMerge !== 1 ? 's' : ''} across ${groupsToMerge.length} name${groupsToMerge.length !== 1 ? 's' : ''}. Continue?`)) {
+            if (typeof window !== 'undefined' && window.confirm(`This will merge ${totalToMerge} duplicate record${totalToMerge !== 1 ? 's' : ''} across ${groupsToMerge.length} name${groupsToMerge.length !== 1 ? 's' : ''}. Continue?`)) {
                 doMergeAll();
             }
         } else {

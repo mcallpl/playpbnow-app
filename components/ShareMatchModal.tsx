@@ -29,9 +29,9 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
     const handleShare = async () => {
         const message = `Join my pickleball match "${matchTitle}"!\n\nEnter code: ${shareCode}\n\nDownload Play PB Now to join and see live scores!`;
         try {
-            if (Platform.OS === 'web' && navigator.share) {
+            if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share) {
                 await navigator.share({ title: 'Join My Match', text: message });
-            } else if (Platform.OS === 'web') {
+            } else if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
                 await navigator.clipboard.writeText(message);
                 Alert.alert('Copied!', 'Share message copied to clipboard.');
             } else {
@@ -45,7 +45,7 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
     const copyToClipboard = async () => {
         const text = shareCode;
         try {
-            if (Platform.OS === 'web') {
+            if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
                 await navigator.clipboard.writeText(text);
                 Alert.alert('Copied!', `Code "${shareCode}" copied to clipboard.`);
             } else {

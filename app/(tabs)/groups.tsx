@@ -8,6 +8,8 @@ import {
   Alert,
   FlatList,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -178,6 +180,7 @@ export default function HomeScreen() {
   const saveGroup = async () => {
     if (!newGroupName.trim()) { Alert.alert('Error', 'Please enter a group name.'); return; }
 
+    Keyboard.dismiss();
     setLoading(true);
     try {
       if (editingGroup) {
@@ -215,6 +218,7 @@ export default function HomeScreen() {
     if (!newCourtName.trim()) { Alert.alert('Error', 'Court name is required.'); return; }
     if (!newCourtCity.trim()) { Alert.alert('Error', 'City is required.'); return; }
 
+    Keyboard.dismiss();
     setSavingCourt(true);
     try {
       const res = await fetch(`${API_URL}/add_court.php`, {
@@ -301,6 +305,8 @@ export default function HomeScreen() {
       Alert.alert('Error', 'New passwords do not match');
       return;
     }
+
+    Keyboard.dismiss();
     setPasswordLoading(true);
     try {
       const res = await fetch(`${API_URL}/change_password.php`, {
@@ -364,7 +370,7 @@ export default function HomeScreen() {
         setDeleteAccountVisible(false);
         await AsyncStorage.clear();
         if (Platform.OS === 'web') {
-          window.alert('Your account has been permanently deleted.');
+          if (typeof window !== 'undefined') window.alert('Your account has been permanently deleted.');
         } else {
           Alert.alert('Account Deleted', 'Your account has been permanently deleted.');
         }
@@ -610,9 +616,11 @@ export default function HomeScreen() {
       {/* GROUP MODAL */}
       <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={closeModal} hardwareAccelerated>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {renderModalContent()}
-          </View>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <View style={styles.modalContent}>
+              {renderModalContent()}
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 

@@ -5,6 +5,7 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    Keyboard,
     KeyboardAvoidingView,
     Linking,
     Modal,
@@ -76,6 +77,7 @@ export default function LoginScreen() {
             }
         }
 
+        Keyboard.dismiss();
         setLoading(true);
         try {
             const body: any = {
@@ -145,7 +147,7 @@ export default function LoginScreen() {
 
     const openLegalUrl = (url: string) => {
         if (Platform.OS === 'web') {
-            window.open(url, '_blank');
+            if (typeof window !== 'undefined') window.open(url, '_blank');
         } else {
             Linking.openURL(url);
         }

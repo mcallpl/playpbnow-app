@@ -121,7 +121,7 @@ export default function LandingScreen() {
       router.replace('/login');
     };
     if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to log out?')) doLogout();
+      if (typeof window !== 'undefined' && window.confirm('Are you sure you want to log out?')) doLogout();
     } else {
       Alert.alert('Log Out', 'Are you sure you want to log out?', [
         { text: 'Cancel', style: 'cancel' },
@@ -175,7 +175,7 @@ export default function LandingScreen() {
         setDeleteModalVisible(false);
         await AsyncStorage.clear();
         if (Platform.OS === 'web') {
-          window.alert('Your account has been permanently deleted.');
+          if (typeof window !== 'undefined') window.alert('Your account has been permanently deleted.');
         } else {
           Alert.alert('Account Deleted', 'Your account has been permanently deleted.');
         }
