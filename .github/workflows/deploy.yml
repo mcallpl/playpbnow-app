@@ -192,15 +192,12 @@ jobs:
         continue-on-error: true
 
 
-  # STAGE 4: DEPLOY TO PRODUCTION (manual approval)
+  # STAGE 4: DEPLOY TO PRODUCTION (automatic on main push)
   deploy-production:
     name: Deploy to Production
     needs: [build, deploy-staging]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://peoplestar.com/PlayPBNow
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -284,23 +281,19 @@ jobs:
           echo "✅ Monitoring period complete, no errors detected"
         continue-on-error: true
 
-      - name: Notify Slack - Production Deployment Success
+      - name: Log deployment status
         if: success()
-        uses: slackapi/slack-notify@v1
-        with:
-          status: success
-          text: "✅ PlayPBNow Production Deployment Successful - Commit: ${{ github.sha }}"
-          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-        continue-on-error: true
+        run: |
+          echo "✅ PlayPBNow Production Deployment Successful"
+          echo "Commit: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
 
-      - name: Notify Slack - Production Deployment Failure
+      - name: Log deployment failure
         if: failure()
-        uses: slackapi/slack-notify@v1
-        with:
-          status: failure
-          text: "❌ PlayPBNow Production Deployment Failed - Commit: ${{ github.sha }}"
-          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-        continue-on-error: true
+        run: |
+          echo "❌ PlayPBNow Production Deployment Failed"
+          echo "Commit: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
 
   # STAGE 5: ROLLBACK (on failure)
   rollback:
@@ -342,10 +335,9 @@ jobs:
         run: |
           ./.github/scripts/smoke-tests.sh production
 
-      - name: Notify Slack - Rollback Alert
-        uses: slackapi/slack-notify@v1
-        with:
-          status: failure
-          text: "🔴 ROLLBACK TRIGGERED - Production has been rolled back to last known good state. Commit: ${{ github.sha }}, Author: ${{ github.actor }}"
-          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-        continue-on-error: true
+      - name: Log rollback alert
+        run: |
+          echo "🔴 ROLLBACK TRIGGERED"
+          echo "Production has been rolled back to last known good state"
+          echo "Commit: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
