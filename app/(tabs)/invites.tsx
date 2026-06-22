@@ -17,7 +17,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, useNavigation } from 'expo-router';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -103,6 +103,7 @@ export default function InvitesScreen() {
   const { isPro, isAdmin, showPaywall } = useSubscription();
   const { userId } = useAuth();
   const router = useRouter();
+  const navigation = useNavigation();
 
   const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
 
@@ -163,6 +164,24 @@ export default function InvitesScreen() {
   const { messages: chatMessages, isLoading: chatLoading, sendMessage: sendChatMessage, startPolling: startChatPolling, stopPolling: stopChatPolling } = useInviteChat();
 
   const [error, setError] = useState('');
+
+  // Calculate unresponded invites count for badge
+  const unrespondedCount = useMemo(() => {
+    return invites.reduce((sum, inv) => sum + (inv.pending || 0), 0);
+  }, [invites]);
+
+  // Update tab badge when unresponded count changes
+  useEffect(() => {
+    if (unrespondedCount > 0) {
+      navigation.setOptions({
+        tabBarBadge: unrespondedCount,
+      });
+    } else {
+      navigation.setOptions({
+        tabBarBadge: undefined,
+      });
+    }
+  }, [unrespondedCount, navigation]);
 
   // Load data on focus
   useFocusEffect(
