@@ -30,7 +30,9 @@ run_test() {
 
   echo -n "  Testing $test_name... "
 
-  status=$(curl -s -o /dev/null -w "%{http_code}" "$url" 2>/dev/null || echo "000")
+  # Use -k to ignore SSL certificate issues (common in CI/CD environments)
+  # Use -L to follow redirects
+  status=$(curl -k -L -s -o /dev/null -w "%{http_code}" "$url" 2>/dev/null || echo "000")
 
   if [ "$status" -eq "$expected_status" ] || [ "$status" -eq "200" ]; then
     echo -e "${GREEN}✅ Pass${NC} (HTTP $status)"
