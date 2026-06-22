@@ -1,0 +1,85 @@
+VERSION 1.4.3 RELEASE NOTES
+PlayPBNow - Score Pickleball Matches Instantly
+
+================================================================================
+WHAT'S NEW IN VERSION 1.4.3
+================================================================================
+
+NEW FEATURES:
+-----------
+• Web App Launch
+  Play PlayPBNow online at https://peoplestar.com/PlayPBNow - same features,
+  same data, no download needed. Perfect for desktop or tablet use.
+
+• Enhanced Match Scoring
+  Real-time score updates with improved accuracy and performance. Match data
+  syncs instantly across devices.
+
+• Improved Leaderboard Filtering
+  Filter leaderboards by time period, win percentage, or specific match types.
+  Find the stats that matter to you.
+
+• Better Player Search
+  Faster, more accurate search when browsing the player pool and inviting
+  opponents. Find the right player quickly.
+
+IMPROVEMENTS:
+-----------
+• iOS Stability Enhancements
+  Fixed critical stability issues on various iOS versions. App now runs
+  smoothly on iOS 14+
+
+• Better Keyboard Handling
+  Improved keyboard behavior across all text input fields. Better experience
+  on different screen sizes.
+
+• Enhanced Error Messages
+  Clearer, more helpful error messages when something goes wrong. Easy to
+  understand what to do next.
+
+• Privacy & Security
+  Enhanced privacy controls. Better protection for your personal data.
+
+• UI Responsiveness
+  Improved performance and responsiveness across all screens. Faster navigation
+  and instant feedback.
+
+BUG FIXES:
+---------
+• Fixed memory leaks in navigation
+  Resolved memory issues that caused slowdowns during extended play sessions.
+
+• Fixed layout issues on different screen sizes
+  Corrected display problems on iPad and various iPhone sizes.
+
+• Fixed null-safety issues
+  Resolved crashes caused by edge case data handling.
+
+• Improved error boundary handling
+  Better error recovery with informative user feedback.
+
+• Fixed keyboard-related crashes
+  Resolved issues with text input causing unexpected crashes.
+
+================================================================================
+TECHNICAL NOTES
+================================================================================
+
+iOS Minimum Version: 14.0
+Build: 43
+Version: 1.4.3
+
+This release includes backend improvements to leaderboard calculation
+algorithms for better accuracy. All data is automatically migrated.
+
+================================================================================
+THANK YOU
+================================================================================
+
+Thank you for using PlayPBNow! We're committed to making pickleball scoring
+easy, fun, and reliable. Your feedback helps us improve the app every day.
+
+If you encounter any issues, please visit our help page at:
+https://peoplestar.com/PlayPBNow/help
+
+================================================================================
