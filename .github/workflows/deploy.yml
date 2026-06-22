@@ -162,7 +162,7 @@ jobs:
       - name: Deploy web files to staging
         run: |
           echo "📦 Deploying web files to staging..."
-          rsync -avz --delete \
+          rsync -avz --delete --include=".htaccess" \
             -e "ssh -i ~/.ssh/deploy_key" \
             dist/ \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow-staging/
@@ -241,7 +241,7 @@ jobs:
       - name: Deploy web files to production
         run: |
           echo "📦 Deploying web files to production..."
-          rsync -avz --delete \
+          rsync -avz --delete --include=".htaccess" \
             -e "ssh -i ~/.ssh/deploy_key" \
             dist/ \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/
