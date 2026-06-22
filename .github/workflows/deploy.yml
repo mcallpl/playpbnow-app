@@ -79,26 +79,24 @@ jobs:
         env:
           CI: true
 
-      - name: Fix Expo paths for subdirectory deployment
+      - name: Prepare SPA structure
         run: |
-          echo "Fixing Expo paths..."
+          set -e
+          echo "🔧 Preparing SPA structure..."
+
+          # Copy index.html to app.html for SPA
+          cp dist/index.html dist/app.html
+          echo "✅ Created dist/app.html"
+
+          # Fix Expo paths in both files
           node fix-expo-paths.js
-          if [ $? -ne 0 ]; then
-            echo "❌ Failed to fix Expo paths"
-            exit 1
-          fi
+          echo "✅ Fixed Expo paths"
 
-      - name: Add base tag for subdirectory routing
-        run: |
-          echo "Adding base tag..."
+          # Add base tag to app.html for subdirectory routing
           node add-base-tag.js
-          if [ $? -ne 0 ]; then
-            echo "❌ Failed to add base tag"
-            exit 1
-          fi
+          echo "✅ Added base tag"
 
-      - name: Create .htaccess for SPA fallback routing
-        run: |
+          # Create .htaccess for SPA fallback routing
           cat > dist/.htaccess << 'EOF'
           <IfModule mod_rewrite.c>
             RewriteEngine On
@@ -114,7 +112,7 @@ jobs:
             Header set Cache-Control "public, max-age=0" "index.html"
           </IfModule>
           EOF
-          echo "✅ .htaccess created"
+          echo "✅ Created .htaccess"
 
       - name: Verify build output
         run: |
