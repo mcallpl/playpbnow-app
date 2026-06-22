@@ -68,48 +68,53 @@ jobs:
         run: npm ci
 
       - name: Build web export
-        run: npx expo export --platform web
+        run: |
+          echo "Building Expo web app..."
+          npx expo export --platform web
+          if [ ! -d "dist" ]; then
+            echo "❌ Error: dist directory not created"
+            exit 1
+          fi
+          echo "✅ Web build successful"
         env:
           CI: true
 
-      - name: Prepare SPA routing
+      - name: Fix Expo paths for subdirectory deployment
         run: |
-          set -e
-          echo "🔧 Preparing SPA routing..."
+          echo "Fixing Expo paths..."
+          node fix-expo-paths.js
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to fix Expo paths"
+            exit 1
+          fi
 
-          # Move index.html to app.html for SPA
-          mv dist/index.html dist/app.html
+      - name: Add base tag for subdirectory routing
+        run: |
+          echo "Adding base tag..."
+          node add-base-tag.js
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to add base tag"
+            exit 1
+          fi
 
-          # Copy landing page as homepage
-          cp public/landing.html dist/index.html
-
-          # Create .htaccess for SPA fallback
+      - name: Create .htaccess for SPA fallback routing
+        run: |
           cat > dist/.htaccess << 'EOF'
           <IfModule mod_rewrite.c>
             RewriteEngine On
             RewriteBase /PlayPBNow/
-
-            # Don't rewrite if the request is for a real file or directory
             RewriteCond %{REQUEST_FILENAME} !-f
             RewriteCond %{REQUEST_FILENAME} !-d
-
-            # Rewrite all other requests to app.html for SPA routing
-            RewriteRule ^app(.*)$ app.html [L]
-
-            # For root requests, serve index.html
-            RewriteCond %{REQUEST_FILENAME} !-f
-            RewriteCond %{REQUEST_FILENAME} !-d
-            RewriteCond %{REQUEST_URI} ^/PlayPBNow/$
+            RewriteCond %{REQUEST_URI} !index.html
             RewriteRule ^(.*)$ index.html [L]
           </IfModule>
 
           <IfModule mod_headers.c>
             Header set Cache-Control "public, max-age=3600" ".js" ".css" ".png" ".jpg" ".gif" ".svg" ".woff" ".woff2"
-            Header set Cache-Control "public, max-age=0" "index.html" "app.html"
+            Header set Cache-Control "public, max-age=0" "index.html"
           </IfModule>
           EOF
-
-          echo "✅ SPA routing configured"
+          echo "✅ .htaccess created"
 
       - name: Verify build output
         run: |
