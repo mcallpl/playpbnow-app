@@ -42,10 +42,10 @@ export default function LiveMatchScreen() {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
-    const sessionId = params.sessionId as string;
-    const shareCode = params.shareCode as string;
-    const groupName = params.groupName as string;
-    const matchTitle = params.matchTitle as string;
+    const sessionId = (params.sessionId as string) || '';
+    const shareCode = (params.shareCode as string) || '';
+    const groupName = (params.groupName as string) || '';
+    const matchTitle = (params.matchTitle as string) || '';
     const isOwner = params.isOwner === 'true';
 
     const [matches, setMatches] = useState<Match[]>([]);
@@ -57,6 +57,17 @@ export default function LiveMatchScreen() {
     const [toastMessage, setToastMessage] = useState('');
     const [recentlyChangedIds, setRecentlyChangedIds] = useState<number[]>([]);
     const previousMatchesRef = useRef<Match[]>([]);
+
+    // Guard against missing parameters
+    if (!shareCode || !sessionId) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.center}>
+                    <Text style={styles.title}>Match not found</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     const fetchMatchData = async () => {
         try {
