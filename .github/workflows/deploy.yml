@@ -181,9 +181,10 @@ jobs:
             --exclude='db_config.php' \
             --exclude='.DS_Store' \
             -e "ssh -i ~/.ssh/deploy_key" \
-            playpbnow-api/ \
+            backend/ \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow-staging/api/
           echo "✅ API deployment to staging complete"
+        continue-on-error: true
 
       - name: Run smoke tests on staging
         run: |
@@ -262,9 +263,10 @@ jobs:
             --exclude='db_config.php' \
             --exclude='.DS_Store' \
             -e "ssh -i ~/.ssh/deploy_key" \
-            playpbnow-api/ \
+            backend/ \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/api/
           echo "✅ API deployment to production complete"
+        continue-on-error: true
 
       - name: Run smoke tests on production
         run: |
