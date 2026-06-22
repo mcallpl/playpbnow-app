@@ -621,7 +621,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   sortBtnTextActive: { color: isDark ? c.surface : c.text },
   dateBar: { backgroundColor: c.surface, padding: 12, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: c.border },
   dateBarText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 12 },
-  backBtn: { padding: 8 },
+  backBtn: { padding: 8, minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center" },
   pedestalContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', height: 250, marginBottom: 24, marginTop: 24 },
   podiumCol: { alignItems: 'center', width: SCREEN_WIDTH * 0.28 },
   podiumBar: { width: '100%', borderTopLeftRadius: 8, borderTopRightRadius: 8, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 12 },

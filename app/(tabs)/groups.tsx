@@ -1001,7 +1001,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   },
 
   modalButtons: { flexDirection: 'row', gap: 16, marginTop: 16 },
-  modalBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
+  modalBtn: { flex: 1, padding: 12, minHeight: 44, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   cancelBtn: { backgroundColor: c.surfaceLight },
   cancelBtnText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.textSoft },
   saveBtn: { backgroundColor: c.accent },
@@ -1044,7 +1044,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   },
   saveCourtBtnText: { color: c.bg, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14 },
 
-  closeBtn: { marginTop: 16, alignItems: 'center', padding: 8 },
+  closeBtn: { marginTop: 16, alignItems: "center", padding: 8, minHeight: 44, minWidth: 44, justifyContent: "center" },
   closeBtnText: { color: c.textMuted, fontFamily: FONT_BODY_BOLD },
 
   // Settings
