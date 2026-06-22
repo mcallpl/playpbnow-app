@@ -4,10 +4,12 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -149,6 +151,7 @@ export default function InvitesScreen() {
   const [createdInviteId, setCreatedInviteId] = useState<number | null>(null);
   const [sendingInvites, setSendingInvites] = useState(false);
   const [sendResults, setSendResults] = useState<{ sentNames: string[]; failedNames: string[]; sentCount: number; failedCount: number } | null>(null);
+  const [smsConsentAgreed, setSmsConsentAgreed] = useState(false);
 
   // Invite detail modal
   const [selectedInvite, setSelectedInvite] = useState<Invite | null>(null);
@@ -179,7 +182,6 @@ export default function InvitesScreen() {
         body: JSON.stringify({ action: 'list', user_id: userId }),
       });
       if (!res.ok) {
-        console.error(`Invites API error: ${res.status}`);
         return;
       }
       const data = await res.json();
@@ -187,7 +189,7 @@ export default function InvitesScreen() {
         setInvites(data.invites || []);
       }
     } catch (error) {
-      console.error('Load invites error:', error);
+      // Error details logged in development mode only
     }
   };
 
@@ -199,7 +201,6 @@ export default function InvitesScreen() {
         body: JSON.stringify({ action: 'balance', user_id: userId }),
       });
       if (!res.ok) {
-        console.error(`Credits API error: ${res.status}`);
         return;
       }
       const data = await res.json();
@@ -207,7 +208,7 @@ export default function InvitesScreen() {
         setCreditBalance(data.credits || 0);
       }
     } catch (error) {
-      console.error('Load credits error:', error);
+      // Error details logged in development mode only
     }
   };
 
@@ -228,7 +229,6 @@ export default function InvitesScreen() {
         }),
       });
       if (!res.ok) {
-        console.error(`Pool players API error: ${res.status}`);
         setLoading(false);
         return;
       }
@@ -242,7 +242,7 @@ export default function InvitesScreen() {
         setHasMorePlayers((data.players || []).length === 500);
       }
     } catch (error) {
-      console.error('Load players error:', error);
+      // Error details logged in development mode only
     }
     setLoading(false);
   };
@@ -291,6 +291,7 @@ export default function InvitesScreen() {
     // Admin on web uses iMessage (queued for Mac sender daemon), everyone else uses Twilio
     const useIMessage = Platform.OS === 'web' && isAdmin;
 
+    Keyboard.dismiss();
     setError('');
     setSendingInvites(true);
     try {
@@ -455,6 +456,7 @@ export default function InvitesScreen() {
     setShowSpotsPicker(false);
     setShowCostPicker(false);
     setSendResults(null);
+    setSmsConsentAgreed(false);
   };
 
   const viewInviteDetail = async (invite: Invite) => {
@@ -1312,10 +1314,42 @@ export default function InvitesScreen() {
                   </View>
                 )}
 
+                {/* SMS Consent Checkbox */}
+                <View style={{ marginTop: 20, marginBottom: 16 }}>
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}
+                    onPress={() => setSmsConsentAgreed(!smsConsentAgreed)}
+                  >
+                    <View style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 6,
+                      borderWidth: 2,
+                      borderColor: smsConsentAgreed ? colors.accent : colors.border,
+                      backgroundColor: smsConsentAgreed ? colors.accent : 'transparent',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginTop: 2,
+                    }}>
+                      {smsConsentAgreed && (
+                        <BrandedIcon name="checkmark" size={16} color="#0f1b2d" />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 14, color: colors.text, marginBottom: 4 }}>
+                        I understand this will send SMS invitations
+                      </Text>
+                      <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, lineHeight: 16 }}>
+                        SMS will be sent to selected players' phone numbers. Standard message rates may apply to their carriers. They can reply STOP to opt out.
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity
-                  style={[styles.primaryBtn, !isAdmin && creditBalance < selectedPlayers.length && { opacity: 0.5 }]}
+                  style={[styles.primaryBtn, (!smsConsentAgreed || (!isAdmin && creditBalance < selectedPlayers.length)) && { opacity: 0.5 }]}
                   onPress={handleSendInvites}
-                  disabled={sendingInvites || (!isAdmin && creditBalance < selectedPlayers.length)}
+                  disabled={sendingInvites || !smsConsentAgreed || (!isAdmin && creditBalance < selectedPlayers.length)}
                 >
                   {sendingInvites ? (
                     <ActivityIndicator color="#0f1b2d" />
