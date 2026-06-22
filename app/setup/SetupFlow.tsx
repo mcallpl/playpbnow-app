@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { BrandedIcon } from '../components/BrandedIcon';
-import { useTheme } from '../context/ThemeContext';
-import { FONT_BODY_BOLD, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD } from '../constants/theme';
+import { BrandedIcon } from '@/components/BrandedIcon';
+import { useTheme } from '@/context/ThemeContext';
+import { FONT_BODY_BOLD, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD } from '@/constants/theme';
 import { useSetupState } from './hooks/useSetupState';
 import { Player, Court } from './types/setupTypes';
 import { createSetupStyles } from './styles/setupStyles';
@@ -78,7 +78,7 @@ export default function SetupFlow() {
 
         // Load preselected players from navData (AsyncStorage) or legacy URL params
         if (params.navId) {
-          const { getNavData } = require('../utils/navData');
+          const { getNavData } = await import('@/utils/navData');
           const navData = await getNavData(params.navId as string);
           if (navData?.preselectedPlayers) {
             dispatch({ type: 'SET_PLAYERS', payload: navData.preselectedPlayers });

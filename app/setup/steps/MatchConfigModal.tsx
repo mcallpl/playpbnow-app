@@ -8,12 +8,12 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTheme } from '../../context/ThemeContext';
-import { FONT_BODY_SEMIBOLD, FONT_BODY_REGULAR } from '../../constants/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { FONT_BODY_SEMIBOLD, FONT_BODY_REGULAR } from '@/constants/theme';
 import { SetupState, SetupAction } from '../types/setupTypes';
 import { createSetupStyles } from '../styles/setupStyles';
-import { BrandedIcon } from '../../components/BrandedIcon';
-import { storeNavData } from '../../utils/navData';
+import { BrandedIcon } from '@/components/BrandedIcon';
+import { storeNavData } from '@/utils/navData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = '/api';

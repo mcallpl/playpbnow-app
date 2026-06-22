@@ -7,8 +7,8 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { BrandedIcon } from '../../components/BrandedIcon';
-import { useTheme } from '../../context/ThemeContext';
+import { BrandedIcon } from '@/components/BrandedIcon';
+import { useTheme } from '@/context/ThemeContext';
 import { SetupState, SetupAction, SearchResult } from '../types/setupTypes';
 import { createSetupStyles } from '../styles/setupStyles';
 

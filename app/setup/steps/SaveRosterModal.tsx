@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { Modal, View, TextInput, TouchableOpacity, Text, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '@/context/ThemeContext';
 import { SetupState, SetupAction } from '../types/setupTypes';
 import { createSetupStyles } from '../styles/setupStyles';
-import { BrandedIcon } from '../../components/BrandedIcon';
+import { BrandedIcon } from '@/components/BrandedIcon';
 
 const API_URL = '/api';
 

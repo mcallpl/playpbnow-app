@@ -7,7 +7,7 @@ import {
   FONT_BODY_MEDIUM,
   FONT_BODY_BOLD,
   FONT_BODY_SEMIBOLD,
-} from '../../constants/theme';
+} from '@/constants/theme';
 
 export const createSetupStyles = (c: ThemeColors, isDark: boolean) =>
   StyleSheet.create({

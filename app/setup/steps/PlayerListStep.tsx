@@ -9,9 +9,9 @@ import {
   StyleSheet,
 } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
-import { BrandedIcon } from '../../components/BrandedIcon';
-import { useTheme } from '../../context/ThemeContext';
-import { FONT_BODY_BOLD, FONT_BODY_REGULAR, FONT_BODY_SEMIBOLD, FONT_DISPLAY_BOLD } from '../../constants/theme';
+import { BrandedIcon } from '@/components/BrandedIcon';
+import { useTheme } from '@/context/ThemeContext';
+import { FONT_BODY_BOLD, FONT_BODY_REGULAR, FONT_BODY_SEMIBOLD, FONT_DISPLAY_BOLD } from '@/constants/theme';
 import { Player, SetupState, SetupAction } from '../types/setupTypes';
 import { createSetupStyles } from '../styles/setupStyles';
 

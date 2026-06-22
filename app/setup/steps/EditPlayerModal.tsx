@@ -9,11 +9,11 @@ import {
   Pressable,
   Alert,
 } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
-import { FONT_BODY_SEMIBOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM } from '../../constants/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { FONT_BODY_SEMIBOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM } from '@/constants/theme';
 import { SetupState, SetupAction } from '../types/setupTypes';
 import { createSetupStyles } from '../styles/setupStyles';
-import { BrandedIcon } from '../../components/BrandedIcon';
+import { BrandedIcon } from '@/components/BrandedIcon';
 
 const API_URL = '/api';
 
