@@ -36,10 +36,10 @@ run_test() {
 
   if [ "$status" -eq "$expected_status" ] || [ "$status" -eq "200" ]; then
     echo -e "${GREEN}✅ Pass${NC} (HTTP $status)"
-    ((PASSED++))
+    PASSED=$((PASSED + 1))
   else
     echo -e "${RED}❌ Fail${NC} (HTTP $status, expected $expected_status)"
-    ((FAILED++))
+    FAILED=$((FAILED + 1))
   fi
 }
 
