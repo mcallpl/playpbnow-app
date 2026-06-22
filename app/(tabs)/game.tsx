@@ -393,7 +393,7 @@ export default function GameScreen() {
         performShuffle().then((s) => { if (s) clearScores(); });
     };
     if (Platform.OS === 'web') {
-        if (window.confirm("Shuffle Matchups?\n\nThis will generate completely NEW matchups. Current scores will be cleared.")) {
+        if (typeof window !== 'undefined' && window.confirm("Shuffle Matchups?\n\nThis will generate completely NEW matchups. Current scores will be cleared.")) {
             doShuffle();
         }
     } else {
@@ -438,14 +438,16 @@ export default function GameScreen() {
           if (Platform.OS === 'web') {
               // Web: Share URL + message (image file sharing drops the message text)
               try {
-                  if (navigator.share) {
+                  if (typeof navigator !== 'undefined' && navigator.share) {
                       await navigator.share({ title: `Match Schedule - ${reportTitle}`, text: shareMessage });
-                  } else {
+                  } else if (typeof window !== 'undefined') {
                       window.open(shareUrl, '_blank');
                   }
               } catch (shareErr) {
                   console.log('Share failed, falling back:', shareErr);
-                  window.open(shareUrl, '_blank');
+                  if (typeof window !== 'undefined') {
+                      window.open(shareUrl, '_blank');
+                  }
               }
           } else {
               // Native: Share the URL directly so message text is included
@@ -468,7 +470,9 @@ export default function GameScreen() {
           const timeLabel = selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
           const courtFallback = courtName ? ` at ${courtName}` : '';
           if (Platform.OS === 'web') {
-              window.open(shareUrl, '_blank');
+              if (typeof window !== 'undefined') {
+                  window.open(shareUrl, '_blank');
+              }
           } else {
               await Share.share({ message: `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtFallback}\n${shareUrl}`, url: shareUrl });
           }
@@ -508,7 +512,7 @@ export default function GameScreen() {
           const displayDate = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + suffix;
           const displayTime = selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
           if (Platform.OS === 'web') {
-              if (window.confirm(`Just confirming — this report will tell players to show up on ${displayDate} at ${displayTime}.\n\nIs that the correct date and time?`)) {
+              if (typeof window !== 'undefined' && window.confirm(`Just confirming — this report will tell players to show up on ${displayDate} at ${displayTime}.\n\nIs that the correct date and time?`)) {
                   doShareImage();
               }
           } else {
@@ -529,7 +533,7 @@ export default function GameScreen() {
   const handleFinish = () => {
       if (!matchIsComplete) {
           if (Platform.OS === 'web') {
-              if (!window.confirm('⚠️ MATCH NOT COMPLETE\n\nNot all scores have been entered. Some games will not be recorded.\n\nFinish anyway?')) return;
+              if (typeof window === 'undefined' || !window.confirm('⚠️ MATCH NOT COMPLETE\n\nNot all scores have been entered. Some games will not be recorded.\n\nFinish anyway?')) return;
               setSaveModalVisible(true);
           } else {
               Alert.alert(
@@ -580,7 +584,7 @@ export default function GameScreen() {
 
       // Always offer to create OR join
       if (Platform.OS === 'web') {
-          const choice = window.confirm('Create a shared match?\n\nOK = Create Shared Match\nCancel = Join Existing Match');
+          const choice = typeof window !== 'undefined' && window.confirm('Create a shared match?\n\nOK = Create Shared Match\nCancel = Join Existing Match');
           if (choice) createNewCollabSession();
           else setJoinModalVisible(true);
       } else {
@@ -609,13 +613,17 @@ export default function GameScreen() {
         });
     });
     if (matchesToSave.length === 0) {
-        if (Platform.OS === 'web') window.alert("Enter scores before finishing.");
+        if (Platform.OS === 'web') {
+            if (typeof window !== 'undefined') window.alert("Enter scores before finishing.");
+        }
         else Alert.alert("No Scores", "Enter scores before finishing.");
         setSaveModalVisible(false); return;
     }
     try {
         if (!groupName) {
-            if (Platform.OS === 'web') window.alert("Group Name Lost.");
+            if (Platform.OS === 'web') {
+                if (typeof window !== 'undefined') window.alert("Group Name Lost.");
+            }
             else Alert.alert("Error", "Group Name Lost.");
             return;
         }
@@ -655,7 +663,9 @@ export default function GameScreen() {
         const responseText = await res.text();
         let data;
         try { data = JSON.parse(responseText); } catch (parseError) {
-            if (Platform.OS === 'web') window.alert("Server returned invalid data");
+            if (Platform.OS === 'web') {
+                if (typeof window !== 'undefined') window.alert("Server returned invalid data");
+            }
             else Alert.alert("Error", "Server returned invalid data");
             return;
         }
@@ -665,7 +675,7 @@ export default function GameScreen() {
             await clearScores(); setSaveModalVisible(false);
             clearActiveMatch();
             if (Platform.OS === 'web') {
-                window.alert(data.message || "Match saved successfully!");
+                if (typeof window !== 'undefined') window.alert(data.message || "Match saved successfully!");
             } else {
                 Alert.alert("Success!", data.message || "Match saved successfully!");
             }

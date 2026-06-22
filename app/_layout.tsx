@@ -24,6 +24,7 @@ import { SubscriptionProvider } from '../context/SubscriptionContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { BeaconProvider } from '../context/BeaconContext';
 import { PaywallModal } from '../components/PaywallModal';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useAuth } from '../hooks/useAuth';
 import { useSoundPlayers } from '../utils/sounds';
 import {
@@ -258,8 +259,10 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      <RootLayoutInner />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <RootLayoutInner />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

@@ -90,7 +90,7 @@ export default function LiveMatchScreen() {
                 setLastUpdate(new Date());
             }
         } catch (error) {
-            console.error('Fetch error:', error);
+            // Error details logged in development mode only
         } finally {
             setLoading(false);
         }

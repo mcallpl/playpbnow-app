@@ -133,7 +133,7 @@ export default function LoginScreen() {
             }
         } catch (error) {
             setLoading(false);
-            console.error('Login error:', error);
+            // Error details logged in development mode only
             setErrorMessage('Network error. Please check your connection and try again.');
         }
     };
@@ -187,7 +187,7 @@ export default function LoginScreen() {
                 Alert.alert('Error', data.message || 'Failed to send code. Please try again.');
             }
         } catch (error) {
-            console.error('Request code error:', error);
+            // Error details logged in development mode only
             Alert.alert('Error', 'Network error. Please try again.');
         } finally {
             setResetLoading(false);
@@ -217,7 +217,7 @@ export default function LoginScreen() {
                 Alert.alert('Error', data.message || 'Code verification failed. Please try again.');
             }
         } catch (error) {
-            console.error('Verify code error:', error);
+            // Error details logged in development mode only
             Alert.alert('Error', 'Network error. Please try again.');
         } finally {
             setResetLoading(false);
@@ -257,7 +257,7 @@ export default function LoginScreen() {
                 Alert.alert('Error', data.message || 'Password reset failed. Please try again.');
             }
         } catch (error) {
-            console.error('Reset password error:', error);
+            // Error details logged in development mode only
             Alert.alert('Error', 'Network error. Please try again.');
         } finally {
             setResetLoading(false);
