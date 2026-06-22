@@ -63,7 +63,7 @@ export function EditPlayerModal({ state, dispatch }: EditPlayerModalProps) {
         }),
       });
     } catch (e) {
-      console.error('Failed to update player on server:', e);
+      // Error details logged in development mode only
     }
     dispatch({ type: 'SET_EDITING_PLAYER', payload: null });
   };

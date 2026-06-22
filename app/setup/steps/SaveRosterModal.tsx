@@ -37,14 +37,12 @@ export function SaveRosterModal({ state, dispatch }: SaveRosterModalProps) {
         new_name: name,
         players: state.players,
       };
-      console.log('Save payload:', JSON.stringify(payload).substring(0, 200));
       const res = await fetch(`${API_URL}/save_group_roster.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       const text = await res.text();
-      console.log('Save response:', text);
       let data;
       try {
         data = JSON.parse(text);

@@ -462,7 +462,6 @@ export default function PlayNowTab() {
         return;
       }
     } catch (error) {
-      console.error('Load profile error:', error);
       // Server unavailable — check local cache
     }
 
@@ -542,7 +541,6 @@ export default function PlayNowTab() {
             setCreateCourts(courtsData.courts || []);
           }
         } catch (error) {
-          console.error('Load courts error:', error);
           setCreateCourts(courts);
         } finally {
           setLoadingCourts(false);

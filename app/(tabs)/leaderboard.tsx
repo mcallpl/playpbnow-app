@@ -6,6 +6,8 @@ import {
     ActivityIndicator,
     Dimensions,
     FlatList,
+    Keyboard,
+    RefreshControl,
     StyleSheet,
     Switch,
     Text,
@@ -313,7 +315,6 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   const handleSessionSelectPodium = async (session: UniversalSession | 'all') => {
       setFilterModalVisible(false);
       setLoading(true);
-      console.log('handleSessionSelectPodium - isGlobal:', isGlobal);
       if (session === 'all') {
           setSelectedBatchId('all');
           fetchLeaderboard(groupName, deviceId, isGlobal, 'all');
@@ -331,7 +332,6 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   const handleSessionSelectHistory = async (session: UniversalSession) => {
       setFilterModalVisible(false);
       setLoading(true);
-      console.log('handleSessionSelectHistory - isGlobal:', isGlobal);
       setGroupName(session.group);
       setSelectedBatchId(session.id);
       // Save group name specific to mode (MINE or GLOBAL)
@@ -553,6 +553,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             alwaysBounceHorizontal={false}
             contentContainerStyle={{padding: 16, paddingBottom: 100}}
             ListEmptyComponent={<Text style={styles.empty}>{sortedTeamLeaderboard.length === 0 ? "No data found." : ""}</Text>}
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchLeaderboard} />}
         />
       ) : (
         <FlatList
@@ -563,6 +564,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             alwaysBounceHorizontal={false}
             contentContainerStyle={{padding: 16, paddingBottom: 100}}
             ListEmptyComponent={<Text style={styles.empty}>{leaderboard.length === 0 ? "No data found." : ""}</Text>}
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchLeaderboard} />}
         />
       )}
 

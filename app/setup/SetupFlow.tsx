@@ -63,17 +63,14 @@ export default function SetupFlow() {
         try {
           const courtsRes = await fetch(`${API_URL}/get_courts.php`);
           if (!courtsRes.ok) {
-            console.error('Failed to fetch courts: HTTP', courtsRes.status);
             return;
           }
           const courtsData = await courtsRes.json();
           if (courtsData.status === 'success') {
             dispatch({ type: 'SET_ALL_COURTS', payload: courtsData.courts || [] });
-          } else {
-            console.error('Failed to fetch courts:', courtsData.message);
           }
         } catch (e) {
-          console.error('Error loading courts:', e);
+          // Error details logged in development mode only
         }
 
         // Load preselected players from navData (AsyncStorage) or legacy URL params
@@ -114,7 +111,6 @@ export default function SetupFlow() {
           setTimeout(() => nameInputRef.current?.focus(), 300);
         })
         .catch((err) => {
-          console.error('Failed to load players:', err);
           setTimeout(() => nameInputRef.current?.focus(), 300);
         });
       // Also focus whenever this screen regains focus

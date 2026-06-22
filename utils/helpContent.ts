@@ -1600,4 +1600,150 @@ Let's play! 🏸`,
 
 **Pro Tip:** Most issues resolve by: (1) Check connection, (2) Refresh, (3) Restart app, (4) Restart phone!`,
   },
+
+  // ============================================================================
+  // PRIVACY & LEGAL
+  // ============================================================================
+  {
+    id: 'privacy-policy',
+    title: 'Privacy Policy',
+    category: 'Privacy & Legal',
+    searchKeywords: ['privacy', 'data', 'policy', 'legal', 'protection'],
+    content: `PlayPBNow Privacy Policy
+
+PlayPBNow is committed to protecting your privacy. Our full privacy policy covers:
+
+**Data Collection:**
+- Account information (email, phone, name)
+- Location data for nearby courts and beacons
+- Match and player statistics
+- SMS communication records
+
+**How We Use Your Data:**
+- Provide core app functionality
+- Show nearby pickleball courts and matches
+- Send match invitations (via SMS with your consent)
+- Improve app features and performance
+- Detect and prevent fraud
+
+**Your Rights:**
+- Access your data anytime
+- Update or correct information
+- Delete your account and data
+- Request data export
+- Opt out of SMS invitations
+
+**Data Security:**
+- HTTPS encryption for all data
+- Secure password storage
+- Regular security audits
+- Limited employee access
+
+**Third-Party Services:**
+- Twilio: SMS delivery (no personal data shared)
+- Stripe: Payment processing only
+- No data sold to third parties
+
+**View the Full Policy:**
+Visit https://peoplestar.com/PlayPBNow/privacy.html for complete details.
+
+**Contact Us:**
+Email: mcallpl@gmail.com`,
+  },
+
+  {
+    id: 'account-deletion',
+    title: 'Delete My Account',
+    category: 'Privacy & Legal',
+    searchKeywords: ['delete', 'account', 'remove', 'data', 'privacy'],
+    content: `How to Delete Your Account
+
+**Permanent Deletion:**
+PlayPBNow gives you the ability to permanently delete your account and all associated data.
+
+**Steps to Delete Your Account:**
+
+1. **Open the Help Tab**
+   - Tap the "?" icon at the bottom
+
+2. **Find "Delete My Account"**
+   - Scroll to "Privacy & Legal" section
+   - Tap "Delete My Account" button
+
+3. **Confirm Deletion**
+   - Enter your password
+   - Read the warning carefully
+   - Tap "Permanently Delete"
+
+4. **Confirmation**
+   - Your account is immediately deleted
+   - All personal data is removed
+   - You'll be logged out
+   - Create a new account anytime
+
+**What Gets Deleted:**
+- Account information (email, phone)
+- Player roster and statistics
+- Match history
+- Group memberships
+- SMS credit balance (non-refundable)
+
+**What Doesn't Get Deleted:**
+- Historical match data (may be anonymized)
+- Payment records (required by law)
+- Data shared with payment processors (Stripe)
+
+**Important:**
+- This action is **PERMANENT** and cannot be undone
+- You will need to register again if you want to use PlayPBNow
+- Your old data will not be restored
+
+**Questions?**
+Contact support at mcallpl@gmail.com`,
+  },
+
+  {
+    id: 'sms-consent',
+    title: 'SMS Invitations & Consent',
+    category: 'Privacy & Legal',
+    searchKeywords: ['sms', 'text', 'message', 'consent', 'invite'],
+    content: `SMS Invitations & How We Send Messages
+
+**What Are SMS Invitations?**
+When you create a match invite and send it to players, we use SMS (text messages) to notify them. This requires:
+
+1. **Your Explicit Consent**
+   - Before sending any SMS, you must check "I understand this will send SMS invitations"
+   - You're in control of when messages are sent
+   - You can cancel anytime before sending
+
+2. **Sufficient SMS Credits**
+   - Free users: Each SMS invite costs 1 credit
+   - Pro users: Unlimited SMS invitations (included in subscription)
+   - If you don't have enough credits, you can't send until you buy more
+
+3. **Valid Phone Numbers**
+   - Players must have valid mobile phone numbers
+   - Invitations won't send to invalid numbers
+
+**How Players Can Opt Out:**
+- Recipients can reply "STOP" to any message
+- They'll be removed from future invitations
+- Standard SMS rates may apply to their carriers
+
+**Message Contents:**
+- Match details (date, time, location)
+- Your custom message (optional)
+- RSVP link to respond to the invite
+- PlayPBNow branding
+
+**Privacy Protection:**
+- Player phone numbers are NOT shared with third parties
+- SMS is sent through Twilio (a trusted SMS provider)
+- We don't use phone numbers for marketing
+- Messages are encrypted in transit
+
+**Questions?**
+Check our full Privacy Policy at https://peoplestar.com/PlayPBNow/privacy.html`,
+  },
 ];

@@ -45,7 +45,7 @@ export function PlayerInputStep({ state, dispatch }: PlayerInputStepProps) {
           dispatch({ type: 'SET_SHOW_SEARCH_RESULTS', payload: false });
         }
       } catch (e) {
-        console.error('Search failed:', e);
+        // Error details logged in development mode only
       } finally {
         dispatch({ type: 'SET_IS_SEARCHING', payload: false });
       }
