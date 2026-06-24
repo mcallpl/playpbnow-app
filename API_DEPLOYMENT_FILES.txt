@@ -1,0 +1,319 @@
+PlayPBNow Authentication Security Hardening - API Deployment Files
+===================================================================
+
+Date: June 24, 2026
+Status: Ready for Deployment to /var/www/html/PlayPBNow/playpbnow-api/
+
+CRITICAL: These files must be deployed via SSH/rsync to the DigitalOcean server.
+The playpbnow-api/ directory is .gitignore'd and not tracked in the main repository.
+
+---
+
+NEW PHP FILES (5 files - must create):
+=====================================
+
+1. playpbnow-api/security_helpers.php
+   Size: ~4.9 KB
+   Purpose: Shared security functions library
+   Functions:
+   - Rate limiting helpers
+   - CSRF token management
+   - Session management
+   - Account lockout control
+
+   Deployment: Create new file with contents from:
+   /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/security_helpers.php
+
+2. playpbnow-api/validate_session.php
+   Size: ~2.5 KB
+   Purpose: Session validation endpoint
+   Endpoint: POST /api/validate_session.php
+   Usage: Verify session token validity before protected operations
+
+   Deployment: Create new file with contents from:
+   /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/validate_session.php
+
+3. playpbnow-api/logout.php
+   Size: ~1.3 KB
+   Purpose: Logout and session revocation endpoint
+   Endpoint: POST /api/logout.php
+   Usage: Securely revoke user sessions
+
+   Deployment: Create new file with contents from:
+   /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/logout.php
+
+4. playpbnow-api/manage_sessions.php
+   Size: ~4.2 KB
+   Purpose: Multi-device session management endpoint
+   Endpoint: POST /api/manage_sessions.php
+   Usage: View active sessions, logout specific devices
+
+   Deployment: Create new file with contents from:
+   /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/manage_sessions.php
+
+5. playpbnow-api/setup_security_tables.php
+   Size: ~3.1 KB
+   Purpose: Database schema migration script
+   Usage: Run once after deployment to create new tables
+
+   Deployment: Create new file with contents from:
+   /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/setup_security_tables.php
+
+---
+
+MODIFIED PHP FILES (3 files - must update):
+============================================
+
+1. playpbnow-api/email_login.php
+   Changes:
+   - Add rate limiting checks at login
+   - Add account lockout logic
+   - Generate CSRF tokens on login/register
+   - Make phone optional for registration
+   - Add CORS restrictions to peoplestar.com
+   - Add device name tracking
+
+   Status: Already edited locally
+   Deployment: Copy updated version to server
+
+2. playpbnow-api/forgot_password.php
+   Changes:
+   - Fix error message (don't reveal account doesn't exist)
+   - Already had CORS restrictions
+
+   Status: Already edited locally
+   Deployment: Copy updated version to server
+
+3. playpbnow-api/change_password.php
+   Changes:
+   - Add CORS restrictions
+   - Add session revocation (logout other devices)
+   - Revoke all CSRF tokens
+
+   Status: Already edited locally
+   Deployment: Copy updated version to server
+
+---
+
+DEPLOYMENT INSTRUCTIONS:
+========================
+
+OPTION 1: Using deploy-api.sh (Recommended)
+-------------------------------------------
+
+From local machine:
+$ cd /Users/chipmcallister/Projects/PlayPBNow
+$ ./deploy-api.sh
+
+This will rsync all playpbnow-api/ contents to DigitalOcean.
+
+OPTION 2: Manual Deployment via SSH
+------------------------------------
+
+SSH to server:
+$ ssh root@64.227.108.128
+
+Create backup first:
+$ cd /var/www/html/PlayPBNow/playpbnow-api
+$ cp -r . /var/backups/playpbnow-api-backup-$(date +%Y%m%d_%H%M%S)/
+
+Copy new files from local:
+$ scp /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/*.php root@64.227.108.128:/var/www/html/PlayPBNow/playpbnow-api/
+
+Run setup script:
+$ ssh root@64.227.108.128
+$ cd /var/www/html/PlayPBNow/playpbnow-api
+$ php setup_security_tables.php
+
+Verify permissions:
+$ chmod 644 *.php
+$ chmod 755 .
+
+OPTION 3: Manual File Upload
+-----------------------------
+
+Use SFTP or SCP to upload individual files:
+
+scp /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/security_helpers.php \
+    root@64.227.108.128:/var/www/html/PlayPBNow/playpbnow-api/
+
+scp /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/validate_session.php \
+    root@64.227.108.128:/var/www/html/PlayPBNow/playpbnow-api/
+
+scp /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/logout.php \
+    root@64.227.108.128:/var/www/html/PlayPBNow/playpbnow-api/
+
+scp /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/manage_sessions.php \
+    root@64.227.108.128:/var/www/html/PlayPBNow/playpbnow-api/
+
+scp /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/setup_security_tables.php \
+    root@64.227.108.128:/var/www/html/PlayPBNow/playpbnow-api/
+
+scp /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/email_login.php \
+    root@64.227.108.128:/var/www/html/PlayPBNow/playpbnow-api/
+
+scp /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/forgot_password.php \
+    root@64.227.108.128:/var/www/html/PlayPBNow/playpbnow-api/
+
+scp /Users/chipmcallister/Projects/PlayPBNow/playpbnow-api/change_password.php \
+    root@64.227.108.128:/var/www/html/PlayPBNow/playpbnow-api/
+
+---
+
+DATABASE MIGRATION (Run after file deployment):
+================================================
+
+SSH to server and execute:
+
+$ ssh root@64.227.108.128
+$ cd /var/www/html/PlayPBNow/playpbnow-api
+$ php setup_security_tables.php
+
+Expected output:
+{
+  "failed_login_attempts_table": "created",
+  "account_lockouts_table": "created",
+  "csrf_tokens_table": "created",
+  "user_sessions_is_active_column": "added",
+  "user_sessions_device_name_column": "added",
+  "user_sessions_created_at_column": "already_exists",
+  "user_sessions_last_activity_column": "added",
+  "user_sessions_index": "added",
+  "user_sessions_active_index": "added"
+}
+
+---
+
+VERIFICATION STEPS:
+===================
+
+1. Check files deployed:
+$ ssh root@64.227.108.128 "ls -la /var/www/html/PlayPBNow/playpbnow-api/*.php | grep -E 'security_helpers|validate_session|logout.php|manage_sessions|setup_security'"
+
+Expected output: 5 new files listed
+
+2. Verify database tables:
+$ mysql -u mcallpl -p -D playpbnow -e "SHOW TABLES;" | grep -E 'failed_login|account_lockout|csrf_token'
+
+Expected output: 3 new tables listed
+
+3. Test endpoints:
+$ curl https://peoplestar.com/PlayPBNow/api/validate_session.php 2>/dev/null | head -c 100
+
+Expected output: {"status":"error","message":"Missing session_token
+
+4. Check file permissions:
+$ ssh root@64.227.108.128 "ls -l /var/www/html/PlayPBNow/playpbnow-api/*.php | head -3"
+
+Expected output: -rw-r--r-- (644 permissions)
+
+---
+
+ROLLBACK PROCEDURE:
+===================
+
+If critical issues found:
+
+1. Restore database:
+$ ssh root@64.227.108.128
+$ mysql -u mcallpl -p playpbnow < /var/backups/playpbnow_backup.sql
+
+2. Restore API files from backup:
+$ cd /var/www/html/PlayPBNow
+$ rm -rf playpbnow-api
+$ cp -r /var/backups/playpbnow-api-backup-*/ playpbnow-api
+
+3. Verify API working:
+$ curl https://peoplestar.com/PlayPBNow/api/email_login.php
+
+---
+
+MONITORING AFTER DEPLOYMENT:
+=============================
+
+Watch these logs:
+$ ssh root@64.227.108.128
+$ tail -f /var/log/apache2/access.log | grep email_login
+$ tail -f /var/log/apache2/error.log
+$ tail -f /var/log/php-errors.log (if configured)
+
+Check database activity:
+$ mysql playpbnow -e "SELECT COUNT(*) as failed_attempts FROM failed_login_attempts;"
+$ mysql playpbnow -e "SELECT COUNT(*) as lockouts FROM account_lockouts WHERE locked_until > NOW();"
+
+---
+
+DOCUMENTATION:
+===============
+
+Complete implementation details in these files:
+- AUTH_SECURITY_HARDENING.md (Full technical reference)
+- SECURITY_QUICK_REFERENCE.md (Developer quick lookup)
+- AUTH_SECURITY_TESTS.md (Testing procedures)
+- DEPLOYMENT_CHECKLIST.md (Step-by-step checklist)
+- SECURITY_IMPLEMENTATION_SUMMARY.md (Complete status)
+
+---
+
+FILE CHECKSUMS (for verification):
+===================================
+
+These should match after deployment:
+
+security_helpers.php:     [From local file - calculate with: md5sum filename]
+validate_session.php:     [From local file]
+logout.php:               [From local file]
+manage_sessions.php:      [From local file]
+setup_security_tables.php: [From local file]
+
+After deployment, verify on server:
+$ ssh root@64.227.108.128 "cd /var/www/html/PlayPBNow/playpbnow-api && md5sum *.php"
+
+---
+
+DEPLOYMENT CHECKLIST:
+=====================
+
+PRE-DEPLOYMENT:
+[ ] Database backed up
+[ ] SSH key access verified
+[ ] Team notified
+[ ] Maintenance window scheduled
+
+DEPLOYMENT:
+[ ] New PHP files deployed (5 files)
+[ ] Modified PHP files deployed (3 files)
+[ ] File permissions set (644)
+[ ] Setup script executed
+[ ] Database tables verified
+
+POST-DEPLOYMENT:
+[ ] API endpoints responding (curl tests)
+[ ] Rate limiting working (test 5 failed logins)
+[ ] Database queries successful
+[ ] No errors in logs
+[ ] Frontend updated to use new endpoints
+
+ONGOING:
+[ ] Monitor failed login attempts
+[ ] Monitor account lockouts
+[ ] Monitor API response times
+[ ] Review security logs daily
+
+---
+
+CONTACTS & SUPPORT:
+====================
+
+Backend Issues: Check AUTH_SECURITY_HARDENING.md
+Deployment Issues: Check DEPLOYMENT_CHECKLIST.md
+Testing Issues: Check AUTH_SECURITY_TESTS.md
+Quick Lookup: Check SECURITY_QUICK_REFERENCE.md
+
+---
+
+STATUS: ✅ READY FOR DEPLOYMENT
+Deployment Date: [TO BE SCHEDULED]
+Deployed By: [TO BE FILLED IN]
+Deployment Time: [TO BE RECORDED]
+Verification: [TO BE CONFIRMED]
