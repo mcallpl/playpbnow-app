@@ -14,7 +14,10 @@
       "bundleIdentifier": "com.mcallpl.PlayPBNow",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "PlayPBNow uses your location to show nearby pickleball beacons within your area."
+        "NSLocationWhenInUseUsageDescription": "PlayPBNow uses your location to show nearby pickleball beacons within your area.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "PlayPBNow uses your location to show nearby pickleball beacons within your area.",
+        "NSPhotoLibraryUsageDescription": "PlayPBNow uses your photos to share match photos with teammates.",
+        "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)"
       }
     },
     "android": {

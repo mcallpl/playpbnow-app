@@ -256,11 +256,11 @@ export const PaywallModal: React.FC = () => {
                                 </Text>
                             )}
                             <View style={styles.legalLinks}>
-                                <TouchableOpacity onPress={() => Linking.openURL('/api/privacy.html')}>
+                                <TouchableOpacity onPress={() => Linking.openURL('https://peoplestar.com/PlayPBNow/privacy.html')}>
                                     <Text style={styles.legalLink}>Privacy Policy</Text>
                                 </TouchableOpacity>
                                 <Text style={styles.legalDivider}>|</Text>
-                                <TouchableOpacity onPress={() => Linking.openURL('/api/terms.html')}>
+                                <TouchableOpacity onPress={() => Linking.openURL('https://peoplestar.com/PlayPBNow/terms.html')}>
                                     <Text style={styles.legalLink}>Terms of Use (EULA)</Text>
                                 </TouchableOpacity>
                             </View>
