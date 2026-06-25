@@ -2,7 +2,7 @@ import { BrandedIcon } from '../../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -99,9 +99,24 @@ export default function HomeScreen() {
   const [newCourtState, setNewCourtState] = useState('');
   const [savingCourt, setSavingCourt] = useState(false);
 
+  const backgroundRefreshIntervalRef = useRef<NodeJS.Timeout>();
+
   useFocusEffect(
     useCallback(() => {
       initializeAndLoad();
+
+      backgroundRefreshIntervalRef.current = setInterval(async () => {
+        const uid = await AsyncStorage.getItem('user_id');
+        if (uid) {
+          await loadGroupsFromAPI(uid);
+        }
+      }, 30000);
+
+      return () => {
+        if (backgroundRefreshIntervalRef.current) {
+          clearInterval(backgroundRefreshIntervalRef.current);
+        }
+      };
     }, [])
   );
 
