@@ -118,14 +118,52 @@ export default function HomeScreen() {
     await Promise.all([loadGroups(uid), loadCourts()]);
   };
 
-  const loadGroups = async (did: string) => {
+  const cacheGroups = async (groupsList: Group[]) => {
+    try {
+      await AsyncStorage.setItem('cached_groups', JSON.stringify(groupsList));
+    } catch (e) {
+      console.error('Failed to cache groups:', e);
+    }
+  };
+
+  const loadCachedGroups = async () => {
+    try {
+      const cached = await AsyncStorage.getItem('cached_groups');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.error('Failed to load cached groups:', e);
+      return [];
+    }
+  };
+
+  const loadGroups = async (did: string, forceRefresh = false) => {
     setLoading(true);
     try {
+      if (!forceRefresh) {
+        const cachedGroups = await loadCachedGroups();
+        if (cachedGroups.length > 0) {
+          setGroups(cachedGroups);
+        }
+      }
+
       const res = await fetch(`${API_URL}/get_groups.php?user_id=${did}`);
       const data = await res.json();
-      if (data.status === 'success') setGroups(data.groups || []);
-      else setGroups([]);
-    } catch (e) { setGroups([]); }
+      if (data.status === 'success') {
+        const freshGroups = data.groups || [];
+        setGroups(freshGroups);
+        await cacheGroups(freshGroups);
+      } else {
+        if (forceRefresh) {
+          const cachedGroups = await loadCachedGroups();
+          setGroups(cachedGroups);
+        }
+      }
+    } catch (e) {
+      if (forceRefresh) {
+        const cachedGroups = await loadCachedGroups();
+        setGroups(cachedGroups);
+      }
+    }
     finally { setLoading(false); }
   };
 
@@ -599,7 +637,7 @@ export default function HomeScreen() {
         renderItem={renderGroupItem}
         alwaysBounceHorizontal={false}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => loadGroups(userId)} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => loadGroups(userId, true)} />}
         ListEmptyComponent={!loading ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No groups yet</Text>
