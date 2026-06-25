@@ -198,14 +198,14 @@ jobs:
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/
           echo "✅ Web deployment complete"
 
-      - name: Preserve db_config.php on server
+      - name: Backup critical files on server
         run: |
-          echo "🔐 Preserving db_config.php during deployment..."
+          echo "💾 Backing up critical files..."
           ssh -i ~/.ssh/deploy_key ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} << 'EOSH'
-          if [ -f /var/www/html/PlayPBNow/api/db_config.php ]; then
-            cp /var/www/html/PlayPBNow/api/db_config.php /tmp/db_config.php.bak
-            echo "✅ db_config.php backed up"
-          fi
+          mkdir -p /tmp/playbase_backup
+          [ -f /var/www/html/PlayPBNow/api/db_config.php ] && cp /var/www/html/PlayPBNow/api/db_config.php /tmp/playbase_backup/
+          [ -d /var/www/html/PlayPBNow/api/vendor ] && cp -r /var/www/html/PlayPBNow/api/vendor /tmp/playbase_backup/
+          echo "✅ Critical files backed up"
           EOSH
 
       - name: Deploy API files
@@ -218,6 +218,7 @@ jobs:
             --exclude='*.sql' \
             --exclude='*.bak' \
             --exclude='db_config.php' \
+            --exclude='vendor' \
             --exclude='.DS_Store' \
             --exclude='tests' \
             -e "ssh -i ~/.ssh/deploy_key" \
@@ -225,15 +226,14 @@ jobs:
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/api/
           echo "✅ API deployment complete"
 
-      - name: Restore db_config.php on server
+      - name: Restore critical files on server
         run: |
-          echo "🔐 Restoring db_config.php..."
+          echo "🔐 Restoring critical files..."
           ssh -i ~/.ssh/deploy_key ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} << 'EOSH'
-          if [ -f /tmp/db_config.php.bak ]; then
-            cp /tmp/db_config.php.bak /var/www/html/PlayPBNow/api/db_config.php
-            rm /tmp/db_config.php.bak
-            echo "✅ db_config.php restored"
-          fi
+          [ -f /tmp/playbase_backup/db_config.php ] && cp /tmp/playbase_backup/db_config.php /var/www/html/PlayPBNow/api/
+          [ -d /tmp/playbase_backup/vendor ] && cp -r /tmp/playbase_backup/vendor /var/www/html/PlayPBNow/api/
+          rm -rf /tmp/playbase_backup
+          echo "✅ Critical files restored"
           EOSH
 
       - name: Verify deployment
