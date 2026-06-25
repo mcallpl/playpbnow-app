@@ -115,7 +115,13 @@ export default function HomeScreen() {
     const firstName = await AsyncStorage.getItem('user_first_name');
     const email = await AsyncStorage.getItem('user_email');
     setUserName(firstName || email || '');
-    await Promise.all([loadGroups(uid), loadCourts()]);
+
+    const cachedGroups = await loadCachedGroups();
+    if (cachedGroups.length > 0) {
+      setGroups(cachedGroups);
+    }
+
+    await Promise.all([loadGroupsFromAPI(uid), loadCourts()]);
   };
 
   const cacheGroups = async (groupsList: Group[]) => {
@@ -136,33 +142,33 @@ export default function HomeScreen() {
     }
   };
 
+  const loadGroupsFromAPI = async (uid: string) => {
+    try {
+      const res = await fetch(`${API_URL}/get_groups.php?user_id=${uid}`);
+      const data = await res.json();
+      if (data.status === 'success' && data.groups && Array.isArray(data.groups)) {
+        const freshGroups = data.groups;
+        setGroups(freshGroups);
+        await cacheGroups(freshGroups);
+      }
+    } catch (e) {
+      console.error('Failed to fetch fresh groups:', e);
+    }
+  };
+
   const loadGroups = async (did: string, forceRefresh = false) => {
     setLoading(true);
     try {
-      if (!forceRefresh) {
-        const cachedGroups = await loadCachedGroups();
-        if (cachedGroups.length > 0) {
-          setGroups(cachedGroups);
-        }
-      }
+      const cachedGroups = await loadCachedGroups();
+      setGroups(cachedGroups);
 
-      const res = await fetch(`${API_URL}/get_groups.php?user_id=${did}`);
-      const data = await res.json();
-      if (data.status === 'success') {
-        const freshGroups = data.groups || [];
-        setGroups(freshGroups);
-        await cacheGroups(freshGroups);
-      } else {
-        if (forceRefresh) {
-          const cachedGroups = await loadCachedGroups();
-          setGroups(cachedGroups);
-        }
+      if (forceRefresh || cachedGroups.length === 0) {
+        await loadGroupsFromAPI(did);
       }
     } catch (e) {
-      if (forceRefresh) {
-        const cachedGroups = await loadCachedGroups();
-        setGroups(cachedGroups);
-      }
+      console.error('Error loading groups:', e);
+      const cachedGroups = await loadCachedGroups();
+      setGroups(cachedGroups);
     }
     finally { setLoading(false); }
   };
