@@ -162,6 +162,15 @@ jobs:
           name: web-build
           path: dist/
 
+      - name: Clone API repository
+        run: |
+          echo "📦 Cloning PlayPBNow API repository..."
+          if [ -d "playpbnow-api" ]; then
+            rm -rf playpbnow-api
+          fi
+          git clone https://github.com/mcallpl/playpbnow-api.git
+          echo "✅ API repository cloned"
+
       - name: Create backup
         run: |
           echo "💾 Creating backup of current production..."
