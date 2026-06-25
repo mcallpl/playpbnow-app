@@ -4,7 +4,7 @@ const path = require('path');
 const indexPath = path.join(__dirname, 'dist', 'index.html');
 let content = fs.readFileSync(indexPath, 'utf8');
 
-const baseTag = '<base href="/PlayPBNow/" />';
+const baseTag = '<base href="/" />';
 
 // Add base tag after title if not already present
 if (!content.includes('base href')) {
