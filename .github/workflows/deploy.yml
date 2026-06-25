@@ -198,6 +198,16 @@ jobs:
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/
           echo "✅ Web deployment complete"
 
+      - name: Preserve db_config.php on server
+        run: |
+          echo "🔐 Preserving db_config.php during deployment..."
+          ssh -i ~/.ssh/deploy_key ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} << 'EOSH'
+          if [ -f /var/www/html/PlayPBNow/api/db_config.php ]; then
+            cp /var/www/html/PlayPBNow/api/db_config.php /tmp/db_config.php.bak
+            echo "✅ db_config.php backed up"
+          fi
+          EOSH
+
       - name: Deploy API files
         run: |
           echo "📦 Deploying API files to production..."
@@ -205,7 +215,6 @@ jobs:
             --exclude='node_modules' \
             --exclude='.git' \
             --exclude='.github' \
-            --exclude='vendor' \
             --exclude='*.sql' \
             --exclude='*.bak' \
             --exclude='db_config.php' \
@@ -215,6 +224,17 @@ jobs:
             playpbnow-api/ \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/api/
           echo "✅ API deployment complete"
+
+      - name: Restore db_config.php on server
+        run: |
+          echo "🔐 Restoring db_config.php..."
+          ssh -i ~/.ssh/deploy_key ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} << 'EOSH'
+          if [ -f /tmp/db_config.php.bak ]; then
+            cp /tmp/db_config.php.bak /var/www/html/PlayPBNow/api/db_config.php
+            rm /tmp/db_config.php.bak
+            echo "✅ db_config.php restored"
+          fi
+          EOSH
 
       - name: Verify deployment
         run: |
