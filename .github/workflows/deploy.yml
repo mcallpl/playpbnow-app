@@ -76,6 +76,21 @@ jobs:
           cp dist/index.html dist/app.html
           echo "✅ Created dist/app.html"
 
+          # Copy landing page to index.html (replaces SPA as root)
+          if [ -f public/landing.html ]; then
+            cp public/landing.html dist/index.html
+            echo "✅ Deployed landing page to dist/index.html"
+          else
+            echo "⚠️  Landing page not found, keeping SPA as root"
+          fi
+
+          # Copy assets folder to dist if it exists
+          if [ -d public/images ]; then
+            mkdir -p dist/images
+            cp -r public/images/* dist/images/ 2>/dev/null || true
+            echo "✅ Copied images to dist/"
+          fi
+
           # Fix Expo paths in both files
           node fix-expo-paths.js || echo "⚠️  No fix-expo-paths.js found (non-critical)"
           echo "✅ Fixed Expo paths"
@@ -92,7 +107,7 @@ jobs:
             RewriteCond %{REQUEST_FILENAME} !-f
             RewriteCond %{REQUEST_FILENAME} !-d
             RewriteCond %{REQUEST_URI} !index.html
-            RewriteRule ^(.*)$ index.html [L]
+            RewriteRule ^(.*)$ app.html [L]
           </IfModule>
 
           <IfModule mod_headers.c>
