@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const API_URL = '/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 const POLL_INTERVAL = 2000;
 const PROTECTION_WINDOW = 3000;
 const MAX_RETRIES = 3;

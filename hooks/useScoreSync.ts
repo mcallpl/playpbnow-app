@@ -1,6 +1,6 @@
 import { Dispatch, SetStateAction, useEffect } from 'react';
 
-const API_URL = '/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 type ScoreMap = Record<string, string>;
 

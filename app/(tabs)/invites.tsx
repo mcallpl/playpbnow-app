@@ -35,7 +35,7 @@ import { haptic } from '../../utils/haptics';
 import { useInviteChat } from '../../hooks/useInviteChat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = '/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 interface CourtItem {
   id: number;

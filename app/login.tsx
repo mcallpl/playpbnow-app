@@ -29,7 +29,7 @@ import {
     FONT_BODY_SEMIBOLD,
 } from '../constants/theme';
 
-const API_URL = '/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 export default function LoginScreen() {
     const router = useRouter();

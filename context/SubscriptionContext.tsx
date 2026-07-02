@@ -21,7 +21,7 @@ import { SubscriptionDispatchContext } from './SubscriptionDispatchContext';
 
 const isWeb = Platform.OS === 'web';
 
-const API_URL = '/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 const STORAGE_KEY = 'subscription_data';
 
 // Convenience hook that combines both contexts (for backwards compatibility)

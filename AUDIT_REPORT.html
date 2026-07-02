@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PlayPBNow — Live Audit Report</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #161d2e; --panel2: #1d2740; --border: #2a3550;
+    --text: #e8ecf5; --muted: #8a95ad; --green: #35c76a; --amber: #f0b429;
+    --red: #ef4444; --blue: #4f8cff; --gray: #6b7385;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 28px 32px 20px; border-bottom: 1px solid var(--border); position: sticky; top:0; background: var(--bg); z-index: 10; }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  #updated { color: var(--blue); font-weight: 600; }
+  main { padding: 24px 32px 80px; max-width: 1100px; margin: 0 auto; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .stat .num { font-size: 26px; font-weight: 700; }
+  .stat .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .stat.crit .num { color: var(--red); }
+  .stat.high .num { color: var(--amber); }
+  .stat.ok .num { color: var(--green); }
+  section.feature { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 18px; overflow: hidden; }
+  .feature-head { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .feature-head h2 { margin: 0; font-size: 16px; }
+  .feature-head .status { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: .03em; }
+  .status.pending { background: #2a3550; color: var(--muted); }
+  .status.testing { background: #2a3550; color: var(--blue); }
+  .status.critical { background: rgba(239,68,68,.15); color: var(--red); }
+  .status.issues { background: rgba(240,180,41,.15); color: var(--amber); }
+  .status.pass { background: rgba(53,199,106,.15); color: var(--green); }
+  .feature-body { padding: 0 20px 18px; display: none; }
+  .feature-body.open { display: block; }
+  .finding { border-left: 3px solid var(--border); padding: 10px 14px; margin: 10px 0; background: var(--panel2); border-radius: 0 8px 8px 0; }
+  .finding.sev-critical { border-color: var(--red); }
+  .finding.sev-high { border-color: var(--amber); }
+  .finding.sev-medium { border-color: var(--blue); }
+  .finding.sev-low { border-color: var(--gray); }
+  .finding .fhead { display:flex; gap:8px; align-items:center; margin-bottom: 4px; flex-wrap: wrap; }
+  .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; letter-spacing: .03em; }
+  .badge.sev-critical { background: var(--red); color: #fff; }
+  .badge.sev-high { background: var(--amber); color: #201800; }
+  .badge.sev-medium { background: var(--blue); color: #fff; }
+  .badge.sev-low { background: var(--gray); color: #fff; }
+  .badge.fixed { background: var(--green); color: #002; }
+  .badge.broken { background: var(--red); color: #fff; }
+  .badge.partial { background: var(--amber); color: #201800; }
+  .finding code { background: #0b0f1a; padding: 1px 6px; border-radius: 4px; font-size: 12.5px; color: #c9d6ff; }
+  .finding .loc { color: var(--muted); font-size: 12px; }
+  .finding p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.5; }
+  .empty-note { color: var(--muted); font-size: 13px; padding: 14px 0; font-style: italic; }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .toc a { font-size: 12px; color: var(--muted); text-decoration: none; border: 1px solid var(--border); padding: 5px 10px; border-radius: 999px; }
+  .toc a:hover { color: var(--text); border-color: var(--blue); }
+  .changelog { margin-top: 32px; }
+  .changelog h2 { font-size: 15px; color: var(--muted); }
+  .changelog ul { list-style: none; padding: 0; margin: 0; font-size: 12.5px; color: var(--muted); }
+  .changelog li { padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .changelog time { color: var(--blue); font-weight: 600; margin-right: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PlayPBNow — Live Audit &amp; Fix Report</h1>
+  <div class="sub">Full re-assessment under Sonnet 5, after prior Haiku-driven work. Updated continuously as agents report back and fixes land. Last updated: <span id="updated">initializing…</span></div>
+</header>
+<div style="background:#0d2a14;border-bottom:2px solid #35c76a;padding:14px 32px;">
+  <strong style="color:#86efac;">✅ PRODUCTION OUTAGE RESOLVED (2026-07-01, ~11:22 PM).</strong>
+  <span style="color:#c9e8d2;font-size:13.5px;">The app was down for a chain of real, compounding reasons, not one bug — see "Production Incident" below. Fixed and verified live: missing backend (db_config.php + vendor/), the blank-screen JS bundle path, broken landing-page links, the unauthenticated purge_data.php data-wipe endpoint, and a 29-file systemic bug where every API call hit the wrong URL. One critical bug remains open (player-duplicate-name crash, see Live Browser Test) and one DB schema change is awaiting your go-ahead (see Production Incident).</span>
+</div>
+<main>
+  <div class="summary-grid" id="summary">
+    <div class="stat"><div class="num" id="s-critical">–</div><div class="label">Critical</div></div>
+    <div class="stat"><div class="num" id="s-high">–</div><div class="label">High</div></div>
+    <div class="stat"><div class="num" id="s-medium">–</div><div class="label">Medium</div></div>
+    <div class="stat"><div class="num" id="s-fixed">–</div><div class="label">Confirmed Fixed</div></div>
+  </div>
+
+  <div class="toc">
+    <a href="#incident">Production Incident</a>
+    <a href="#backend">API Backend</a>
+    <a href="#matches">Matches</a>
+    <a href="#invites">Invites/SMS</a>
+    <a href="#stripe">Stripe</a>
+    <a href="#ios">iOS Compliance</a>
+    <a href="#frontend">Frontend Quality</a>
+    <a href="#livetest">Live Browser Test</a>
+  </div>
+
+  <section class="feature" id="incident">
+    <div class="feature-head" onclick="toggle(this)"><h2>Production Incident — Resolved</h2><span class="status pass">Fixed &amp; Verified Live</span></div>
+    <div class="feature-body open">
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Root Cause</span><span class="loc">/var/www/html/PlayPBNow/api/db_config.php + api/vendor/</span></div>
+        <p><strong>The entire backend API has been completely down since approximately June 25-26, 2026 — every single endpoint was returning HTTP 500.</strong> The file every PHP endpoint requires to connect to the database (<code>db_config.php</code>) and the Composer <code>vendor/</code> directory (Twilio/Stripe SDKs) were both simply missing from the production server — most likely wiped by a deploy that rsynced the API directory without the backup/restore safety step actually preserving them (a later commit, "Properly backup and restore critical API files during deployment," appears to be an attempted fix for this exact class of bug, but landed too late to restore what was already gone). This is almost certainly the true explanation for "the app is ridden with bugs" — matches, invites, login, everything that touches the API would have been failing for about a week. Restored both from the last known-good server backup (2026-06-25 00:51, checksum-verified identical to the local repo copy) and confirmed live: <code>get_courts.php</code> and others now return real 200 JSON responses.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">Contributing Bug</span><span class="loc">web build — missing baseUrl at export time</span></div>
+        <p>Separately, the last web deploy exported the Expo web bundle without setting the <code>baseUrl</code> experiment first, so the built <code>app.html</code> referenced its JS bundle at an absolute domain-root path (<code>/_expo/...</code>) instead of the actual deployed subdirectory (<code>/PlayPBNow/_expo/...</code>) — since peoplestar.com hosts multiple apps at the same domain, this 404'd against a different app's territory, leaving every visitor with a blank white screen. Root cause traced to <code>.github/workflows/deploy.yml</code>'s "Prepare SPA structure" step: it runs <code>fix-expo-paths.js</code>/<code>add-base-tag.js</code> AFTER renaming the real SPA export to <code>app.html</code> and overwriting <code>index.html</code> with the landing page — so those path-fixing scripts have only ever operated on the landing page, never on the actual app bundle. Rebuilt locally with <code>baseUrl: "/PlayPBNow"</code> set correctly, redeployed, verified live.</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Contributing Bug</span><span class="loc">public/landing.html</span></div>
+        <p>The marketing landing page itself (recently touched by the OG-image commits) had 16 absolute root-path links/assets (<code>/app.html</code>, <code>/privacy.html</code>, <code>/manifest.json</code>, app icons, etc.) that all 404'd for the same subdirectory-vs-root reason — so even before the JS bundle broke, visitors clicking "Launch App," "Privacy," "Terms," or "Support" from the marketing site would have hit dead links. Fixed all 16 references to the correct <code>/PlayPBNow/</code> prefix and redeployed.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge fixed">Fixed</span><span class="loc">playpbnow-api/purge_data.php</span></div>
+        <p>Added real authentication (Bearer session token + admin-flag check against the database) and restricted the method to POST — closes the unauthenticated GET-triggerable data-wipe hole reported in API Backend Security below. Verified: unauthenticated GET now returns 405, unauthenticated POST now returns 401.</p>
+      </div>
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Systemic Bug — Fixed</span><span class="loc">29 files: hardcoded <code>const API_URL = '/api'</code></span></div>
+        <p><strong>Every single API call the web app makes was hitting the wrong URL.</strong> 29 separate files (app screens, hooks, components) each independently hardcoded <code>API_URL = '/api'</code> — a domain-root-relative path. Under the actual deployment (a subdirectory, <code>/PlayPBNow/</code>), this resolves to the wrong location entirely (confirmed live: registration POSTed to <code>peoplestar.com/api/email_login.php</code> instead of <code>peoplestar.com/PlayPBNow/api/email_login.php</code>, 404). This is very likely the single biggest contributor to "the app is ridden with bugs" — it would have broken every feature that talks to the server. Fixed all 29 files to use the absolute production URL and redeployed; verified registration/login/groups/players/rankings all work end-to-end now.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">Code Drift Discovered</span><span class="loc">playpbnow-api/email_login.php (live vs. local repo)</span></div>
+        <p>The live server's copy of this file differs from the local repo copy — someone edited it directly on the server at some point, and that edit was never synced back. The live-only version required a phone number for registration ("Phone number is required"), directly contradicting the documented product decision ("email-based registration, phone optional") and blocking every phone-less signup. Made a minimal, dependency-free live fix (removed the phone-required block) to restore the documented behavior. <strong>Separately</strong>: the local repo's version of this file is a much more advanced, hardened rewrite (rate limiting, account lockout, CSRF tokens, restricted CORS) from the June 24 "Auth Hardening" work — but it depends on a <code>security_helpers.php</code> file and database columns (<code>user_sessions.device_name</code>, <code>.is_active</code>) that <strong>do not exist on the production server</strong>. That entire hardening effort was built but never actually deployed. Deploying it safely would require creating the missing helper file and running a schema migration first — flagged here as a recommended follow-up, not done automatically.</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Awaiting your decision</span><span class="loc">production DB: <code>users.phone</code> column</span></div>
+        <p>Even with the code fixed, phone-less registration still fails at the database level: <code>users.phone</code> is <code>VARCHAR(20) NOT NULL UNIQUE</code>. I asked whether to run <code>ALTER TABLE users MODIFY phone VARCHAR(20) NULL;</code> (safe, additive, no data loss — MySQL allows multiple NULLs in a UNIQUE index) and didn't get a response in time, so I left it as-is and used a test phone number to keep testing. This is the last piece needed to make "phone optional" actually true end-to-end — let me know if you want it applied.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge sev-low">Note</span><span class="loc">server disk usage</span></div>
+        <p>The production server's disk is at 90% (52G/58G) — a large part is <code>/var/backups/PlayPBNow-backup-*</code> snapshots accumulated from every past deploy attempt (22+ found). Worth a cleanup pass separate from this audit; not blocking, but if it fills up it will take deploys and backups down with it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature" id="backend">
+    <div class="feature-head" onclick="toggle(this)"><h2>API Backend Security</h2><span class="status critical">Critical — Multiple Unauthenticated Endpoints</span></div>
+    <div class="feature-body open">
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">playpbnow-api/purge_data.php</span></div>
+        <p><strong>Confirmed live on production (HTTP 500 response received, endpoint exists — did not trigger the actual purge).</strong> A plain GET request with <code>?confirm=YES</code> TRUNCATEs matches, sessions, groups, player_group_memberships, feature_access, payment_transactions, subscriptions, user_sessions, verification_codes and more. No auth, no admin check, wildcard CORS, and it's a GET — trivially triggerable via a link, an &lt;img&gt; tag, or a crawler bot. This is the single most dangerous finding in this entire audit.</p>
+      </div>
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">activate_subscription.php</span></div>
+        <p>Grants full Pro subscription + unlocks all feature_access flags for any user_id in the POST body, with zero authentication or webhook signature check — despite its own comment claiming it's only "called by RevenueCat webhook." Anyone can grant themselves Pro for free, or revoke someone else's. The real Stripe/RevenueCat webhooks (stripe_webhook.php, revenuecat_webhook.php) DO verify signatures correctly — this is a leftover unlocked backdoor.</p>
+      </div>
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">admin_api.php:16-27, broadcast_api.php:30-41</span></div>
+        <p>Admin check trusts a client-supplied user_id with no session verification — anyone who knows or guesses an admin's numeric user_id gets full admin dashboard and broadcast access.</p>
+      </div>
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">whole architecture</span></div>
+        <p><strong>The June 24 auth/CORS/transaction fixes were built into a parallel API architecture (routes.php → Middleware.php → controllers/) that the app never calls.</strong> Every real screen fetches the legacy flat .php files directly (confirmed in JoinMatchModal.tsx, hooks/useGameSession.ts, etc.), which have almost none of the claimed protections. The working AuthMiddleware, CORS allow-list, and transactional SMS helper all exist in the codebase — just wired to nothing.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="badge broken">Still Broken</span><span class="loc">73 of ~79 PHP endpoint files</span></div>
+        <p>CORS wildcard confirmed at greater scale than the original audit found — 73 files still use <code>Access-Control-Allow-Origin: *</code>. Only 6 files (forgot_password.php, manage_sessions.php, logout.php, change_password.php, email_login.php, validate_session.php) correctly restrict to peoplestar.com.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">delete_player.php, delete_group.php:26-29</span></div>
+        <p>delete_player.php deletes any player by ID with zero auth. delete_group.php's ownership check only runs "if ($user_id)" is present — simply omitting it from the request skips the check and deletes any group.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">send_verification_code.php</span></div>
+        <p>No rate limiting at all — anyone can trigger unlimited verification SMS to any phone number at Twilio's expense, no auth required. (The one endpoint that does rate-limit correctly, forgot_password.php, shows the team knows the pattern — it just wasn't applied here.)</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">migrations/, apply_indexes.php</span></div>
+        <p>Index-creation scripts exist and are well-designed but are manual-only — deploy-api.sh never runs them, so there's no evidence they were ever applied to the production database.</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">debug_players.php, check_schema.php, diag.php, fix.php, etc.</span></div>
+        <p>Debug/diagnostic scripts are deployed verbatim to production with no auth and wildcard CORS, several likely exposing internal schema info.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge fixed">Confirmed Fixed</span></div>
+        <p>join_match.php's batch_id→id bug is a real, correct fix (though the endpoint it lives in is otherwise unauthenticated and mostly unused — see Matches section).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature" id="matches">
+    <div class="feature-head" onclick="toggle(this)"><h2>Matches (Live Scoring)</h2><span class="status critical">Fixed the Wrong Code</span></div>
+    <div class="feature-body open">
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">join_match.php / MatchController.php / routes.php vs collab_*.php</span></div>
+        <p><strong>The June 24 fixes were applied to a parallel implementation the app doesn't actually use.</strong> <code>join_match.php</code>'s batch_id→id fix is real and correct — but nothing calls it in production (its only caller, <code>app/live-match.tsx</code>, is dead code no screen navigates to). The live-match feature real users hit is <code>JoinMatchModal.tsx → collab_join_match.php → game.tsx / useCollaborativeScoring.ts → collab_sync_scores.php</code>, an entirely separate <code>collab_*</code> schema that was left almost untouched. Likewise, <code>MatchController.php</code>'s real validation logic (ownership checks, duplicate prevention, player-existence checks) can never execute — <code>routes.php</code> maps to method names (<code>create</code>, <code>update</code>, <code>delete</code>) that don't exist on the controller (real methods: <code>createMatch</code>, <code>updateMatch</code>, etc.), so every REST call 500s.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">collab_sync_scores.php:53-94</span></div>
+        <p><strong>Race condition still live in production.</strong> The real scoring endpoint does an unlocked read-then-write with no transaction — two devices editing the same game within the same second can silently overwrite each other's score. The correct transactional pattern (SELECT...FOR UPDATE + commit) exists in <code>update_match.php</code>, but that file isn't on the live-scoring path.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">delete_match.php + hooks/useLeaderboardLogic.ts:285-296</span></div>
+        <p><strong>Delete-match is functionally broken for everyone.</strong> The server requires <code>user_id</code> in the request body to authorize a delete, but the only frontend caller never sends it — every delete request fails regardless of who owns the match. Separately, for any match where <code>created_by_user</code> is NULL (common on older rows), the ownership check is skipped entirely and anyone can delete it. Sibling endpoint <code>update_match.php</code> has no identity check at all — authorizes purely by guessable group name.</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">hooks/useCollaborativeScoring.ts:5,300 vs hooks/useScoreSync.ts</span></div>
+        <p>The "10s interval with exponential backoff" commit is real but landed in <code>useScoreSync.ts</code>, which is never imported anywhere. The hook actually wired into the live game screen polls every 2 seconds, fixed, forever, with no backoff on errors.</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">playpbnow-api/test_match_fixes.php</span></div>
+        <p>The verification script used to certify these fixes only greps source text for keywords (e.g. "does the string begin_transaction appear in this file?") — it never issues an HTTP request or exercises the actual routes. This is how "fixed" got reported for code that's unreachable in production.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge sev-low">Low</span><span class="loc">collab_create_session.php</span></div>
+        <p>No auth check at all on session creation (accepts any <code>creator_user_id</code> from the body), no rate limiting. Share codes are 6 characters from a 24-letter alphabet (~191M combos) with no brute-force protection on join/get-scores endpoints.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature" id="invites">
+    <div class="feature-head" onclick="toggle(this)"><h2>Invites / SMS</h2><span class="status critical">Critical Issues</span></div>
+    <div class="feature-body open">
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">every live invites endpoint</span></div>
+        <p><strong>Root cause of nearly every finding below: no authentication anywhere in this feature.</strong> <code>invite_api.php</code>, <code>pool_players_api.php</code>, <code>invite_respond.php</code>, <code>invite_chat_send.php</code>, <code>invite_chat_poll.php</code>, <code>sms_credits_api.php</code>, and <code>freestyle_sms_api.php</code> all trust a client-supplied <code>user_id</code>/<code>player_id</code> in the JSON body with zero session/token verification — even though a working auth mechanism (<code>Middleware.php</code>'s <code>verifyToken()</code> against <code>user_sessions</code>) already exists elsewhere in the codebase and is simply never wired in here.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">invite_respond.php</span></div>
+        <p><strong>IDOR on invite responses.</strong> The only thing gating who can confirm/decline as a given player is <code>player_id</code> — a small, sequential, publicly-guessable integer embedded in plaintext in the SMS link. Anyone who receives one invite link can edit the URL to respond on behalf of any other invited player. Also: response changes trigger free organizer-notification and waitlist-promotion SMS sends with <strong>zero credit deduction and no rate limit</strong> — an unauthenticated cost-abuse vector against the account owner's Twilio bill.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">invite_api.php:130-187 (send action)</span></div>
+        <p><strong>Credit-check race condition.</strong> Balance is checked once before a loop, with no transaction, no row lock, and no floor guard on the decrement. Two concurrent send requests can both pass the balance check and both deduct, allowing more SMS to be sent than paid for. A correct, transactional version (<code>sendSMSWithTransaction()</code> in db_config.php) already exists in the codebase but is only wired to a dead-code controller, never to this live endpoint.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">freestyle_sms_api.php</span></div>
+        <p>Admin check is spoofable (trusts client-supplied user_id). If exploited: dumps raw unmasked phone+email for the entire pool, and allows arbitrary free-text SMS to any pool player with no credit deduction and no rate limit.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">invite_chat_send.php / invite_chat_poll.php</span></div>
+        <p>No auth, no ownership check, sequential guessable <code>invite_id</code>. Anyone can post messages into any invite's chat under any name, or read any invite's full chat history. CORS wildcard confirmed still present (previously flagged, still broken).</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">db_config.php:17-25, 337-345</span></div>
+        <p>Real production Twilio SID/Auth Token are hardcoded as a silent fallback if the vault file is missing, rather than failing loudly — a misconfigured deploy could silently run on baked-in prod secrets.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge fixed">Confirmed Good</span></div>
+        <p>Match codes use a real CSPRNG (random_int, 6 chars/32-letter alphabet, ~1B combos) with DB uniqueness checks. Failed Twilio sends correctly do NOT deduct a credit in the live send loop. No evidence any real SMS was sent or credits deducted during this review.</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">architecture-wide</span></div>
+        <p>The app runs on a legacy set of flat PHP scripts while a better-engineered, authenticated MVC stack (controllers/, routes.php) sits unused alongside it. This is why fixes keep landing in the wrong place — recommend finishing the cutover or deleting the dead stack to stop this pattern from repeating.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature" id="stripe">
+    <div class="feature-head" onclick="toggle(this)"><h2>Stripe / SMS Credit Purchases</h2><span class="status critical">Critical Issues</span></div>
+    <div class="feature-body open">
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">playpbnow-api/stripe_webhook.php:12-33</span></div>
+        <p><strong>Webhook signature check fails open.</strong> Verification only runs "if a Stripe-Signature header is present." A request with NO signature header skips verification entirely and is processed as trusted. Since credit-purchase handling reads <code>credits</code> and <code>user_id</code> straight from attacker-controlled JSON <code>metadata</code>, <strong>anyone can POST directly to this endpoint with a plain curl command and grant themselves unlimited free SMS credits</strong> — no real Stripe transaction required. This directly contradicts the June 24 "zero vulnerabilities" claim.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">playpbnow-api/sms_credits_api.php (whole file)</span></div>
+        <p><strong>No authentication on the credits endpoint at all.</strong> Unlike the rest of the API (which validates a Bearer token via Middleware.php), this file reads <code>user_id</code> straight from the client-supplied JSON body. Any caller can read another user's SMS credit balance and full purchase history (IDOR), or create a checkout session that credits an arbitrary account. Also sets <code>Access-Control-Allow-Origin: *</code> and has no rate limiting.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">db_config.php vs stripe_webhook.php vs tests/DatabaseFixtures.php</span></div>
+        <p><strong>Schema drift may make purchased credits unspendable.</strong> The purchase path writes to a <code>credits</code> column (<code>sms_credits</code> table); the actual SMS-send deduction path (<code>sendSMSWithTransaction()</code>, used by InviteController) reads a <code>balance</code> column instead. If production's real schema matches the deduction path, every invite send would incorrectly report "Insufficient SMS credits" regardless of purchase history. Needs verification against the live DB schema and an end-to-end purchase→spend test.</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">stripe_webhook.php (credit + subscription branches)</span></div>
+        <p>No transaction/row-lock around the check-then-insert duplicate guard — concurrent webhook retries (which Stripe does on any non-2xx) could double-credit. The subscription-renewal branch has no idempotency guard at all; replaying a captured valid signature extends a subscription for free.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">sms_credits_api.php:24-25</span></div>
+        <p>Checkout session uses relative <code>success_url</code>/<code>cancel_url</code> ("/?credits=success") — Stripe's API requires fully-qualified URLs. If unconfirmed against server logs, this may mean checkout-session creation fails for every purchase attempt in production.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge fixed">Confirmed Good</span></div>
+        <p>No live Stripe secret keys or webhook secrets are committed to source control — they load correctly from an untracked vault file. (Note: Twilio/Google Maps/Gemini keys ARE hardcoded with fallback values directly in the tracked <code>db_config.php</code> — a separate, lower-severity secret-hygiene gap.)</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature" id="ios">
+    <div class="feature-head" onclick="toggle(this)"><h2>iOS App Store Compliance</h2><span class="status issues">Mostly Fixed, 1 Regression</span></div>
+    <div class="feature-body open">
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="badge partial">Missed, Not Reverted</span><span class="loc">app/login.tsx:399,401</span></div>
+        <p>The June 24 fix corrected relative Terms/Privacy URLs in <code>PaywallModal.tsx</code>, but an identical bug exists in <code>login.tsx</code> (<code>openLegalUrl('/api/terms.html')</code> / <code>'/api/privacy.html'</code>) that was never touched — it predates the fix commit and the fix agent's search scope simply missed it. On the login/registration screen (the first screen every new user and App Reviewer sees), tapping Privacy Policy or Terms silently fails to open on a real device because <code>Linking.openURL</code> can't resolve a relative path.</p>
+      </div>
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical (latent)</span><span class="loc">app.json / ios/PlayPBNow/PrivacyInfo.xcprivacy</span></div>
+        <p><strong>Durability risk on the most critical fix.</strong> <code>ios/</code> is gitignored except for two hand-added files (Info.plist, PrivacyInfo.xcprivacy) — the rest of the native Xcode project isn't tracked. Info.plist's manual edits are mirrored in <code>app.json</code>'s <code>ios.infoPlist</code>, so it would regenerate correctly. But <strong>PrivacyInfo.xcprivacy has no equivalent app.json/config-plugin source of truth</strong> — if <code>ios/</code> is ever regenerated (fresh clone + <code>expo prebuild</code>, or an EAS Build that reprovisions), the privacy manifest silently comes back empty, reintroducing the original App Store rejection cause. Needs <code>ios.privacyManifests</code> added to app.json.</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="badge partial">Partial</span><span class="loc">utils/helpContent.ts, app/(tabs)/help.tsx</span></div>
+        <p>Privacy policy is mentioned as plain text in the Help tab but not rendered as a tappable link (MarkdownText only parses <code>**bold**</code>) — user would have to manually copy the URL.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge fixed">Confirmed Fixed</span></div>
+        <p>Privacy manifest content (7 real data-type entries), camera/mic permissions removed, permission description placeholders substituted, and CFBundleVersion now uses <code>$(CURRENT_PROJECT_VERSION)</code> with EAS remote versioning — all genuinely landed and unmodified since commit cf86585.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature" id="frontend">
+    <div class="feature-head" onclick="toggle(this)"><h2>Frontend Code Quality</h2><span class="status issues">Issues Found</span></div>
+    <div class="feature-body open">
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="badge broken">Overclaimed</span><span class="loc">commit 884e986</span></div>
+        <p><strong>"Remove all console.log/error/warn statements" was never true project-wide.</strong> That commit touched exactly one file (<code>app/live-match.tsx</code>, 19 lines). 89 console statements remain across 23 other files (34 log, 49 error, 6 warn). Top offenders: <code>hooks/useCollaborativeScoring.ts</code> (15), <code>hooks/useScoreSync.ts</code> (10), <code>hooks/useGameSession.ts</code> (7), <code>hooks/useLeaderboardLogic.ts</code> (5), <code>context/SubscriptionContext.tsx</code> (5), <code>components/JoinMatchModal.tsx</code> (5).</p>
+      </div>
+      <div class="finding sev-medium">
+        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">components/JoinMatchModal.tsx:61</span></div>
+        <p>Logs up to 500 chars of raw server response text to the console in production — minor data-exposure concern on web export.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge sev-low">Low</span><span class="loc">hooks/useGameSession.ts:50-51, 74-75</span></div>
+        <p>After checking <code>data.status === 'success'</code>, code accesses <code>data.session.batch_id</code> / <code>data.session.share_code</code> with no guard on <code>data.session</code> itself — a malformed success response throws a runtime TypeError.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge sev-low">Low</span><span class="loc">app/(tabs)/game.tsx, app/(tabs)/players.tsx:450,762</span></div>
+        <p>Chained <code>.map()</code> calls on API-sourced arrays (<code>game.team1</code>, <code>group.players</code>) without <code>Array.isArray</code> guards or optional chaining.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge sev-low">Low</span><span class="loc">components/setup/SaveGroupModal.tsx, app/setup/steps/SaveRosterModal.tsx, components/game/SaveMatchModal.tsx</span></div>
+        <p>17 separate modal implementations exist; these three "save X" modals are near-identical (~105-110 lines each) — copy-paste rather than a shared <code>SaveEntityModal</code> component.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge sev-low">Low</span><span class="loc">package.json</span></div>
+        <p>Expo core is 3 major versions behind (54.0.33 installed vs 57.0.1 latest); most <code>expo-*</code> packages and async-storage are similarly stale. Worth checking against current App Store SDK requirements.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge fixed">Confirmed Good</span></div>
+        <p>No TODO/FIXME/HACK markers anywhere. No hardcoded secrets or IPs in frontend code. <code>ErrorBoundary</code> exists and is correctly wired at <code>app/_layout.tsx:262-266</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="feature" id="livetest">
+    <div class="feature-head" onclick="toggle(this)"><h2>Live Browser Test (Production)</h2><span class="status critical">Critical Crash Found</span></div>
+    <div class="feature-body open">
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">app/setup/steps/PlayerInputStep.tsx:180-201</span></div>
+        <p><strong>Adding a player whose name matches an existing player crashes the entire app on web.</strong> Confirmed reproducible: create a group, add one player, then add a second player with a similar/duplicate name. The server correctly responds <code>status: 'duplicate_name'</code>, but the app's response handler calls <code>Alert.alert(title, message, [multiple buttons])</code> to ask "is this the same person?" — React Native Web's <code>Alert.alert</code> polyfill does not support multi-button dialogs and throws <code>Failed to construct 'Text': ... this DOM object constructor cannot be called as a function</code>, which propagates all the way up and white-screens the whole app (caught only by the top-level ErrorBoundary). Session survives (re-navigating recovers), but all unsaved roster work on that screen is lost. This blocks one of the most common real-world actions — building a roster with players who share a first name.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">app.json experiments.baseUrl (build-time), app/login.tsx registration UX</span></div>
+        <p>Registration itself works end-to-end after today's fixes (verified: create account → auto-login → land on Groups). Player search-as-you-type, group creation, location picker, player pool browsing, invites tab, and the global rankings/leaderboard all loaded and worked correctly with real data.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge fixed">Confirmed Working</span></div>
+        <p>End-to-end verified on production after fixes: registration → login → create group → add player → create match setup screen → invites tab (My Invites / Player Pool / SMS Credits) → global rankings leaderboard (real data, correct win% math). Player Pool correctly does not expose raw phone numbers in the list view.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge sev-low">Note</span><span class="loc">test data left in production</span></div>
+        <p>Left behind for now (harmless, clearly-labeled test data, not cleaned up to avoid re-triggering the duplicate-name crash during cleanup): user account <code>playpbnow.audit.test+sonnet4@gmail.com</code> ("AuditTest Sonnet") and a group called "Audit Test Group" with one player ("Bob"). Safe to delete manually once the crash above is fixed.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="changelog">
+    <h2>Update Log</h2>
+    <ul id="log">
+      <li><time>init</time>Report skeleton created. Six background code-audit agents launched; live browser testing starting.</li>
+      <li><time>update</time>Frontend, iOS, Stripe, Matches, Invites, and API Backend audits all complete. Live browser test found production web app is completely down (blank screen, JS bundle 404s). Confirmed a live unauthenticated data-wipe endpoint (purge_data.php) exists on production without triggering it.</li>
+      <li><time>fix</time>Restored missing db_config.php + vendor/ on production (root cause of total backend outage since ~June 25-26). Fixed purge_data.php to require admin auth + POST. Rebuilt and redeployed web app with correct subdirectory baseUrl. Fixed 16 broken absolute links in the landing page.</li>
+      <li><time>fix</time>Found and fixed a 29-file systemic bug: every screen/hook hardcoded the wrong API base URL, breaking every server call on web. Fixed live-server code drift in email_login.php (phone was wrongly required). Rebuilt, redeployed, verified registration → login → groups → players → rankings all work end-to-end.</li>
+      <li><time>finding</time>Found a critical, reproducible crash: adding a player with a duplicate/similar name white-screens the entire app (React Native Web's Alert.alert doesn't support multi-button dialogs). Not yet fixed — flagged for next pass.</li>
+      <li><time>pending</time>DB schema change (make users.phone nullable) proposed but not applied — awaiting your go-ahead.</li>
+    </ul>
+  </div>
+</main>
+<script>
+  function toggle(head) {
+    const body = head.parentElement.querySelector('.feature-body');
+    body.classList.toggle('open');
+  }
+  function refreshSummary() {
+    document.getElementById('s-critical').textContent = document.querySelectorAll('.badge.sev-critical').length;
+    document.getElementById('s-high').textContent = document.querySelectorAll('.badge.sev-high').length;
+    document.getElementById('s-medium').textContent = document.querySelectorAll('.badge.sev-medium').length;
+    document.getElementById('s-fixed').textContent = document.querySelectorAll('.badge.fixed').length;
+    document.querySelector('.stat.crit') || document.getElementById('s-critical').closest('.stat').classList.add('crit');
+    document.getElementById('s-high').closest('.stat').classList.add('high');
+    document.getElementById('s-fixed').closest('.stat').classList.add('ok');
+    document.getElementById('updated').textContent = new Date().toLocaleString();
+  }
+  refreshSummary();
+</script>
+</body>
+</html>

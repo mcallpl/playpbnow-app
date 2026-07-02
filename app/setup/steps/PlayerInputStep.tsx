@@ -12,7 +12,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { SetupState, SetupAction, SearchResult } from '../types/setupTypes';
 import { createSetupStyles } from '../styles/setupStyles';
 
-const API_URL = '/api';
+const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 
 interface PlayerInputStepProps {
   state: SetupState;
