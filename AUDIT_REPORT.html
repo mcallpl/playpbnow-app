@@ -68,8 +68,8 @@
   <div class="sub">Full re-assessment under Sonnet 5, after prior Haiku-driven work. Updated continuously as agents report back and fixes land. Last updated: <span id="updated">initializing…</span></div>
 </header>
 <div style="background:#0d2a14;border-bottom:2px solid #35c76a;padding:14px 32px;">
-  <strong style="color:#86efac;">✅ PRODUCTION OUTAGE RESOLVED (2026-07-01, ~11:22 PM).</strong>
-  <span style="color:#c9e8d2;font-size:13.5px;">The app was down for a chain of real, compounding reasons, not one bug — see "Production Incident" below. Fixed and verified live: missing backend (db_config.php + vendor/), the blank-screen JS bundle path, broken landing-page links, the unauthenticated purge_data.php data-wipe endpoint, and a 29-file systemic bug where every API call hit the wrong URL. One critical bug remains open (player-duplicate-name crash, see Live Browser Test) and one DB schema change is awaiting your go-ahead (see Production Incident).</span>
+  <strong style="color:#86efac;">✅ PRODUCTION HEALTHY (restored 2026-07-02, ~12:00 AM).</strong>
+  <span style="color:#c9e8d2;font-size:13.5px;">Bug-fixing pass in progress. IMPORTANT discovery this session: the CI/CD pipeline itself re-breaks production on every git push — my own end-of-session push last turn wiped the API (db_config.php + vendor) and re-broke the web bundle. Root cause found and being fixed. Also discovered the deployed API comes from a <em>separate</em> GitHub repo (mcallpl/playpbnow-api), not this repo's playpbnow-api/ folder. See "CI/CD Pipeline" section. Working through every open bug one at a time from here.</span>
 </div>
 <main>
   <div class="summary-grid" id="summary">
@@ -80,6 +80,7 @@
   </div>
 
   <div class="toc">
+    <a href="#pipeline">CI/CD Pipeline</a>
     <a href="#incident">Production Incident</a>
     <a href="#backend">API Backend</a>
     <a href="#matches">Matches</a>
@@ -89,6 +90,28 @@
     <a href="#frontend">Frontend Quality</a>
     <a href="#livetest">Live Browser Test</a>
   </div>
+
+  <section class="feature" id="pipeline">
+    <div class="feature-head" onclick="toggle(this)"><h2>CI/CD Pipeline — The Meta-Bug</h2><span class="status critical">Being Fixed</span></div>
+    <div class="feature-body open">
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">.github/workflows/deploy.yml:210 (Deploy web files)</span></div>
+        <p><strong>Every push to main re-breaks production.</strong> The "Deploy web files" step runs <code>rsync --delete dist/ → /var/www/html/PlayPBNow/</code>. Because <code>dist/</code> contains no <code>api/</code> folder, <code>--delete</code> wipes the entire live <code>api/</code> directory — db_config.php, vendor/, and all PHP endpoints. The subsequent "Backup critical files" step runs <em>after</em> the nuke, so it captures nothing; the API redeploy then excludes db_config.php/vendor (correctly, since they're not in the repo) and the restore step has nothing to restore. Net result on every push: API returns 500 for everything. This is what took prod down again between my last two turns — my own end-of-session <code>git push</code> triggered it. Fix: add <code>--exclude=api</code> to the web rsync so <code>--delete</code> never touches the backend, plus a hard guard that restores db_config/vendor from the latest backup if they ever go missing.</p>
+      </div>
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">deploy.yml build step + app.json</span></div>
+        <p>The web build never set the Expo <code>baseUrl</code>, so the exported app.html referenced its JS bundle at <code>/_expo/...</code> (domain root) instead of <code>/PlayPBNow/_expo/...</code> — 404, blank screen — on every CI deploy. Fixed by committing <code>experiments.baseUrl: "/PlayPBNow"</code> into app.json so every build (CI and local) produces correct paths. <strong>Caveat (documented follow-up):</strong> project memory notes baseUrl breaks native iOS/EAS builds — before the next iOS build, baseUrl must be removed or moved into an <code>app.config.js</code> that only sets it for web. Noted so it isn't forgotten.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">two-repo architecture</span></div>
+        <p><strong>The deployed API is a separate GitHub repo</strong> (<code>github.com/mcallpl/playpbnow-api</code>), which the pipeline clones fresh on each deploy — NOT this app repo's <code>playpbnow-api/</code> folder. Verified: the separate repo matches the live server byte-for-byte (0 differing files), while this repo's copy has drifted (20 files differ, 23 exist only here including undeployed auth-hardening WIP). Consequence: <strong>all API/PHP bug fixes must be made in the separate repo</strong> to actually reach production; edits to this repo's <code>playpbnow-api/</code> are dead. This also explains why the earlier "fix agents" appeared to fix things that never changed in production — they edited the wrong repo.</p>
+      </div>
+      <div class="finding sev-low">
+        <div class="fhead"><span class="badge fixed">Restored</span></div>
+        <p>Prod restored to healthy this session: db_config.php + vendor/ recopied from the CI's own pre-deploy backup (checksum-verified), web rebuilt with correct baseUrl and redeployed (excluding api/), all endpoints verified 200.</p>
+      </div>
+    </div>
+  </section>
 
   <section class="feature" id="incident">
     <div class="feature-head" onclick="toggle(this)"><h2>Production Incident — Resolved</h2><span class="status pass">Fixed &amp; Verified Live</span></div>
@@ -359,6 +382,9 @@
       <li><time>fix</time>Found and fixed a 29-file systemic bug: every screen/hook hardcoded the wrong API base URL, breaking every server call on web. Fixed live-server code drift in email_login.php (phone was wrongly required). Rebuilt, redeployed, verified registration → login → groups → players → rankings all work end-to-end.</li>
       <li><time>finding</time>Found a critical, reproducible crash: adding a player with a duplicate/similar name white-screens the entire app (React Native Web's Alert.alert doesn't support multi-button dialogs). Not yet fixed — flagged for next pass.</li>
       <li><time>pending</time>DB schema change (make users.phone nullable) proposed but not applied — awaiting your go-ahead.</li>
+      <li><time>incident</time>Discovered my end-of-session push triggered the CI pipeline, which wiped the API (db_config/vendor) and re-broke the web bundle. Root-caused the pipeline's <code>--delete</code> api-nuke and missing baseUrl. Restored prod to healthy (API + web verified 200).</li>
+      <li><time>reframe</time>Confirmed the deployed API is a SEPARATE repo (mcallpl/playpbnow-api), matching the server exactly; this app repo's playpbnow-api/ folder is not deployed. All API fixes will be made in the separate repo from here.</li>
+      <li><time>next</time>Fixing the CI pipeline first (so nothing else breaks), then working through every open bug one at a time.</li>
     </ul>
   </div>
 </main>

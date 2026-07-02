@@ -99,20 +99,24 @@ jobs:
           node add-base-tag.js || echo "⚠️  No add-base-tag.js found (non-critical)"
           echo "✅ Added base tag"
 
-          # Create .htaccess for SPA fallback routing
+          # Create .htaccess for SPA fallback routing (app lives at /PlayPBNow/)
           cat > dist/.htaccess << 'EOF'
           <IfModule mod_rewrite.c>
             RewriteEngine On
-            RewriteBase /
+            RewriteBase /PlayPBNow/
             RewriteCond %{REQUEST_FILENAME} !-f
             RewriteCond %{REQUEST_FILENAME} !-d
-            RewriteCond %{REQUEST_URI} !index.html
+            RewriteCond %{REQUEST_URI} !index\.html$
             RewriteRule ^(.*)$ app.html [L]
           </IfModule>
 
           <IfModule mod_headers.c>
-            Header set Cache-Control "public, max-age=3600" ".js" ".css" ".png" ".jpg" ".gif" ".svg" ".woff" ".woff2"
-            Header set Cache-Control "public, max-age=0" "index.html"
+            <FilesMatch "\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2)$">
+              Header set Cache-Control "public, max-age=3600"
+            </FilesMatch>
+            <FilesMatch "\.html$">
+              Header set Cache-Control "public, max-age=0"
+            </FilesMatch>
           </IfModule>
           EOF
           echo "✅ Created .htaccess"
@@ -207,7 +211,9 @@ jobs:
       - name: Deploy web files
         run: |
           echo "📦 Deploying web files to production..."
-          rsync -avz --delete --include=".htaccess" \
+          # CRITICAL: --exclude='api' so --delete never wipes the live backend
+          # (dist/ has no api/ folder; without this exclude, --delete removes it).
+          rsync -avz --delete --exclude='api' --include=".htaccess" \
             -e "ssh -i ~/.ssh/deploy_key" \
             dist/ \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/
@@ -245,27 +251,51 @@ jobs:
         run: |
           echo "🔐 Restoring critical files..."
           ssh -i ~/.ssh/deploy_key ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} << 'EOSH'
-          [ -f /tmp/playbase_backup/db_config.php ] && cp /tmp/playbase_backup/db_config.php /var/www/html/PlayPBNow/api/
-          [ -d /tmp/playbase_backup/vendor ] && cp -r /tmp/playbase_backup/vendor /var/www/html/PlayPBNow/api/
+          set -e
+          API=/var/www/html/PlayPBNow/api
+          # Primary: restore from this run's pre-deploy snapshot
+          [ -f /tmp/playbase_backup/db_config.php ] && cp /tmp/playbase_backup/db_config.php "$API/"
+          [ -d /tmp/playbase_backup/vendor ] && cp -r /tmp/playbase_backup/vendor "$API/"
           rm -rf /tmp/playbase_backup
-          echo "✅ Critical files restored"
+
+          # HARD GUARD: db_config.php and vendor must NEVER be absent. If they are
+          # (e.g. a prior bug wiped them), restore from the newest full site backup.
+          if [ ! -f "$API/db_config.php" ] || [ ! -d "$API/vendor" ]; then
+            echo "⚠️  Critical files missing after deploy — restoring from newest backup"
+            NEWEST=$(ls -dt /var/backups/PlayPBNow-backup-*/ 2>/dev/null | head -1)
+            if [ -n "$NEWEST" ]; then
+              [ ! -f "$API/db_config.php" ] && [ -f "${NEWEST}api/db_config.php" ] && cp "${NEWEST}api/db_config.php" "$API/"
+              [ ! -d "$API/vendor" ] && [ -d "${NEWEST}api/vendor" ] && cp -r "${NEWEST}api/vendor" "$API/"
+              echo "✅ Restored from $NEWEST"
+            fi
+          fi
+          chown -R 1001:1001 "$API/db_config.php" "$API/vendor" 2>/dev/null || true
+          # Fail the deploy loudly if the backend is still not viable
+          [ -f "$API/db_config.php" ] || { echo "❌ db_config.php STILL missing"; exit 1; }
+          [ -f "$API/vendor/autoload.php" ] || { echo "❌ vendor/autoload.php STILL missing"; exit 1; }
+          echo "✅ Critical files present"
           EOSH
 
       - name: Verify deployment
         run: |
-          echo "🔍 Verifying deployment..."
-          ssh -i ~/.ssh/deploy_key ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} << 'EOSH'
+          echo "🔍 Verifying deployment (live smoke tests)..."
           set -e
-
-          echo "Checking deployed files..."
-          test -f /var/www/html/PlayPBNow/index.html && echo "✅ Landing page deployed" || echo "❌ Landing page missing"
-          test -f /var/www/html/PlayPBNow/app.html && echo "✅ SPA app deployed" || echo "❌ SPA app missing"
-          test -f /var/www/html/PlayPBNow/.htaccess && echo "✅ Routing configured" || echo "❌ Routing missing"
-          test -d /var/www/html/PlayPBNow/api && echo "✅ API deployed" || echo "❌ API missing"
-
-          echo ""
-          echo "Deployment verification complete!"
-          EOSH
+          # 1. API must return 200 (proves db_config + vendor present and DB reachable)
+          API_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://peoplestar.com/PlayPBNow/api/get_courts.php)
+          echo "API get_courts.php: HTTP $API_CODE"
+          [ "$API_CODE" = "200" ] || { echo "❌ API not healthy"; exit 1; }
+          # 2. Landing page must return 200
+          LAND_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://peoplestar.com/PlayPBNow/)
+          echo "Landing: HTTP $LAND_CODE"
+          [ "$LAND_CODE" = "200" ] || { echo "❌ Landing not healthy"; exit 1; }
+          # 3. The SPA's referenced JS bundle must actually exist (catches baseUrl regressions)
+          BUNDLE=$(curl -s https://peoplestar.com/PlayPBNow/app.html | grep -o '/PlayPBNow/[^"]*entry[^"]*\.js' | head -1)
+          echo "Bundle path: $BUNDLE"
+          [ -n "$BUNDLE" ] || { echo "❌ app.html bundle path wrong (baseUrl regression)"; exit 1; }
+          BUNDLE_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://peoplestar.com${BUNDLE}")
+          echo "Bundle: HTTP $BUNDLE_CODE"
+          [ "$BUNDLE_CODE" = "200" ] || { echo "❌ JS bundle 404 — blank screen"; exit 1; }
+          echo "✅ All live smoke tests passed!"
 
       - name: Deployment Success
         run: |
