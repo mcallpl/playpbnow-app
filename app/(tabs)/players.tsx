@@ -4,22 +4,22 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { storeNavData } from '../../utils/navData';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    InputAccessoryView,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  InputAccessoryView,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GroupSelector } from '../../components/GroupSelector';

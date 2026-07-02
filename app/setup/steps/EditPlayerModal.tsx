@@ -7,8 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   Pressable,
-  Alert,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { useTheme } from '@/context/ThemeContext';
 import { FONT_BODY_SEMIBOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM } from '@/constants/theme';
 import { SetupState, SetupAction } from '../types/setupTypes';

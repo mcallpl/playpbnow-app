@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-    Alert,
-    Modal,
-    ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_SEMIBOLD } from '../../constants/theme';

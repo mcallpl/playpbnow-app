@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 
 const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 

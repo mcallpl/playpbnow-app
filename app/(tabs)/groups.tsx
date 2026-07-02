@@ -5,7 +5,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Keyboard,
@@ -16,13 +15,13 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-
   Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
 import { TrialBanner } from '../../components/TrialBanner';

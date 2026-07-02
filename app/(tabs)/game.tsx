@@ -6,23 +6,23 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { getNavData, saveActiveMatchData, loadActiveMatchData } from '../../utils/navData';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    Share,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useActiveMatch } from '../../context/ActiveMatchContext';

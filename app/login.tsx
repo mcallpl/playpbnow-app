@@ -2,21 +2,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -396,9 +396,9 @@ export default function LoginScreen() {
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>
                             By continuing, you agree to our{' '}
-                            <Text style={styles.footerLink} onPress={() => openLegalUrl('/api/terms.html')}>Terms of Service</Text>
+                            <Text style={styles.footerLink} onPress={() => openLegalUrl('https://peoplestar.com/PlayPBNow/terms.html')}>Terms of Service</Text>
                             {' '}and{' '}
-                            <Text style={styles.footerLink} onPress={() => openLegalUrl('/api/privacy.html')}>Privacy Policy</Text>.
+                            <Text style={styles.footerLink} onPress={() => openLegalUrl('https://peoplestar.com/PlayPBNow/privacy.html')}>Privacy Policy</Text>.
                         </Text>
                     </View>
                 </ScrollView>

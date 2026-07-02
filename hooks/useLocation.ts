@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import * as Location from 'expo-location';
 
 export interface UserLocation {

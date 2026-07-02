@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = 'https://peoplestar.com/PlayPBNow/api';

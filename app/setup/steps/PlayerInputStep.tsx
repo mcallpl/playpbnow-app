@@ -1,12 +1,14 @@
-import React, { useCallback, useRef, useMemo } from 'react';
+import React, { useCallback, useRef, useMemo, useState } from 'react';
 import {
   View,
+  Text,
   TextInput,
   Pressable,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  Modal,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { BrandedIcon } from '@/components/BrandedIcon';
 import { useTheme } from '@/context/ThemeContext';
 import { SetupState, SetupAction, SearchResult } from '../types/setupTypes';
@@ -23,6 +25,14 @@ export function PlayerInputStep({ state, dispatch }: PlayerInputStepProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createSetupStyles(colors, false), [colors]);
   const nameInputRef = useRef<TextInput>(null);
+  // Cross-platform duplicate-name prompt (Alert.alert with multiple buttons is not
+  // supported on React Native Web, so we use an in-app modal instead).
+  const [dupPrompt, setDupPrompt] = useState<{
+    name: string;
+    gender: 'male' | 'female';
+    phone: string | null;
+    existing: any;
+  } | null>(null);
 
   const searchGlobalPlayers = useCallback(
     async (query: string) => {
@@ -179,35 +189,9 @@ export function PlayerInputStep({ state, dispatch }: PlayerInputStepProps) {
       const data = await res.json();
       if (data.status === 'duplicate_name') {
         const existing = data.existing_players[0];
-        Alert.alert(
-          'Player Already Exists',
-          `"${existing.first_name}" is already in this group. Is this the same person?`,
-          [
-            {
-              text: 'Same Person',
-              onPress: () =>
-                addExistingPlayer({
-                  id: existing.id,
-                  player_key: existing.player_key,
-                  first_name: existing.first_name,
-                  last_name: existing.last_name || '',
-                  gender: existing.gender,
-                  home_court_name: null,
-                  wins: 0,
-                  losses: 0,
-                  win_pct: 0,
-                  groups: [],
-                  is_verified: false,
-                  source: 'duplicate',
-                }),
-            },
-            {
-              text: 'Different Person',
-              onPress: () => addPlayerForceNew(name, gender, phone),
-            },
-            { text: 'Cancel', style: 'cancel' },
-          ]
-        );
+        // Show a cross-platform modal (works on web + native) instead of a
+        // multi-button Alert.alert, which crashes React Native Web.
+        setDupPrompt({ name, gender, phone, existing });
       } else if (data.status === 'success') {
         try {
           const rosterRes = await fetch(`${API_URL}/get_players.php?group_key=${state.groupKey}`);
@@ -336,6 +320,75 @@ export function PlayerInputStep({ state, dispatch }: PlayerInputStepProps) {
           )}
         </View>
       )}
+
+      <Modal
+        visible={!!dupPrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDupPrompt(null)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8 }}>
+              Player Already Exists
+            </Text>
+            <Text style={{ fontSize: 14, color: colors.textMuted, marginBottom: 20, lineHeight: 20 }}>
+              {dupPrompt
+                ? `"${dupPrompt.existing.first_name}" is already in this group. Is this the same person?`
+                : ''}
+            </Text>
+            <TouchableOpacity
+              style={{ backgroundColor: colors.accent, borderRadius: 10, padding: 14, marginBottom: 10 }}
+              onPress={() => {
+                if (!dupPrompt) return;
+                const e = dupPrompt.existing;
+                setDupPrompt(null);
+                addExistingPlayer({
+                  id: e.id,
+                  player_key: e.player_key,
+                  first_name: e.first_name,
+                  last_name: e.last_name || '',
+                  gender: e.gender,
+                  home_court_name: null,
+                  wins: 0,
+                  losses: 0,
+                  win_pct: 0,
+                  groups: [],
+                  is_verified: false,
+                  source: 'duplicate',
+                });
+              }}
+            >
+              <Text style={{ color: colors.text, textAlign: 'center', fontWeight: '700' }}>
+                Same Person
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ backgroundColor: colors.inputBg || colors.bg, borderRadius: 10, padding: 14, marginBottom: 10 }}
+              onPress={() => {
+                if (!dupPrompt) return;
+                const { name, gender, phone } = dupPrompt;
+                setDupPrompt(null);
+                addPlayerForceNew(name, gender, phone);
+              }}
+            >
+              <Text style={{ color: colors.text, textAlign: 'center', fontWeight: '600' }}>
+                Different Person
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{ padding: 12 }} onPress={() => setDupPrompt(null)}>
+              <Text style={{ color: colors.textMuted, textAlign: 'center' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -5,8 +5,8 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { FONT_BODY_SEMIBOLD, FONT_BODY_REGULAR } from '@/constants/theme';

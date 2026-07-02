@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, AppStateStatus, Linking, Platform } from 'react-native';
+import { AppState, AppStateStatus, Linking, Platform } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { PurchasesPackage } from 'react-native-purchases';
 import {
     initializePurchases,

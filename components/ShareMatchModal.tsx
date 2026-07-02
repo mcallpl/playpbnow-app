@@ -1,15 +1,15 @@
 import { BrandedIcon } from '../components/BrandedIcon';
 import React, { useMemo } from 'react';
 import {
-    Alert,
-    Modal,
-    Platform,
-    Share,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Modal,
+  Platform,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_BOLD, FONT_BODY_SEMIBOLD } from '../constants/theme';

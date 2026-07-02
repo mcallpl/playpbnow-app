@@ -92,7 +92,7 @@
   </div>
 
   <section class="feature" id="pipeline">
-    <div class="feature-head" onclick="toggle(this)"><h2>CI/CD Pipeline — The Meta-Bug</h2><span class="status critical">Being Fixed</span></div>
+    <div class="feature-head" onclick="toggle(this)"><h2>CI/CD Pipeline — The Meta-Bug</h2><span class="status pass">Fixed &amp; Verified Live</span></div>
     <div class="feature-body open">
       <div class="finding sev-critical">
         <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">.github/workflows/deploy.yml:210 (Deploy web files)</span></div>
@@ -107,8 +107,8 @@
         <p><strong>The deployed API is a separate GitHub repo</strong> (<code>github.com/mcallpl/playpbnow-api</code>), which the pipeline clones fresh on each deploy — NOT this app repo's <code>playpbnow-api/</code> folder. Verified: the separate repo matches the live server byte-for-byte (0 differing files), while this repo's copy has drifted (20 files differ, 23 exist only here including undeployed auth-hardening WIP). Consequence: <strong>all API/PHP bug fixes must be made in the separate repo</strong> to actually reach production; edits to this repo's <code>playpbnow-api/</code> are dead. This also explains why the earlier "fix agents" appeared to fix things that never changed in production — they edited the wrong repo.</p>
       </div>
       <div class="finding sev-low">
-        <div class="fhead"><span class="badge fixed">Restored</span></div>
-        <p>Prod restored to healthy this session: db_config.php + vendor/ recopied from the CI's own pre-deploy backup (checksum-verified), web rebuilt with correct baseUrl and redeployed (excluding api/), all endpoints verified 200.</p>
+        <div class="fhead"><span class="badge fixed">Fixed &amp; Verified</span></div>
+        <p>Pipeline repaired and proven end-to-end: pushed the fix, the full CI run went green, the new live smoke tests passed, and after the run the API (200), landing (200), JS bundle (200), and db_config.php + vendor/ are all intact. Pushes no longer break production. Prod was also manually restored to healthy earlier in the session before the fix landed.</p>
       </div>
     </div>
   </section>
@@ -299,8 +299,8 @@
     <div class="feature-head" onclick="toggle(this)"><h2>iOS App Store Compliance</h2><span class="status issues">Mostly Fixed, 1 Regression</span></div>
     <div class="feature-body open">
       <div class="finding sev-high">
-        <div class="fhead"><span class="badge sev-high">High</span><span class="badge partial">Missed, Not Reverted</span><span class="loc">app/login.tsx:399,401</span></div>
-        <p>The June 24 fix corrected relative Terms/Privacy URLs in <code>PaywallModal.tsx</code>, but an identical bug exists in <code>login.tsx</code> (<code>openLegalUrl('/api/terms.html')</code> / <code>'/api/privacy.html'</code>) that was never touched — it predates the fix commit and the fix agent's search scope simply missed it. On the login/registration screen (the first screen every new user and App Reviewer sees), tapping Privacy Policy or Terms silently fails to open on a real device because <code>Linking.openURL</code> can't resolve a relative path.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">app/login.tsx:399,401</span></div>
+        <p>[Now fixed] The June 24 fix corrected relative Terms/Privacy URLs in <code>PaywallModal.tsx</code> but missed the identical bug in <code>login.tsx</code> (<code>openLegalUrl('/api/terms.html')</code> / <code>'/api/privacy.html'</code>) — on the login screen (first screen every new user and App Reviewer sees), tapping Privacy/Terms silently failed on native because <code>Linking.openURL</code> can't resolve a relative path. Changed both to absolute <code>https://peoplestar.com/PlayPBNow/</code> URLs.</p>
       </div>
       <div class="finding sev-critical">
         <div class="fhead"><span class="badge sev-critical">Critical (latent)</span><span class="loc">app.json / ios/PlayPBNow/PrivacyInfo.xcprivacy</span></div>
@@ -355,8 +355,12 @@
     <div class="feature-head" onclick="toggle(this)"><h2>Live Browser Test (Production)</h2><span class="status critical">Critical Crash Found</span></div>
     <div class="feature-body open">
       <div class="finding sev-critical">
-        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">app/setup/steps/PlayerInputStep.tsx:180-201</span></div>
-        <p><strong>Adding a player whose name matches an existing player crashes the entire app on web.</strong> Confirmed reproducible: create a group, add one player, then add a second player with a similar/duplicate name. The server correctly responds <code>status: 'duplicate_name'</code>, but the app's response handler calls <code>Alert.alert(title, message, [multiple buttons])</code> to ask "is this the same person?" — React Native Web's <code>Alert.alert</code> polyfill does not support multi-button dialogs and throws <code>Failed to construct 'Text': ... this DOM object constructor cannot be called as a function</code>, which propagates all the way up and white-screens the whole app (caught only by the top-level ErrorBoundary). Session survives (re-navigating recovers), but all unsaved roster work on that screen is lost. This blocks one of the most common real-world actions — building a roster with players who share a first name.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">app/setup/steps/PlayerInputStep.tsx</span></div>
+        <p><strong>Player-add crash — root cause was deeper than first thought, now fixed.</strong> The real cause: this file rendered <code>&lt;Text&gt;</code> (in the search-results dropdown) but <strong>never imported <code>Text</code> from react-native</strong> — so on web the bare identifier resolved to the browser's global <code>window.Text</code> DOM constructor, and React threw <code>Failed to construct 'Text'</code> whenever the dropdown rendered (i.e. whenever a typed name matched pool players — which is why it seemed intermittent). Fixed by adding the missing <code>Text</code> import. Swept the whole codebase (app/ + components/) for the same missing-import pattern — this was the only offender. Also replaced the duplicate-name confirmation (which used a web-broken multi-button <code>Alert.alert</code>) with a proper cross-platform modal. Verified the build compiles; live re-test pending deploy.</p>
+      </div>
+      <div class="finding sev-critical">
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">react-native-web Alert.alert (app-wide, 159 call sites)</span></div>
+        <p><strong>Discovered while fixing the above: every confirmation and error dialog is silently dead on the web app.</strong> react-native-web 0.21.2 implements <code>Alert.alert</code> as a literal no-op (<code>static alert() {}</code>). That means Log Out, Delete Account, Delete Group/Player/Beacon, Merge Players, Send Broadcast, score-update confirmations, and all error messages <em>do nothing</em> on web — a large slice of "the app is broken." Fixed with a drop-in cross-platform <code>Alert</code> shim (<code>utils/crossAlert.ts</code>): unchanged native behavior, and on web it maps to real <code>window.confirm</code>/<code>window.alert</code> dialogs so confirmations and errors actually work. Swapped the import in all 27 affected files (no call-site churn). Build verified.</p>
       </div>
       <div class="finding sev-high">
         <div class="fhead"><span class="badge sev-high">High</span><span class="loc">app.json experiments.baseUrl (build-time), app/login.tsx registration UX</span></div>
@@ -385,6 +389,7 @@
       <li><time>incident</time>Discovered my end-of-session push triggered the CI pipeline, which wiped the API (db_config/vendor) and re-broke the web bundle. Root-caused the pipeline's <code>--delete</code> api-nuke and missing baseUrl. Restored prod to healthy (API + web verified 200).</li>
       <li><time>reframe</time>Confirmed the deployed API is a SEPARATE repo (mcallpl/playpbnow-api), matching the server exactly; this app repo's playpbnow-api/ folder is not deployed. All API fixes will be made in the separate repo from here.</li>
       <li><time>next</time>Fixing the CI pipeline first (so nothing else breaks), then working through every open bug one at a time.</li>
+      <li><time>fixed</time>CI/CD pipeline repaired &amp; verified (pushes no longer break prod). Player-add crash fixed (real cause: missing Text import → window.Text on web). Discovered + fixed that ALL Alert.alert dialogs are no-ops on web (cross-platform shim, 27 files). Fixed login.tsx relative legal URLs.</li>
     </ul>
   </div>
 </main>

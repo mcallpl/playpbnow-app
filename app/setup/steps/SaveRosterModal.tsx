@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Modal, View, TextInput, TouchableOpacity, Text, Alert } from 'react-native';
+import { Modal, View, TextInput, TouchableOpacity, Text } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/context/ThemeContext';
 import { SetupState, SetupAction } from '../types/setupTypes';

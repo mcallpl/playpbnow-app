@@ -2,7 +2,6 @@ import { BrandedIcon } from '../../components/BrandedIcon';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -16,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter, useNavigation } from 'expo-router';
 import { useSubscription } from '../../context/SubscriptionContext';

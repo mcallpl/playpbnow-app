@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Image,
   Modal,
@@ -15,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Rect, Line, Circle, Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';

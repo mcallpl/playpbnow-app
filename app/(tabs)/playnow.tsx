@@ -5,7 +5,6 @@ import { Image } from 'expo-image';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
@@ -18,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Alert } from '@/utils/crossAlert';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
