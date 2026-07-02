@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const API_URL = 'https://peoplestar.com/PlayPBNow/api';
 const POLL_INTERVAL = 2000;
+const MAX_POLL_INTERVAL = 30000; // cap for exponential backoff on repeated failures
 const PROTECTION_WINDOW = 3000;
 const MAX_RETRIES = 3;
 
@@ -41,7 +42,8 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     const [finishedGroupName, setFinishedGroupName] = useState<string | null>(null);
     const [finishedSessionId, setFinishedSessionId] = useState<string | null>(null);
 
-    const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const pollIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pollFailuresRef = useRef(0); // consecutive poll failures, for backoff
     const localUpdatesRef = useRef<Set<string>>(new Set());
 
     // ── ALL session values as refs — immune to stale closures ──
@@ -281,27 +283,47 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                     }
                 }
             }
+            pollFailuresRef.current = 0; // success — reset backoff
         } catch (err) {
+            pollFailuresRef.current += 1; // failure — grow backoff
             console.error('Poll failed:', err);
         }
     }, [setScores, setSchedule]);
 
     // ── LIFECYCLE: Start polling after initial sync ──────────────
+    // Self-scheduling loop with exponential backoff: polls every POLL_INTERVAL
+    // while healthy, but backs off (up to MAX_POLL_INTERVAL) on consecutive
+    // failures so a flaky network / down server doesn't hammer at 2s forever.
     useEffect(() => {
         if (!sessionId || !shareCode || !initialSyncDone) {
             if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current);
+                clearTimeout(pollIntervalRef.current);
                 pollIntervalRef.current = null;
             }
             return;
         }
 
-        // Start polling
-        pollIntervalRef.current = setInterval(pollForUpdates, POLL_INTERVAL);
+        let cancelled = false;
+        pollFailuresRef.current = 0;
+
+        const scheduleNext = () => {
+            if (cancelled) return;
+            const delay = Math.min(
+                POLL_INTERVAL * Math.pow(2, pollFailuresRef.current),
+                MAX_POLL_INTERVAL
+            );
+            pollIntervalRef.current = setTimeout(async () => {
+                if (cancelled) return;
+                await pollForUpdates();
+                scheduleNext();
+            }, delay);
+        };
+        scheduleNext();
 
         return () => {
+            cancelled = true;
             if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current);
+                clearTimeout(pollIntervalRef.current);
                 pollIntervalRef.current = null;
             }
         };

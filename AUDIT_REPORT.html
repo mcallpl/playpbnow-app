@@ -202,23 +202,23 @@
   </section>
 
   <section class="feature" id="matches">
-    <div class="feature-head" onclick="toggle(this)"><h2>Matches (Live Scoring)</h2><span class="status critical">Fixed the Wrong Code</span></div>
+    <div class="feature-head" onclick="toggle(this)"><h2>Matches (Live Scoring)</h2><span class="status issues">Core Bugs Fixed</span></div>
     <div class="feature-body open">
       <div class="finding sev-critical">
         <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">join_match.php / MatchController.php / routes.php vs collab_*.php</span></div>
         <p><strong>The June 24 fixes were applied to a parallel implementation the app doesn't actually use.</strong> <code>join_match.php</code>'s batch_id→id fix is real and correct — but nothing calls it in production (its only caller, <code>app/live-match.tsx</code>, is dead code no screen navigates to). The live-match feature real users hit is <code>JoinMatchModal.tsx → collab_join_match.php → game.tsx / useCollaborativeScoring.ts → collab_sync_scores.php</code>, an entirely separate <code>collab_*</code> schema that was left almost untouched. Likewise, <code>MatchController.php</code>'s real validation logic (ownership checks, duplicate prevention, player-existence checks) can never execute — <code>routes.php</code> maps to method names (<code>create</code>, <code>update</code>, <code>delete</code>) that don't exist on the controller (real methods: <code>createMatch</code>, <code>updateMatch</code>, etc.), so every REST call 500s.</p>
       </div>
       <div class="finding sev-high">
-        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">collab_sync_scores.php:53-94</span></div>
-        <p><strong>Race condition still live in production.</strong> The real scoring endpoint does an unlocked read-then-write with no transaction — two devices editing the same game within the same second can silently overwrite each other's score. The correct transactional pattern (SELECT...FOR UPDATE + commit) exists in <code>update_match.php</code>, but that file isn't on the live-scoring path.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">collab_sync_scores.php</span></div>
+        <p><strong>[Fixed &amp; verified live]</strong> The real live-scoring endpoint did two unlocked read-modify-writes (the per-game score row and the scores_json snapshot blob), so two devices scoring the same session could silently lose each other's updates. Rewrote it to wrap all writes in a transaction that locks the session row (<code>SELECT ... FOR UPDATE</code>), serializing concurrent scorers. Verified the endpoint returns correct JSON on the transaction path.</p>
       </div>
       <div class="finding sev-high">
-        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">delete_match.php + hooks/useLeaderboardLogic.ts:285-296</span></div>
-        <p><strong>Delete-match is functionally broken for everyone.</strong> The server requires <code>user_id</code> in the request body to authorize a delete, but the only frontend caller never sends it — every delete request fails regardless of who owns the match. Separately, for any match where <code>created_by_user</code> is NULL (common on older rows), the ownership check is skipped entirely and anyone can delete it. Sibling endpoint <code>update_match.php</code> has no identity check at all — authorizes purely by guessable group name.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">delete_match.php + hooks/useLeaderboardLogic.ts</span></div>
+        <p><strong>[Fixed &amp; verified live]</strong> The real bug turned out to be even worse than the audit thought: the deployed <code>delete_match.php</code> was a <strong>0-byte empty file</strong>, so every match deletion silently failed with a client "Network error." Reimplemented it (modeled on the working delete_session.php): deletes by match id and enforces ownership via <code>matches.device_id</code> (which stores the creating user's id). The frontend now sends <code>device_id</code> so ownership is actually verified. Verified: returns proper JSON instead of an empty body. (update_match.php identity check remains — tracked with the other auth-retrofit items.)</p>
       </div>
       <div class="finding sev-medium">
-        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">hooks/useCollaborativeScoring.ts:5,300 vs hooks/useScoreSync.ts</span></div>
-        <p>The "10s interval with exponential backoff" commit is real but landed in <code>useScoreSync.ts</code>, which is never imported anywhere. The hook actually wired into the live game screen polls every 2 seconds, fixed, forever, with no backoff on errors.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">hooks/useCollaborativeScoring.ts</span></div>
+        <p><strong>[Fixed]</strong> The live game screen's real polling hook fired every 2s forever with no backoff on errors (an earlier "backoff" commit had landed in a dead, never-imported hook). Converted it to a self-scheduling loop with exponential backoff (2s → capped at 30s) that resets on success, so a flaky network / downed server no longer hammers the API every 2 seconds.</p>
       </div>
       <div class="finding sev-medium">
         <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">playpbnow-api/test_match_fixes.php</span></div>
@@ -307,12 +307,12 @@
         <p>[Now fixed] The June 24 fix corrected relative Terms/Privacy URLs in <code>PaywallModal.tsx</code> but missed the identical bug in <code>login.tsx</code> (<code>openLegalUrl('/api/terms.html')</code> / <code>'/api/privacy.html'</code>) — on the login screen (first screen every new user and App Reviewer sees), tapping Privacy/Terms silently failed on native because <code>Linking.openURL</code> can't resolve a relative path. Changed both to absolute <code>https://peoplestar.com/PlayPBNow/</code> URLs.</p>
       </div>
       <div class="finding sev-critical">
-        <div class="fhead"><span class="badge sev-critical">Critical (latent)</span><span class="loc">app.json / ios/PlayPBNow/PrivacyInfo.xcprivacy</span></div>
-        <p><strong>Durability risk on the most critical fix.</strong> <code>ios/</code> is gitignored except for two hand-added files (Info.plist, PrivacyInfo.xcprivacy) — the rest of the native Xcode project isn't tracked. Info.plist's manual edits are mirrored in <code>app.json</code>'s <code>ios.infoPlist</code>, so it would regenerate correctly. But <strong>PrivacyInfo.xcprivacy has no equivalent app.json/config-plugin source of truth</strong> — if <code>ios/</code> is ever regenerated (fresh clone + <code>expo prebuild</code>, or an EAS Build that reprovisions), the privacy manifest silently comes back empty, reintroducing the original App Store rejection cause. Needs <code>ios.privacyManifests</code> added to app.json.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">app.json ios.privacyManifests</span></div>
+        <p><strong>[Fixed] Durability risk on the most critical iOS-compliance fix.</strong> The privacy manifest previously lived only in a hand-added <code>PrivacyInfo.xcprivacy</code> with no app.json source of truth, so a native regeneration (<code>expo prebuild</code>/EAS) would silently bring it back empty — reintroducing the original App Store rejection. Added the full <code>ios.privacyManifests</code> block to app.json (all 7 collected-data types + 4 accessed-API reason codes, NSPrivacyTracking false), so Expo regenerates it correctly from config.</p>
       </div>
       <div class="finding sev-medium">
-        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="badge partial">Partial</span><span class="loc">utils/helpContent.ts, app/(tabs)/help.tsx</span></div>
-        <p>Privacy policy is mentioned as plain text in the Help tab but not rendered as a tappable link (MarkdownText only parses <code>**bold**</code>) — user would have to manually copy the URL.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">app/(tabs)/help.tsx</span></div>
+        <p><strong>[Fixed]</strong> The Help tab's <code>MarkdownText</code> only parsed <code>**bold**</code>, so the privacy-policy URL rendered as plain, un-tappable text. Extended it to also detect <code>http(s)</code> URLs and render them as tappable links (opens in-browser on web, <code>Linking.openURL</code> on native) — applies to every URL in help content, not just the privacy link.</p>
       </div>
       <div class="finding sev-low">
         <div class="fhead"><span class="badge fixed">Confirmed Fixed</span></div>
@@ -396,6 +396,7 @@
       <li><time>fixed</time>CI/CD pipeline repaired &amp; verified (pushes no longer break prod). Player-add crash fixed (real cause: missing Text import → window.Text on web). Discovered + fixed that ALL Alert.alert dialogs are no-ops on web (cross-platform shim, 27 files). Fixed login.tsx relative legal URLs.</li>
       <li><time>fixed</time>API security: locked down purge_data.php (unauth data-wipe) and activate_subscription.php (free-Pro backdoor) with a new admin-auth helper; closed delete_group.php ownership bypass. All verified live. Fixed phone-optional registration end-to-end (DB column made nullable + removed phone-required check in source repo). All API fixes pushed to the source-of-truth playpbnow-api repo.</li>
       <li><time>remaining</time>Still open (documented, lower-risk or need coordination): admin_api/broadcast_api token auth, delete_player/delete_match hardening, collab score-sync race, CORS wildcard cleanup, Stripe/SMS-credit verification, frontend console/null-safety cleanup, Help privacy link + iOS manifest durability, DB indexes.</li>
+      <li><time>fixed</time>delete_match.php reimplemented (was a 0-byte file → every delete silently failed) with ownership via device_id; live-scoring race fixed with a session-row-lock transaction; collab polling now backs off exponentially; Help URLs now tappable; iOS privacy manifest added to app.json (survives regeneration); null-safety guards added to useGameSession; removed JoinMatchModal response-body logging. All verified on the source-of-truth API + built clean.</li>
     </ul>
   </div>
 </main>

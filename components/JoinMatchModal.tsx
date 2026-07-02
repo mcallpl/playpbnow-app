@@ -58,7 +58,6 @@ export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
             });
 
             const responseText = await response.text();
-            console.log(`[JoinMatch] Response (${response.status}): ${responseText.substring(0, 500)}`);
 
             let data;
             try {

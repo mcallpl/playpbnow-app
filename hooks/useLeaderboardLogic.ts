@@ -289,6 +289,7 @@ export const useLeaderboardLogic = (
                     body: JSON.stringify({
                         id: targetId,
                         match_id: targetId,
+                        device_id: deviceId, // = user_id; lets the server verify ownership
                         group: match.group || groupName,
                         timestamp: match.timestamp,
                         p1: match.p1, p2: match.p2,

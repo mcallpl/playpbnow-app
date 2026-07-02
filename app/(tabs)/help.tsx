@@ -8,6 +8,8 @@ import {
   View,
   Modal,
   ActivityIndicator,
+  Linking,
+  Platform,
 } from 'react-native';
 import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,15 +29,25 @@ interface MarkdownTextProps {
   numberOfLines?: number;
 }
 
+const openUrl = (url: string) => {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.open(url, '_blank');
+  } else {
+    Linking.openURL(url).catch(() => {});
+  }
+};
+
 const MarkdownText: React.FC<MarkdownTextProps> = ({ text, style, boldStyle, numberOfLines }) => {
   const parts: (React.ReactNode)[] = [];
-  const regex = /\*\*([^*]+)\*\*/g;
+  // Match **bold** OR a bare http(s) URL so URLs render as tappable links
+  // (previously URLs like the privacy policy were shown as plain, un-tappable text).
+  const regex = /(\*\*([^*]+)\*\*)|(https?:\/\/[^\s)]+)/g;
   let lastIndex = 0;
   let match;
   let partIndex = 0;
 
   while ((match = regex.exec(text)) !== null) {
-    // Add text before the bold part
+    // Add text before the match
     if (match.index > lastIndex) {
       parts.push(
         <Text key={`text-${partIndex}`} style={style}>
@@ -44,12 +56,26 @@ const MarkdownText: React.FC<MarkdownTextProps> = ({ text, style, boldStyle, num
       );
       partIndex++;
     }
-    // Add the bold part
-    parts.push(
-      <Text key={`bold-${partIndex}`} style={[style, boldStyle, { fontFamily: FONT_BODY_SEMIBOLD }]}>
-        {match[1]}
-      </Text>
-    );
+    if (match[2] !== undefined) {
+      // **bold**
+      parts.push(
+        <Text key={`bold-${partIndex}`} style={[style, boldStyle, { fontFamily: FONT_BODY_SEMIBOLD }]}>
+          {match[2]}
+        </Text>
+      );
+    } else if (match[3]) {
+      // URL → tappable link
+      const url = match[3];
+      parts.push(
+        <Text
+          key={`link-${partIndex}`}
+          style={[style, { textDecorationLine: 'underline' }]}
+          onPress={() => openUrl(url)}
+        >
+          {url}
+        </Text>
+      );
+    }
     partIndex++;
     lastIndex = regex.lastIndex;
   }

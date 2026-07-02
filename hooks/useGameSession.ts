@@ -46,7 +46,7 @@ export function useGameSession(
 
             const data = await response.json();
 
-            if (data.status === 'success') {
+            if (data.status === 'success' && data.session) {
                 setSessionId(data.session.batch_id);
                 setShareCode(data.session.share_code);
                 setIsLiveSession(true);
@@ -70,16 +70,16 @@ export function useGameSession(
             const response = await fetch(`${API_URL}/get_live_session.php?share_code=${code}`);
             const data = await response.json();
 
-            if (data.status === 'success') {
+            if (data.status === 'success' && data.session) {
                 setSessionId(data.session.batch_id);
                 setShareCode(data.session.share_code);
-                setSchedule(data.schedule);
+                setSchedule(Array.isArray(data.schedule) ? data.schedule : []);
                 setIsLiveSession(true);
 
                 // Load scores from database - skip zeros
                 const loadedScores: any = {};
-                data.schedule.forEach((round: any, roundIdx: number) => {
-                    round.games.forEach((game: any, gameIdx: number) => {
+                (Array.isArray(data.schedule) ? data.schedule : []).forEach((round: any, roundIdx: number) => {
+                    (round?.games ?? []).forEach((game: any, gameIdx: number) => {
                         const s1 = game.s1;
                         const s2 = game.s2;
                         
