@@ -183,12 +183,12 @@
         <p>Deletes any player by ID with zero auth. The frontend caller (usePlayerManagement) sends only <code>player_id</code> — no owner context — so a safe fix requires adding a group/owner field to that request and verifying the player belongs to a group the user owns. Deferred to avoid breaking the working delete flow; flagged for the next pass.</p>
       </div>
       <div class="finding sev-high">
-        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">send_verification_code.php</span></div>
-        <p>No rate limiting at all — anyone can trigger unlimited verification SMS to any phone number at Twilio's expense, no auth required. (The one endpoint that does rate-limit correctly, forgot_password.php, shows the team knows the pattern — it just wasn't applied here.)</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">send_verification_code.php</span></div>
+        <p><strong>[Fixed &amp; deployed]</strong> Was: unauthenticated, unlimited verification-SMS sends (Twilio cost-abuse). Added a fail-open per-phone rate limit (max 5/hour) — errors allow the send so legitimate users are never blocked, only confirmed abuse is stopped. CORS restricted. (Note: forgot_password.php had no limiter either in the deployed version — the "correct" one was undeployed; worth adding there too as a follow-up.)</p>
       </div>
       <div class="finding sev-medium">
-        <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">migrations/, apply_indexes.php</span></div>
-        <p>Index-creation scripts exist and are well-designed but are manual-only — deploy-api.sh never runs them, so there's no evidence they were ever applied to the production database.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">production DB indexes</span></div>
+        <p><strong>[Fixed &amp; verified]</strong> Applied the missing performance indexes directly to the production DB (idempotently). Most important: <code>user_sessions(session_token, expires_at)</code> — the token lookups the new admin-auth checks depend on now hit an index instead of a full table scan. Also added indexes on users(email), players(group_id, player_key), player_group_memberships, invite_responses, matches, sessions, verification_codes. (matches/players turned out already well-indexed.)</p>
       </div>
       <div class="finding sev-medium">
         <div class="fhead"><span class="badge sev-medium">Medium</span><span class="loc">debug_players.php, check_schema.php, diag.php, fix.php, etc.</span></div>
@@ -270,8 +270,12 @@
   </section>
 
   <section class="feature" id="stripe">
-    <div class="feature-head" onclick="toggle(this)"><h2>Stripe / SMS Credit Purchases</h2><span class="status critical">Critical Issues</span></div>
+    <div class="feature-head" onclick="toggle(this)"><h2>Stripe / SMS Credit Purchases</h2><span class="status issues">Feature Not Deployed — Needs Your Go-Ahead</span></div>
     <div class="feature-body open">
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">Verified — Awaiting decision</span><span class="loc">sms_credits_api.php + stripe_webhook.php (both 404)</span></div>
+        <p><strong>The entire SMS-credit purchase feature is not deployed.</strong> Verified live: both <code>sms_credits_api.php</code> and <code>stripe_webhook.php</code> return 404 on production (they exist only in this repo's undeployed <code>playpbnow-api/</code> folder, not in the source-of-truth repo or on the server). Consequences: the frontend "Buy Credits" button fails, credit balance can't load, and since <code>invite_api.php</code> gates sending on a credit balance no one can buy, non-admin invite-sending is effectively blocked. <strong>Silver lining:</strong> because nothing is deployed, the critical webhook fail-open below is NOT currently exploitable. <strong>Fixing this = deploying live Stripe payment infrastructure</strong> (real card charges), which requires the hardening fixes below, the Stripe key in the server vault, resolving the credits/balance schema question, and a real test transaction — an outward-facing financial action I won't take without your explicit go-ahead. The vulnerabilities below are documented so they get fixed <em>before</em> any such deploy.</p>
+      </div>
       <div class="finding sev-critical">
         <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">playpbnow-api/stripe_webhook.php:12-33</span></div>
         <p><strong>Webhook signature check fails open.</strong> Verification only runs "if a Stripe-Signature header is present." A request with NO signature header skips verification entirely and is processed as trusted. Since credit-purchase handling reads <code>credits</code> and <code>user_id</code> straight from attacker-controlled JSON <code>metadata</code>, <strong>anyone can POST directly to this endpoint with a plain curl command and grant themselves unlimited free SMS credits</strong> — no real Stripe transaction required. This directly contradicts the June 24 "zero vulnerabilities" claim.</p>
@@ -397,6 +401,8 @@
       <li><time>fixed</time>API security: locked down purge_data.php (unauth data-wipe) and activate_subscription.php (free-Pro backdoor) with a new admin-auth helper; closed delete_group.php ownership bypass. All verified live. Fixed phone-optional registration end-to-end (DB column made nullable + removed phone-required check in source repo). All API fixes pushed to the source-of-truth playpbnow-api repo.</li>
       <li><time>remaining</time>Still open (documented, lower-risk or need coordination): admin_api/broadcast_api token auth, delete_player/delete_match hardening, collab score-sync race, CORS wildcard cleanup, Stripe/SMS-credit verification, frontend console/null-safety cleanup, Help privacy link + iOS manifest durability, DB indexes.</li>
       <li><time>fixed</time>delete_match.php reimplemented (was a 0-byte file → every delete silently failed) with ownership via device_id; live-scoring race fixed with a session-row-lock transaction; collab polling now backs off exponentially; Help URLs now tappable; iOS privacy manifest added to app.json (survives regeneration); null-safety guards added to useGameSession; removed JoinMatchModal response-body logging. All verified on the source-of-truth API + built clean.</li>
+      <li><time>fixed</time>send_verification_code.php rate-limited (Twilio cost-abuse); confirmed the entire Stripe/SMS-credit purchase feature is undeployed (404) — documented &amp; gated on your go-ahead since deploying it means live card charges; applied missing production DB indexes (esp. user_sessions token lookup).</li>
+      <li><time>remaining</time><strong>The rest is one root cause: the app trusts a client-supplied user_id and sends no auth token.</strong> Fixing admin_api/broadcast_api/freestyle_sms (spoofable admin), invite_chat auth, delete_player, update_match, and the sms_credits IDOR all need the frontend to send a session token — which requires a global fetch change + CORS-preflight handling on every endpoint, done and tested together. This is a deliberate coordinated effort (risks breaking the web app via CORS if rushed), recommended as the next focused pass rather than an unattended change.</li>
     </ul>
   </div>
 </main>
