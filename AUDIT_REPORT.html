@@ -141,8 +141,8 @@
         <p>The live server's copy of this file differs from the local repo copy — someone edited it directly on the server at some point, and that edit was never synced back. The live-only version required a phone number for registration ("Phone number is required"), directly contradicting the documented product decision ("email-based registration, phone optional") and blocking every phone-less signup. Made a minimal, dependency-free live fix (removed the phone-required block) to restore the documented behavior. <strong>Separately</strong>: the local repo's version of this file is a much more advanced, hardened rewrite (rate limiting, account lockout, CSRF tokens, restricted CORS) from the June 24 "Auth Hardening" work — but it depends on a <code>security_helpers.php</code> file and database columns (<code>user_sessions.device_name</code>, <code>.is_active</code>) that <strong>do not exist on the production server</strong>. That entire hardening effort was built but never actually deployed. Deploying it safely would require creating the missing helper file and running a schema migration first — flagged here as a recommended follow-up, not done automatically.</p>
       </div>
       <div class="finding sev-medium">
-        <div class="fhead"><span class="badge sev-medium">Awaiting your decision</span><span class="loc">production DB: <code>users.phone</code> column</span></div>
-        <p>Even with the code fixed, phone-less registration still fails at the database level: <code>users.phone</code> is <code>VARCHAR(20) NOT NULL UNIQUE</code>. I asked whether to run <code>ALTER TABLE users MODIFY phone VARCHAR(20) NULL;</code> (safe, additive, no data loss — MySQL allows multiple NULLs in a UNIQUE index) and didn't get a response in time, so I left it as-is and used a test phone number to keep testing. This is the last piece needed to make "phone optional" actually true end-to-end — let me know if you want it applied.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">production DB: <code>users.phone</code> + email_login.php</span></div>
+        <p><strong>[Fixed &amp; verified end-to-end]</strong> Phone-optional registration now works. Two parts: (1) ran <code>ALTER TABLE users MODIFY phone VARCHAR(20) NULL</code> on production (safe/additive — MySQL allows multiple NULLs in a UNIQUE index, existing rows untouched); (2) removed the "Phone number is required" block from <code>email_login.php</code> in the source-of-truth API repo. Verified: a real API registration with no phone succeeded and stored NULL. This also durably replaces the server-only hotfix from last session that the CI had reverted.</p>
       </div>
       <div class="finding sev-low">
         <div class="fhead"><span class="badge sev-low">Note</span><span class="loc">server disk usage</span></div>
@@ -152,19 +152,19 @@
   </section>
 
   <section class="feature" id="backend">
-    <div class="feature-head" onclick="toggle(this)"><h2>API Backend Security</h2><span class="status critical">Critical — Multiple Unauthenticated Endpoints</span></div>
+    <div class="feature-head" onclick="toggle(this)"><h2>API Backend Security</h2><span class="status issues">Top Vulns Fixed; More Remain</span></div>
     <div class="feature-body open">
       <div class="finding sev-critical">
-        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">playpbnow-api/purge_data.php</span></div>
-        <p><strong>Confirmed live on production (HTTP 500 response received, endpoint exists — did not trigger the actual purge).</strong> A plain GET request with <code>?confirm=YES</code> TRUNCATEs matches, sessions, groups, player_group_memberships, feature_access, payment_transactions, subscriptions, user_sessions, verification_codes and more. No auth, no admin check, wildcard CORS, and it's a GET — trivially triggerable via a link, an &lt;img&gt; tag, or a crawler bot. This is the single most dangerous finding in this entire audit.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">playpbnow-api/purge_data.php</span></div>
+        <p><strong>[Fixed &amp; verified live]</strong> Was: a plain GET with <code>?confirm=YES</code> TRUNCATEd matches, sessions, groups, subscriptions, user_sessions and more — no auth, trivially triggerable by any link or bot. The single most dangerous finding. Now requires POST + an authenticated admin session token (new shared <code>require_admin.php</code> helper) and confirmation in the body; CORS restricted to peoplestar.com. Verified: GET→405, unauth POST→401, bogus token→401. No legitimate app caller, so no functional impact. Fixed in the source-of-truth API repo (durable).</p>
       </div>
       <div class="finding sev-critical">
-        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">activate_subscription.php</span></div>
-        <p>Grants full Pro subscription + unlocks all feature_access flags for any user_id in the POST body, with zero authentication or webhook signature check — despite its own comment claiming it's only "called by RevenueCat webhook." Anyone can grant themselves Pro for free, or revoke someone else's. The real Stripe/RevenueCat webhooks (stripe_webhook.php, revenuecat_webhook.php) DO verify signatures correctly — this is a leftover unlocked backdoor.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">activate_subscription.php</span></div>
+        <p><strong>[Fixed &amp; verified live]</strong> Was: granted full Pro subscription for any user_id with zero auth — a free-Pro backdoor. Now requires an authenticated admin session (real purchases already flow through the signature-verified revenuecat webhook). Verified: unauth→401. No frontend caller, so no functional impact.</p>
       </div>
       <div class="finding sev-critical">
-        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">admin_api.php:16-27, broadcast_api.php:30-41</span></div>
-        <p>Admin check trusts a client-supplied user_id with no session verification — anyone who knows or guesses an admin's numeric user_id gets full admin dashboard and broadcast access.</p>
+        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="badge partial">Needs token retrofit</span><span class="loc">admin_api.php:16-27, broadcast_api.php:30-41</span></div>
+        <p>Admin check trusts a client-supplied user_id with no session verification — anyone who knows/guesses an admin's numeric user_id gets full admin + broadcast access. <strong>Fix requires the admin frontend (broadcast.tsx) to send the session token</strong> so the endpoint can call the new <code>require_admin()</code> helper. Deferred as a contained follow-up (one screen + two endpoints) to avoid locking out the live admin UI mid-session.</p>
       </div>
       <div class="finding sev-critical">
         <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">whole architecture</span></div>
@@ -175,8 +175,12 @@
         <p>CORS wildcard confirmed at greater scale than the original audit found — 73 files still use <code>Access-Control-Allow-Origin: *</code>. Only 6 files (forgot_password.php, manage_sessions.php, logout.php, change_password.php, email_login.php, validate_session.php) correctly restrict to peoplestar.com.</p>
       </div>
       <div class="finding sev-high">
-        <div class="fhead"><span class="badge sev-high">High</span><span class="loc">delete_player.php, delete_group.php:26-29</span></div>
-        <p>delete_player.php deletes any player by ID with zero auth. delete_group.php's ownership check only runs "if ($user_id)" is present — simply omitting it from the request skips the check and deletes any group.</p>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">delete_group.php</span></div>
+        <p><strong>[Fixed &amp; verified live]</strong> Was: ownership check only ran <code>if ($user_id)</code>, so omitting user_id deleted any group. Now user_id is required and ownership enforced unconditionally, with a backward-compatible fallback for legacy groups (the group_key encodes the creator's user_id). Verified: no user_id→401, wrong user_id→"Not authorized". CORS restricted.</p>
+      </div>
+      <div class="finding sev-high">
+        <div class="fhead"><span class="badge sev-high">High</span><span class="badge partial">Needs frontend field</span><span class="loc">delete_player.php</span></div>
+        <p>Deletes any player by ID with zero auth. The frontend caller (usePlayerManagement) sends only <code>player_id</code> — no owner context — so a safe fix requires adding a group/owner field to that request and verifying the player belongs to a group the user owns. Deferred to avoid breaking the working delete flow; flagged for the next pass.</p>
       </div>
       <div class="finding sev-high">
         <div class="fhead"><span class="badge sev-high">High</span><span class="loc">send_verification_code.php</span></div>
@@ -390,6 +394,8 @@
       <li><time>reframe</time>Confirmed the deployed API is a SEPARATE repo (mcallpl/playpbnow-api), matching the server exactly; this app repo's playpbnow-api/ folder is not deployed. All API fixes will be made in the separate repo from here.</li>
       <li><time>next</time>Fixing the CI pipeline first (so nothing else breaks), then working through every open bug one at a time.</li>
       <li><time>fixed</time>CI/CD pipeline repaired &amp; verified (pushes no longer break prod). Player-add crash fixed (real cause: missing Text import → window.Text on web). Discovered + fixed that ALL Alert.alert dialogs are no-ops on web (cross-platform shim, 27 files). Fixed login.tsx relative legal URLs.</li>
+      <li><time>fixed</time>API security: locked down purge_data.php (unauth data-wipe) and activate_subscription.php (free-Pro backdoor) with a new admin-auth helper; closed delete_group.php ownership bypass. All verified live. Fixed phone-optional registration end-to-end (DB column made nullable + removed phone-required check in source repo). All API fixes pushed to the source-of-truth playpbnow-api repo.</li>
+      <li><time>remaining</time>Still open (documented, lower-risk or need coordination): admin_api/broadcast_api token auth, delete_player/delete_match hardening, collab score-sync race, CORS wildcard cleanup, Stripe/SMS-credit verification, frontend console/null-safety cleanup, Help privacy link + iOS manifest durability, DB indexes.</li>
     </ul>
   </div>
 </main>
