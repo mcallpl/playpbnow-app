@@ -28,6 +28,11 @@ import { PaywallModal } from '../components/PaywallModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useAuth } from '../hooks/useAuth';
 import { useSoundPlayers } from '../utils/sounds';
+import { installAuthInterceptor } from '@/utils/apiClient';
+
+// Install the API auth-token interceptor as early as possible, before any
+// screen/hook issues a fetch, so every API call carries the session token.
+installAuthInterceptor();
 import {
   FONT_DISPLAY_BOLD,
   FONT_BODY_REGULAR,

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { setAuthToken } from '@/utils/apiClient';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -126,6 +127,7 @@ export default function LoginScreen() {
                 if (data.user.first_name) pairs.push(['user_first_name', data.user.first_name]);
                 if (data.user.last_name) pairs.push(['user_last_name', data.user.last_name]);
                 await AsyncStorage.multiSet(pairs);
+                setAuthToken(data.session_token); // keep the fetch interceptor's token current
 
                 setLoading(false);
                 router.replace('/(tabs)/groups');
