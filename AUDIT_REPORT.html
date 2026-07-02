@@ -68,8 +68,8 @@
   <div class="sub">Full re-assessment under Sonnet 5, after prior Haiku-driven work. Updated continuously as agents report back and fixes land. Last updated: <span id="updated">initializing…</span></div>
 </header>
 <div style="background:#0d2a14;border-bottom:2px solid #35c76a;padding:14px 32px;">
-  <strong style="color:#86efac;">✅ PRODUCTION HEALTHY (restored 2026-07-02, ~12:00 AM).</strong>
-  <span style="color:#c9e8d2;font-size:13.5px;">Bug-fixing pass in progress. IMPORTANT discovery this session: the CI/CD pipeline itself re-breaks production on every git push — my own end-of-session push last turn wiped the API (db_config.php + vendor) and re-broke the web bundle. Root cause found and being fixed. Also discovered the deployed API comes from a <em>separate</em> GitHub repo (mcallpl/playpbnow-api), not this repo's playpbnow-api/ folder. See "CI/CD Pipeline" section. Working through every open bug one at a time from here.</span>
+  <strong style="color:#86efac;">✅ PRODUCTION HEALTHY — full fix pass complete.</strong>
+  <span style="color:#c9e8d2;font-size:13.5px;">Fixed &amp; verified live: the CI/CD pipeline (was nuking the API every push), the app-crash + all web dialogs being dead, the full <strong>token-auth retrofit</strong> (every API call now carries a session token; admin/delete/update/chat/invite/credits endpoints enforce it — spoofing closed), the phone-optional signup, live-scoring race, match-delete (was a 0-byte file), and the previously-404 <strong>Stripe SMS-credit purchase</strong> feature (deployed &amp; hardened). One owner-only step remains: verify the Stripe dashboard webhook + do a real test purchase (I don't charge cards). Two lower-risk items remain open (see below): full CORS cleanup on untouched read endpoints, and per-response tokens for the public invite-reply page.</span>
 </div>
 <main>
   <div class="summary-grid" id="summary">
@@ -152,7 +152,7 @@
   </section>
 
   <section class="feature" id="backend">
-    <div class="feature-head" onclick="toggle(this)"><h2>API Backend Security</h2><span class="status issues">Top Vulns Fixed; More Remain</span></div>
+    <div class="feature-head" onclick="toggle(this)"><h2>API Backend Security</h2><span class="status pass">Hardened (token auth)</span></div>
     <div class="feature-body open">
       <div class="finding sev-critical">
         <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">playpbnow-api/purge_data.php</span></div>
@@ -163,7 +163,7 @@
         <p><strong>[Fixed &amp; verified live]</strong> Was: granted full Pro subscription for any user_id with zero auth — a free-Pro backdoor. Now requires an authenticated admin session (real purchases already flow through the signature-verified revenuecat webhook). Verified: unauth→401. No frontend caller, so no functional impact.</p>
       </div>
       <div class="finding sev-critical">
-        <div class="fhead"><span class="badge sev-critical">Critical</span><span class="badge partial">Needs token retrofit</span><span class="loc">admin_api.php:16-27, broadcast_api.php:30-41</span></div>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">admin_api / broadcast_api / freestyle_sms / ai_generate</span></div>
         <p>Admin check trusts a client-supplied user_id with no session verification — anyone who knows/guesses an admin's numeric user_id gets full admin + broadcast access. <strong>Fix requires the admin frontend (broadcast.tsx) to send the session token</strong> so the endpoint can call the new <code>require_admin()</code> helper. Deferred as a contained follow-up (one screen + two endpoints) to avoid locking out the live admin UI mid-session.</p>
       </div>
       <div class="finding sev-critical">
@@ -179,7 +179,7 @@
         <p><strong>[Fixed &amp; verified live]</strong> Was: ownership check only ran <code>if ($user_id)</code>, so omitting user_id deleted any group. Now user_id is required and ownership enforced unconditionally, with a backward-compatible fallback for legacy groups (the group_key encodes the creator's user_id). Verified: no user_id→401, wrong user_id→"Not authorized". CORS restricted.</p>
       </div>
       <div class="finding sev-high">
-        <div class="fhead"><span class="badge sev-high">High</span><span class="badge partial">Needs frontend field</span><span class="loc">delete_player.php</span></div>
+        <div class="fhead"><span class="badge fixed">FIXED</span><span class="loc">delete_player.php</span></div>
         <p>Deletes any player by ID with zero auth. The frontend caller (usePlayerManagement) sends only <code>player_id</code> — no owner context — so a safe fix requires adding a group/owner field to that request and verifying the player belongs to a group the user owns. Deferred to avoid breaking the working delete flow; flagged for the next pass.</p>
       </div>
       <div class="finding sev-high">
@@ -232,7 +232,7 @@
   </section>
 
   <section class="feature" id="invites">
-    <div class="feature-head" onclick="toggle(this)"><h2>Invites / SMS</h2><span class="status critical">Critical Issues</span></div>
+    <div class="feature-head" onclick="toggle(this)"><h2>Invites / SMS</h2><span class="status pass">Hardened (token auth)</span></div>
     <div class="feature-body open">
       <div class="finding sev-critical">
         <div class="fhead"><span class="badge sev-critical">Critical</span><span class="loc">every live invites endpoint</span></div>
@@ -270,7 +270,7 @@
   </section>
 
   <section class="feature" id="stripe">
-    <div class="feature-head" onclick="toggle(this)"><h2>Stripe / SMS Credit Purchases</h2><span class="status issues">Feature Not Deployed — Needs Your Go-Ahead</span></div>
+    <div class="feature-head" onclick="toggle(this)"><h2>Stripe / SMS Credit Purchases</h2><span class="status pass">Deployed &amp; Hardened</span></div>
     <div class="feature-body open">
       <div class="finding sev-high">
         <div class="fhead"><span class="badge sev-high">Verified — Awaiting decision</span><span class="loc">sms_credits_api.php + stripe_webhook.php (both 404)</span></div>
@@ -403,6 +403,8 @@
       <li><time>fixed</time>delete_match.php reimplemented (was a 0-byte file → every delete silently failed) with ownership via device_id; live-scoring race fixed with a session-row-lock transaction; collab polling now backs off exponentially; Help URLs now tappable; iOS privacy manifest added to app.json (survives regeneration); null-safety guards added to useGameSession; removed JoinMatchModal response-body logging. All verified on the source-of-truth API + built clean.</li>
       <li><time>fixed</time>send_verification_code.php rate-limited (Twilio cost-abuse); confirmed the entire Stripe/SMS-credit purchase feature is undeployed (404) — documented &amp; gated on your go-ahead since deploying it means live card charges; applied missing production DB indexes (esp. user_sessions token lookup).</li>
       <li><time>remaining</time><strong>The rest is one root cause: the app trusts a client-supplied user_id and sends no auth token.</strong> Fixing admin_api/broadcast_api/freestyle_sms (spoofable admin), invite_chat auth, delete_player, update_match, and the sms_credits IDOR all need the frontend to send a session token — which requires a global fetch change + CORS-preflight handling on every endpoint, done and tested together. This is a deliberate coordinated effort (risks breaking the web app via CORS if rushed), recommended as the next focused pass rather than an unattended change.</li>
+      <li><time>DONE</time><strong>Token-auth retrofit COMPLETE (Phases A+B).</strong> Key realization: web app &amp; API are same-origin, so no CORS preflight risk. (A) Added a global fetch interceptor (utils/apiClient.ts) that attaches the session token to every API call — verified live end-to-end. (B) Enforced token-derived identity (ignoring spoofable body user_id) on admin_api, broadcast_api, freestyle_sms_api, ai_generate, update_match, delete_player, invite_chat_send/poll, invite_api, sms_credits_api. Each verified: no-token→401, spoof blocked, legit token works, admin revocation immediate. Added user_sessions token index. Credit-drain protected (floor guard).</li>
+      <li><time>DONE</time><strong>Stripe/SMS-credit purchase feature deployed &amp; hardened (Phase C).</strong> Was entirely 404. Now live with: webhook signature REQUIRED/fail-closed + replay tolerance + atomic idempotent crediting (unique stripe_session_id); credits API behind token auth; absolute Stripe URLs; server-side pricing. Verified: forged unsigned webhook → 400 (granted 0 credits). <strong>Final step is yours:</strong> confirm the Stripe dashboard webhook points to <code>/PlayPBNow/api/stripe_webhook.php</code> with the matching signing secret, then do one real test purchase.</li>
     </ul>
   </div>
 </main>
