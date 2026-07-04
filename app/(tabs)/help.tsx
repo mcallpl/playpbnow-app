@@ -14,7 +14,7 @@ import {
 import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
-import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_SEMIBOLD } from '../../constants/theme';
+import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_SEMIBOLD, FONT_BODY_BOLD } from '../../constants/theme';
 import { BrandedIcon } from '../../components/BrandedIcon';
 import { HELP_TOPICS, HelpTopic } from '../../utils/helpContent';
 import { useAuth } from '../../hooks/useAuth';
