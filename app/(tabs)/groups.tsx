@@ -525,6 +525,7 @@ export default function HomeScreen() {
           )}
 
           <TouchableOpacity style={styles.addCourtBtn} onPress={() => {
+            if (!(isPro || isTrial || isAdmin)) { showPaywall('Adding a court to the shared catalog is a Pro feature.'); return; }
             setNewCourtName(''); setNewCourtCity(''); setNewCourtState('');
             setModalView('addCourt');
           }}>

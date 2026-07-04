@@ -35,6 +35,7 @@ import {
     FONT_BODY_SEMIBOLD,
 } from '../../constants/theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useSubscription } from '../../context/SubscriptionContext';
 import { useGroupManagement } from '../../hooks/useGroupManagement';
 import { usePlayerManagement } from '../../hooks/usePlayerManagement';
 import { usePlayerSelection } from '../../hooks/usePlayerSelection';
@@ -44,6 +45,9 @@ const API_URL = 'https://playpbnow.com/api';
 export default function PlayersScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
+    const { isPro, isTrial, isAdmin, showPaywall } = useSubscription();
+    // Merging is a Pro action (matches the server gate). Trial + admin count.
+    const canMerge = isPro || isTrial || isAdmin;
 
     const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
     const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
@@ -255,6 +259,7 @@ export default function PlayersScreen() {
 
     // Execute the actual merge API calls
     const executeMerge = async (keepPlayer: any, mergeTargets: any[], preferredPhone: string | null, groupKey: string) => {
+        if (!canMerge) { showPaywall('Merging duplicate players is a Pro feature.'); return; }
         setIsMerging(true);
         let mergedCount = 0;
 
@@ -537,6 +542,7 @@ export default function PlayersScreen() {
 
     // Merge from edit modal — merge current player into another
     const handleMergeFromEdit = () => {
+        if (!canMerge) { showPaywall('Merging duplicate players is a Pro feature.'); return; }
         if (!editingPlayer) return;
         const sameName = players.filter(
             p => p.id !== editingPlayer.id &&
@@ -656,7 +662,7 @@ export default function PlayersScreen() {
 
             {/* Duplicate Warning Banner */}
             {totalDuplicates > 0 && !selectionMode && (
-                <TouchableOpacity style={styles.dupBanner} onPress={() => setMergeModalVisible(true)}>
+                <TouchableOpacity style={styles.dupBanner} onPress={() => { if (!canMerge) { showPaywall('Merging duplicate players is a Pro feature.'); return; } setMergeModalVisible(true); }}>
                     <BrandedIcon name="warning" size={20} color={colors.text} />
                     <Text style={styles.dupBannerText}>
                         {totalDuplicates} duplicate player{totalDuplicates !== 1 ? 's' : ''} found
