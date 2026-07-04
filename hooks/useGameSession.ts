@@ -30,7 +30,7 @@ export function useGameSession(
         if (sessionId) return; // Already created
 
         try {
-            console.log('🎾 Creating live session...');
+            console.log('Creating live session...');
             
             const response = await fetch(`${API_URL}/create_live_session.php`, {
                 method: 'POST',
