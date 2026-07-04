@@ -211,9 +211,12 @@ jobs:
       - name: Deploy web files
         run: |
           echo "📦 Deploying web files to production..."
-          # CRITICAL: --exclude='api' so --delete never wipes the live backend
-          # (dist/ has no api/ folder; without this exclude, --delete removes it).
-          rsync -avz --delete --exclude='api' --include=".htaccess" \
+          # CRITICAL: exclude live runtime dirs that aren't in dist/ so --delete
+          # never wipes them:
+          #   api      — the PHP backend (deployed separately below)
+          #   reports  — user-generated match report images (shared-link targets;
+          #              deleting these 404s every already-shared invite link)
+          rsync -avz --delete --exclude='api' --exclude='reports' --include=".htaccess" \
             -e "ssh -i ~/.ssh/deploy_key" \
             dist/ \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/
