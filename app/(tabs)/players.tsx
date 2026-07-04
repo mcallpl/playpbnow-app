@@ -9,6 +9,7 @@ import {
   InputAccessoryView,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   RefreshControl,
@@ -585,6 +586,33 @@ export default function PlayersScreen() {
         );
     };
 
+    // Share a player's universal profile (Phase 3): fetch their claim code and
+    // open the printable player card the person scans to claim their record.
+    const handleShareProfile = async () => {
+        if (!canMerge) { showPaywall('Sharing a universal player profile is a Pro feature.'); return; }
+        if (!editingPlayer) return;
+        try {
+            const res = await fetch(`${API_URL}/get_claim_code.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ player_id: editingPlayer.id })
+            });
+            const data = await res.json();
+            if (data.status === 'success' && data.card_url) {
+                Linking.openURL(data.card_url);
+            } else if (data.status === 'not_linked') {
+                Alert.alert(
+                    'Add a phone number first',
+                    `Add ${editingPlayer.first_name}'s mobile number so they get a universal profile they can claim.`
+                );
+            } else {
+                Alert.alert('Not available', data.message || 'Could not create a shareable profile.');
+            }
+        } catch (e) {
+            Alert.alert('Error', 'Could not open the profile card.');
+        }
+    };
+
     // Add selected players to group
     const handleAddToGroup = async () => {
         if (!selectedGroupId || selectedPlayerIds.length === 0) return;
@@ -957,6 +985,15 @@ export default function PlayersScreen() {
                                         </TouchableOpacity>
                                     )}
 
+                                    {/* Share universal profile — for players with a phone (they have a
+                                        claimable universal identity). Person scans the card to claim. */}
+                                    {editingPlayer && !!editingPlayer.cell_phone && (
+                                        <TouchableOpacity style={styles.shareEditBtn} onPress={handleShareProfile}>
+                                            <BrandedIcon name="share" size={18} color={colors.accent} />
+                                            <Text style={styles.shareEditBtnText}>Share universal profile...</Text>
+                                        </TouchableOpacity>
+                                    )}
+
                                     <View style={{ height: 40 }} />
                                 </>
                             ) : (
@@ -1251,4 +1288,16 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
         borderStyle: 'dashed',
     },
     mergeEditBtnText: { color: c.danger, fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14 },
+    shareEditBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: c.accent,
+    },
+    shareEditBtnText: { color: c.accent, fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14 },
 });
