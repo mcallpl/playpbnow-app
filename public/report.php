@@ -73,11 +73,15 @@ $pageUrl = "$base/report.php" . ($img ? "?img=" . rawurlencode($img) : '');
   .feat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
   .foot{text-align:center;color:rgba(255,255,255,.35);font-size:12px;margin-top:30px}
   @media print{
-    body{background:#fff;color:#000;padding:0}
-    .brand,.pill,.hero p,.ctas,.applink,.about,.foot,.brand img{display:none!important}
-    .hero h1{color:#0f1b2d;margin:10px 0}
-    .hero h1 .g{-webkit-text-fill-color:#87ca37;color:#87ca37}
-    .card{box-shadow:none;border:1px solid #ccc;background:#fff}
+    /* Landscape by default, and print ONLY the match image — no page chrome,
+       no headline — so it's exactly one page (no blank second page). */
+    @page{ size: landscape; margin: 10mm; }
+    html,body{background:#fff!important;margin:0!important;padding:0!important;height:auto!important}
+    .brand,.pill,.hero,.ctas,.applink,.about,.foot{display:none!important}
+    .wrap{max-width:none!important;margin:0!important;padding:0!important}
+    .card{box-shadow:none!important;border:none!important;background:#fff!important;padding:0!important;margin:0!important;page-break-inside:avoid;break-inside:avoid}
+    .card img.report{display:block;width:auto;max-width:100%;max-height:180mm;height:auto;margin:0 auto}
+    .noimg{color:#000}
   }
 </style>
 </head>
