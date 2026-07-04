@@ -24,7 +24,7 @@ import { EditPlayerModal } from './steps/EditPlayerModal';
 import { SaveRosterModal } from './steps/SaveRosterModal';
 import { MatchConfigModal } from './steps/MatchConfigModal';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = 'https://playpbnow.com/api';
 
 export default function SetupFlow() {
   const router = useRouter();

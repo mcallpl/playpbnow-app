@@ -16,7 +16,7 @@ import { BrandedIcon } from '@/components/BrandedIcon';
 import { storeNavData } from '@/utils/navData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = 'https://playpbnow.com/api';
 
 interface MatchConfigModalProps {
   state: SetupState;

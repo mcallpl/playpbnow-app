@@ -20,7 +20,7 @@ interface JoinMatchModalProps {
     onClose: () => void;
 }
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = 'https://playpbnow.com/api';
 
 export function JoinMatchModal({ visible, onClose }: JoinMatchModalProps) {
     const router = useRouter();

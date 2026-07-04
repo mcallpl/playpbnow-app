@@ -7,7 +7,7 @@ import { SetupState, SetupAction } from '../types/setupTypes';
 import { createSetupStyles } from '../styles/setupStyles';
 import { BrandedIcon } from '@/components/BrandedIcon';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = 'https://playpbnow.com/api';
 
 interface SaveRosterModalProps {
   state: SetupState;

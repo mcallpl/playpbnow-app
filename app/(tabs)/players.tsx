@@ -39,7 +39,7 @@ import { useGroupManagement } from '../../hooks/useGroupManagement';
 import { usePlayerManagement } from '../../hooks/usePlayerManagement';
 import { usePlayerSelection } from '../../hooks/usePlayerSelection';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = 'https://playpbnow.com/api';
 
 export default function PlayersScreen() {
     const router = useRouter();

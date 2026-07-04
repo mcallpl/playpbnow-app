@@ -59,7 +59,7 @@ interface Group {
   femaleCount?: number;
 }
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = 'https://playpbnow.com/api';
 
 export default function HomeScreen() {
   const router = useRouter();

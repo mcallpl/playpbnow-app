@@ -16,7 +16,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_MARKER = '/PlayPBNow/api';
+const API_MARKER = 'playpbnow.com/api';
 
 let cachedToken: string | null = null;
 let primed = false;

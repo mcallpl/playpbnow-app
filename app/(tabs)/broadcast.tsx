@@ -32,7 +32,7 @@ import {
 import { haptic } from '../../utils/haptics';
 import * as ImagePicker from 'expo-image-picker';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = 'https://playpbnow.com/api';
 
 // ── Types ──
 

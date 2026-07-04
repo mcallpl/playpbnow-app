@@ -82,8 +82,7 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true,
-      "baseUrl": "/PlayPBNow"
+      "reactCompiler": true
     },
     "extra": {
       "router": {},

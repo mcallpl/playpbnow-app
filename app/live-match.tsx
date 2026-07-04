@@ -21,7 +21,7 @@ import {
     FONT_BODY_REGULAR,
 } from '../constants/theme';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = 'https://playpbnow.com/api';
 const POLL_INTERVAL = 3000;
 
 interface Match {
