@@ -264,12 +264,17 @@ export const RocketIcon = ({ size, color, strokeWidth }: IconProps) => (
   </Svg>
 );
 
-// tennisball — circle with curved lines (for empty states)
-export const TennisballIcon = ({ size, color, strokeWidth }: IconProps) => (
+// pickleball — circle with the classic hole pattern (NOT a tennis ball).
+export const PickleballIcon = ({ size, color, strokeWidth }: IconProps) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-    <Path d="M5.5 5.5c3.5 3 3.5 10 0 13" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-    <Path d="M18.5 5.5c-3.5 3-3.5 10 0 13" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={strokeWidth} />
+    <Circle cx="12" cy="7.6" r="1.15" fill={color} />
+    <Circle cx="12" cy="12" r="1.15" fill={color} />
+    <Circle cx="12" cy="16.4" r="1.15" fill={color} />
+    <Circle cx="8.2" cy="9.8" r="1.15" fill={color} />
+    <Circle cx="15.8" cy="9.8" r="1.15" fill={color} />
+    <Circle cx="8.2" cy="14.2" r="1.15" fill={color} />
+    <Circle cx="15.8" cy="14.2" r="1.15" fill={color} />
   </Svg>
 );
 

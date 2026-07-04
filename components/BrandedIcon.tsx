@@ -11,7 +11,7 @@ import {
   CheckboxIcon, CheckboxEmptyIcon, GenderMaleIcon, GenderFemaleIcon,
   ThemeToggleIcon, PersonAddIcon, RefreshIcon, GameControllerIcon,
   DocumentIcon, LayersIcon, StatsChartIcon, HeadsetIcon, RocketIcon,
-  TennisballIcon, StarIcon, ChatIcon, SendIcon,
+  PickleballIcon, StarIcon, ChatIcon, SendIcon,
 } from './icons';
 
 type IconComponent = React.FC<{ size: number; color: string; strokeWidth: number }>;
@@ -77,7 +77,8 @@ const ICON_MAP: Record<string, IconComponent> = {
   'stats-chart': StatsChartIcon,
   headset: HeadsetIcon,
   rocket: RocketIcon,
-  tennisball: TennisballIcon,
+  pickleball: PickleballIcon,
+  tennisball: PickleballIcon, // legacy alias → renders a pickleball (no tennis balls)
   star: StarIcon,
   chat: ChatIcon,
   send: SendIcon,

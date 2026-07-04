@@ -238,7 +238,7 @@ export default function LiveMatchScreen() {
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <BrandedIcon name="tennisball" size={64} color={colors.textMuted} />
+                            <BrandedIcon name="pickleball" size={64} color={colors.textMuted} />
                             <Text style={styles.emptyText}>No scores yet</Text>
                             <Text style={styles.emptySubtext}>
                                 {"Scores will appear here as they're entered"}

@@ -8,7 +8,10 @@ if (!preg_match('/^match_report_\d+\.png$/', $img)) { $img = ''; }
 $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
 $host   = $_SERVER['HTTP_HOST'] ?? 'playpbnow.com';
 $base   = "$scheme://$host";
-$imgUrl = $img ? "$base/reports/$img" : "$base/og-invite.png";
+// Only reference the match image if it actually exists on disk — old shared
+// links whose image has aged out fall back gracefully instead of a broken img.
+$imgExists = $img !== '' && is_file(__DIR__ . "/reports/$img");
+$imgUrl = $imgExists ? "$base/reports/$img" : "$base/og-invite.png";
 $pageUrl = "$base/report.php" . ($img ? "?img=" . rawurlencode($img) : '');
 ?><!DOCTYPE html>
 <html lang="en">
@@ -20,12 +23,12 @@ $pageUrl = "$base/report.php" . ($img ? "?img=" . rawurlencode($img) : '');
 <!-- Rich link preview: the actual match report image -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Play Pickleball NOW!">
-<meta property="og:title" content="🎾 You're Invited to Play Pickleball!">
+<meta property="og:title" content="You're Invited to Play Pickleball!">
 <meta property="og:description" content="Your match is set — tap to see the lineup, court &amp; time. Grab a paddle and let's play!">
 <meta property="og:image" content="<?php echo htmlspecialchars($imgUrl); ?>">
 <meta property="og:url" content="<?php echo htmlspecialchars($pageUrl); ?>">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="🎾 You're Invited to Play Pickleball!">
+<meta name="twitter:title" content="You're Invited to Play Pickleball!">
 <meta name="twitter:description" content="Your match is set — tap to see the lineup, court &amp; time. Grab a paddle and let's play!">
 <meta name="twitter:image" content="<?php echo htmlspecialchars($imgUrl); ?>">
 <meta name="theme-color" content="#0f1b2d">
@@ -42,6 +45,7 @@ $pageUrl = "$base/report.php" . ($img ? "?img=" . rawurlencode($img) : '');
   .brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:22px}
   .brand img{height:76px;width:auto;filter:drop-shadow(0 0 14px rgba(135,202,55,.28))}
   .pill{display:inline-flex;align-items:center;gap:8px;background:rgba(135,202,55,.12);border:1px solid var(--border);color:var(--accent);font-family:'Outfit';font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;padding:7px 16px;border-radius:50px}
+  .ball{width:1.15em;height:1.15em;vertical-align:-0.2em;object-fit:contain;display:inline-block}
   .hero{text-align:center;margin-bottom:24px}
   .hero h1{font-weight:900;font-size:clamp(2rem,7vw,2.9rem);line-height:1.04;letter-spacing:-1.5px;margin:16px 0 10px}
   .hero h1 .g{background:linear-gradient(120deg,var(--accent2),var(--accent));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
@@ -84,21 +88,25 @@ $pageUrl = "$base/report.php" . ($img ? "?img=" . rawurlencode($img) : '');
   </div>
 
   <div class="hero">
-    <span class="pill"><span>🎾</span> You're Invited</span>
+    <span class="pill"><img class="ball" src="/pickleball.png" alt=""> You're Invited</span>
     <h1>You're Invited to<br>Play <span class="g">Pickleball.</span></h1>
     <p>Here's your match — the lineup, court, and time are all set. Grab a paddle and let's play!</p>
   </div>
 
   <div class="card">
-    <?php if ($img): ?>
+    <?php if ($imgExists): ?>
       <img class="report" id="reportImage" src="<?php echo htmlspecialchars($imgUrl); ?>" alt="Your pickleball match schedule">
     <?php else: ?>
-      <div class="noimg">Match details unavailable.</div>
+      <div class="noimg">
+        <img src="/pickleball.png" alt="" style="width:64px;height:64px;opacity:.92;margin-bottom:14px">
+        <div style="font-family:'Outfit';font-weight:800;font-size:1.15rem;color:#fff;margin-bottom:6px">Ready to play?</div>
+        <div>This match link has aged out — join the pool below and the next invite lands right on your phone.</div>
+      </div>
     <?php endif; ?>
   </div>
 
   <div class="ctas">
-    <a class="btn btn-primary" href="/player-signup.html">Join the Player Pool — It's Free 🎾</a>
+    <a class="btn btn-primary" href="/player-signup.html">Join the Player Pool — It's Free <img class="ball" src="/pickleball.png" alt=""></a>
     <button class="btn btn-ghost" onclick="window.print()">🖨️ Print / Save as PDF</button>
   </div>
 
