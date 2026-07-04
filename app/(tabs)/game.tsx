@@ -34,6 +34,7 @@ import { calculateTeamStandings, calculateIndividualStandings, pairIndividualsIn
 import { useSmartScoring } from '../../hooks/useSmartScoring';
 import { ShareMatchModal } from '../../components/ShareMatchModal';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
+import { SmartDateTimePicker } from '../../components/SmartDateTimePicker';
 import { ScoreUpdateToast } from '../../components/ScoreUpdateToast';
 import {
     ThemeColors,
@@ -1145,18 +1146,11 @@ export default function GameScreen() {
                     </View>
                 )}
                 <Text style={styles.label}>Date & Time</Text>
-                <View style={styles.datePickerContainer}>
-                    <View style={styles.dateRow}>
-                        <TouchableOpacity onPress={() => { adjustDate(-1); setDateTimeConfirmed(true); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
-                        <Text style={styles.dateValue}>{selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-                        <TouchableOpacity onPress={() => { adjustDate(1); setDateTimeConfirmed(true); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
-                    </View>
-                    <View style={styles.dateRow}>
-                        <TouchableOpacity onPress={() => { adjustTime(-1); setDateTimeConfirmed(true); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
-                        <Text style={styles.dateValue}>{selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</Text>
-                        <TouchableOpacity onPress={() => { adjustTime(1); setDateTimeConfirmed(true); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
-                    </View>
-                </View>
+                <SmartDateTimePicker
+                    date={selectedDate}
+                    colors={colors}
+                    onChange={(d) => { setSelectedDate(d); setDateTimeConfirmed(true); setGeneratedImageUrl(null); setGeneratedImageShareUrl(null); }}
+                />
                 <Text style={styles.previewText}>{getFormattedDateStr(selectedDate)}</Text>
                 {generatingImg ? (<View style={styles.previewContainer}><ActivityIndicator size="large" color={colors.accent} /></View>)
                  : generatedImageUrl ? (<View style={styles.previewContainer}><Image source={{ uri: generatedImageUrl }} style={styles.previewImage} resizeMode="contain" /></View>)
@@ -1197,18 +1191,11 @@ export default function GameScreen() {
                     </View>
                 )}
                 <Text style={styles.label}>Scheduled Date & Time</Text>
-                <View style={styles.datePickerContainer}>
-                    <View style={styles.dateRow}>
-                        <TouchableOpacity onPress={() => adjustDate(-1)} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
-                        <Text style={styles.dateValue}>{selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-                        <TouchableOpacity onPress={() => adjustDate(1)} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
-                    </View>
-                    <View style={styles.dateRow}>
-                        <TouchableOpacity onPress={() => adjustTime(-1)} style={styles.arrowBtn}><BrandedIcon name="chevron-left" size={24} color={colors.text} /></TouchableOpacity>
-                        <Text style={styles.dateValue}>{selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</Text>
-                        <TouchableOpacity onPress={() => adjustTime(1)} style={styles.arrowBtn}><BrandedIcon name="chevron-right" size={24} color={colors.text} /></TouchableOpacity>
-                    </View>
-                </View>
+                <SmartDateTimePicker
+                    date={selectedDate}
+                    colors={colors}
+                    onChange={(d) => setSelectedDate(d)}
+                />
                 <Text style={styles.previewText}>{getFormattedDateStr(selectedDate)}</Text>
                 <View style={styles.modalButtons}>
                     <TouchableOpacity onPress={() => setSaveModalVisible(false)} style={[styles.modalBtn, styles.cancelBtn]}><Text style={styles.modalBtnText}>CANCEL</Text></TouchableOpacity>
