@@ -280,19 +280,24 @@ jobs:
         run: |
           echo "🔍 Verifying deployment (live smoke tests)..."
           set -e
+          # Canonical domain is https://playpbnow.com (bare URLs; its web root IS the
+          # PlayPBNow dir). Legacy peoplestar.com/PlayPBNow/ now 301-redirects here, so
+          # smoke tests target the canonical domain.
           # 1. API must return 200 (proves db_config + vendor present and DB reachable)
-          API_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://peoplestar.com/PlayPBNow/api/get_courts.php)
+          API_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://playpbnow.com/api/get_courts.php)
           echo "API get_courts.php: HTTP $API_CODE"
           [ "$API_CODE" = "200" ] || { echo "❌ API not healthy"; exit 1; }
           # 2. Landing page must return 200
-          LAND_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://peoplestar.com/PlayPBNow/)
+          LAND_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://playpbnow.com/)
           echo "Landing: HTTP $LAND_CODE"
           [ "$LAND_CODE" = "200" ] || { echo "❌ Landing not healthy"; exit 1; }
-          # 3. The SPA's referenced JS bundle must actually exist (catches baseUrl regressions)
-          BUNDLE=$(curl -s https://peoplestar.com/PlayPBNow/app.html | grep -o '/PlayPBNow/[^"]*entry[^"]*\.js' | head -1)
+          # 3. The SPA's referenced JS bundle must actually exist (catches build/baseUrl
+          #    regressions). Bare build → app.html references _expo/.../entry-<hash>.js
+          #    (with a leading "/" or "./"); match either and probe it at the root.
+          BUNDLE=$(curl -s https://playpbnow.com/app.html | grep -oE '_expo/[^"]*entry[^"]*\.js' | head -1)
           echo "Bundle path: $BUNDLE"
-          [ -n "$BUNDLE" ] || { echo "❌ app.html bundle path wrong (baseUrl regression)"; exit 1; }
-          BUNDLE_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://peoplestar.com${BUNDLE}")
+          [ -n "$BUNDLE" ] || { echo "❌ app.html bundle path missing (build regression)"; exit 1; }
+          BUNDLE_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://playpbnow.com/${BUNDLE}")
           echo "Bundle: HTTP $BUNDLE_CODE"
           [ "$BUNDLE_CODE" = "200" ] || { echo "❌ JS bundle 404 — blank screen"; exit 1; }
           echo "✅ All live smoke tests passed!"
@@ -302,6 +307,6 @@ jobs:
           echo "🎉 Deployment succeeded!"
           echo ""
           echo "URLs:"
-          echo "  Landing: https://peoplestar.com/PlayPBNow/"
-          echo "  App: https://peoplestar.com/PlayPBNow/app.html"
-          echo "  API: https://peoplestar.com/PlayPBNow/api/"
+          echo "  Landing: https://playpbnow.com/"
+          echo "  App: https://playpbnow.com/app.html (bare routes, e.g. /login)"
+          echo "  API: https://playpbnow.com/api/"
