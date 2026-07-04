@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Claim your record · PlayPBNow</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#87ca37; --optic:#e6ff5c; --bg:#0f1b2d; --card:#1e3a5f;
+    --surface:#152945; --gold:#ffd23f; --text:#fff;
+    --muted:rgba(255,255,255,0.55); --soft:rgba(255,255,255,0.78);
+    --border:rgba(255,255,255,0.09); --radius:20px; --loss:#ff8f7a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'DM Sans',system-ui,sans-serif;color:var(--text);
+    background:
+      radial-gradient(1100px 620px at 50% -10%, rgba(135,202,55,.16), transparent 60%),
+      linear-gradient(180deg,#12233b,var(--bg));
+    min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    padding:24px 16px;-webkit-font-smoothing:antialiased;line-height:1.5;
+  }
+  .wrap{width:100%;max-width:452px}
+  .brand{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:18px}
+  .brand img{height:30px;width:auto;display:block}
+  .brand span{font-family:'Outfit',sans-serif;font-weight:800;letter-spacing:.2px;font-size:18px}
+  .card{
+    background:linear-gradient(180deg,var(--card),var(--surface));
+    border:1px solid var(--border);border-radius:var(--radius);
+    padding:28px 24px 24px;box-shadow:0 30px 70px -30px rgba(0,0,0,.7);
+  }
+  .eyebrow{font-family:'Outfit',sans-serif;font-weight:700;font-size:11px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--accent);text-align:center}
+  h1{font-family:'Outfit',sans-serif;font-weight:800;font-size:26px;line-height:1.15;
+    text-align:center;margin:8px 0 6px;text-wrap:balance}
+  h1 .name{color:var(--optic)}
+  .sub{color:var(--soft);text-align:center;font-size:14.5px;margin-bottom:22px;text-wrap:pretty}
+  label{display:block;font-weight:600;font-size:13px;color:var(--soft);margin:0 0 7px 2px}
+  input{
+    width:100%;background:rgba(0,0,0,.22);border:1.5px solid var(--border);
+    border-radius:13px;padding:15px 16px;color:var(--text);font-size:17px;
+    font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s,background .15s;
+  }
+  input:focus{border-color:var(--accent);background:rgba(0,0,0,.3)}
+  input.otp{text-align:center;letter-spacing:.5em;font-weight:700;font-size:24px;
+    font-variant-numeric:tabular-nums;padding-left:.5em}
+  .btn{
+    width:100%;margin-top:16px;border:none;border-radius:13px;cursor:pointer;
+    padding:16px;font-family:'Outfit',sans-serif;font-weight:800;font-size:16px;
+    color:#0b1626;background:linear-gradient(135deg,var(--optic),var(--accent));
+    transition:transform .08s,filter .15s;
+  }
+  .btn:hover{filter:brightness(1.05)}
+  .btn:active{transform:translateY(1px)}
+  .btn[disabled]{opacity:.55;cursor:not-allowed;filter:none}
+  .btn.ghost{background:transparent;border:1.5px solid var(--border);color:var(--soft);font-weight:700}
+  .note{display:flex;gap:9px;align-items:flex-start;margin-top:16px;
+    padding:12px 13px;background:rgba(135,202,55,.08);border:1px solid rgba(135,202,55,.18);
+    border-radius:12px;font-size:12.5px;color:var(--soft);line-height:1.45}
+  .note b{color:var(--accent);font-weight:700}
+  .msg{margin-top:14px;font-size:13.5px;text-align:center;min-height:18px}
+  .msg.err{color:var(--loss)}
+  .msg.ok{color:var(--accent)}
+  .hide{display:none}
+  .masked{color:var(--text);font-weight:600}
+  .back{display:block;text-align:center;margin-top:14px;color:var(--muted);
+    font-size:13px;background:none;border:none;cursor:pointer;width:100%;font-family:inherit}
+  .back:hover{color:var(--soft)}
+  /* success record */
+  .record{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0 4px}
+  .stat{background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:14px;
+    padding:16px 10px;text-align:center}
+  .stat .n{font-family:'Outfit',sans-serif;font-weight:900;font-size:34px;line-height:1;
+    font-variant-numeric:tabular-nums}
+  .stat.win .n{color:var(--optic)}
+  .stat.loss .n{color:var(--loss)}
+  .stat .l{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+  .metaline{text-align:center;color:var(--soft);font-size:13.5px;margin-top:12px}
+  .metaline b{color:var(--gold);font-weight:700}
+  .spin{width:18px;height:18px;border:2.5px solid rgba(11,22,38,.35);border-top-color:#0b1626;
+    border-radius:50%;display:inline-block;vertical-align:-3px;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <img src="/images/PlayPBNow-Logo-SMALL.png" alt="">
+    <span>PlayPBNow</span>
+  </div>
+  <div class="card">
+    <div class="eyebrow">Universal player record</div>
+    <h1 id="title">Claim <span class="name" id="who">your</span> record</h1>
+    <p class="sub" id="sub">Your wins follow you to every court and every organizer. Verify your number to make this record yours.</p>
+
+    <!-- STEP 1: phone -->
+    <form id="step-phone">
+      <label for="phone">Your mobile number</label>
+      <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel"
+             placeholder="(555) 123-4567" required>
+      <button class="btn" id="phoneBtn" type="submit">Text me a code</button>
+      <div class="note">
+        <span>🔒</span>
+        <span>Your number is <b>never shared or shown</b> to other players. We only use it to confirm this record is really yours.</span>
+      </div>
+    </form>
+
+    <!-- STEP 2: otp -->
+    <form id="step-otp" class="hide">
+      <label for="otp">Enter the 6-digit code we sent to <span class="masked" id="maskEcho"></span></label>
+      <input id="otp" name="otp" class="otp" type="text" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="6" pattern="[0-9]*" placeholder="000000" required>
+      <button class="btn" id="otpBtn" type="submit">Verify &amp; claim</button>
+      <button class="back" id="resend" type="button">Didn’t get it? Send again</button>
+      <button class="back" id="changeNum" type="button">← Use a different number</button>
+    </form>
+
+    <!-- STEP 3: success -->
+    <div id="step-done" class="hide">
+      <div class="eyebrow" style="color:var(--optic)">✓ Claimed</div>
+      <h1 style="margin-top:6px">This record is <span class="name">yours</span></h1>
+      <div class="record">
+        <div class="stat win"><div class="n" id="rWins">0</div><div class="l">Wins</div></div>
+        <div class="stat loss"><div class="n" id="rLosses">0</div><div class="l">Losses</div></div>
+      </div>
+      <div class="metaline">Across <b id="rOrg">1</b> <span id="rOrgLabel">organizer</span> · <b id="rPct">0%</b> win rate</div>
+      <a class="btn" id="openApp" href="https://playpbnow.com/login" style="display:block;text-align:center;text-decoration:none;margin-top:20px">Open PlayPBNow</a>
+    </div>
+
+    <div class="msg" id="msg"></div>
+  </div>
+  <div class="footer">Credit follows the real player — across every court.</div>
+</div>
+
+<script>
+(function(){
+  var API = '/api';
+  var params = new URLSearchParams(location.search);
+  var code = (params.get('code') || '').trim().toUpperCase();
+  var phoneVal = '';
+  var $ = function(id){ return document.getElementById(id); };
+  function show(step){ ['step-phone','step-otp','step-done'].forEach(function(s){ $(s).classList.toggle('hide', s!==step); }); }
+  function msg(t, cls){ var m=$('msg'); m.textContent=t||''; m.className='msg'+(cls?(' '+cls):''); }
+  function busy(btn, on, label){ btn.disabled=on; btn.innerHTML = on ? '<span class="spin"></span>' : label; }
+
+  // Greet using the code (public lookup — no phone, no login).
+  if (code){
+    fetch(API+'/claim_lookup.php?code='+encodeURIComponent(code))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.status==='success'){
+          if(d.display_name && d.display_name!=='your'){ $('who').textContent = d.display_name+"’s"; }
+          if(d.claimed){
+            $('sub').innerHTML = 'This profile is already claimed. Just log in with your number to see your record.';
+          }
+        } else if(d.status==='not_found'){
+          $('who').textContent='your';
+          $('sub').textContent='That claim code isn’t valid — but you can still verify your number below to find your record.';
+        }
+      }).catch(function(){});
+  }
+
+  // STEP 1 → send code
+  $('step-phone').addEventListener('submit', function(e){
+    e.preventDefault(); msg('');
+    phoneVal = $('phone').value.trim();
+    if(phoneVal.replace(/\D/g,'').length < 10){ msg('Enter a valid mobile number.', 'err'); return; }
+    busy($('phoneBtn'), true);
+    fetch(API+'/claim_start.php', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code: code, phone: phoneVal })})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        busy($('phoneBtn'), false, 'Text me a code');
+        if(d.status==='success'){
+          $('maskEcho').textContent = d.masked_phone || 'your phone';
+          show('step-otp'); msg(''); setTimeout(function(){ $('otp').focus(); }, 60);
+        } else if(d.status==='already_claimed'){
+          msg(d.message, 'ok');
+          $('openApp'); show('step-phone');
+          setTimeout(function(){ location.href='https://playpbnow.com/login'; }, 1800);
+        } else {
+          msg(d.message || 'Could not send a code.', 'err');
+        }
+      }).catch(function(){ busy($('phoneBtn'), false, 'Text me a code'); msg('Network error. Please try again.', 'err'); });
+  });
+
+  function verify(){
+    var otp = $('otp').value.trim();
+    if(otp.length < 4){ msg('Enter the 6-digit code.', 'err'); return; }
+    busy($('otpBtn'), true);
+    fetch(API+'/claim_verify.php', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ claim_code: code, phone: phoneVal, code: otp })})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        busy($('otpBtn'), false, 'Verify &amp; claim');
+        if(d.status==='success'){
+          // Persist the session so opening the app lands logged-in.
+          try{ if(d.session_token){ localStorage.setItem('pbnow_session_token', d.session_token); localStorage.setItem('session_token', d.session_token); } }catch(e){}
+          renderRecord(d.identity_id);
+          show('step-done'); msg('');
+        } else {
+          msg(d.message || 'That code didn’t work.', 'err');
+        }
+      }).catch(function(){ busy($('otpBtn'), false, 'Verify &amp; claim'); msg('Network error. Please try again.', 'err'); });
+  }
+  $('step-otp').addEventListener('submit', function(e){ e.preventDefault(); msg(''); verify(); });
+  $('changeNum').addEventListener('click', function(){ show('step-phone'); msg(''); });
+  $('resend').addEventListener('click', function(){
+    fetch(API+'/claim_start.php', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code: code, phone: phoneVal })})
+      .then(function(r){return r.json();}).then(function(d){ msg(d.status==='success'?'New code sent.':(d.message||''), d.status==='success'?'ok':'err'); }).catch(function(){});
+  });
+
+  function renderRecord(identity_id){
+    fetch(API+'/get_universal_stats.php?claim_code='+encodeURIComponent(code))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.status==='success' && d.universal){
+          var u=d.universal;
+          $('rWins').textContent=u.wins; $('rLosses').textContent=u.losses;
+          $('rPct').textContent=(u.win_pct||0)+'%';
+          $('rOrg').textContent=d.organizers||1;
+          $('rOrgLabel').textContent=(d.organizers===1?'organizer':'organizers');
+        }
+      }).catch(function(){});
+  }
+})();
+</script>
+</body>
+</html>
