@@ -518,6 +518,10 @@ export default function InvitesScreen() {
   };
 
   const handleBuyCredits = async (pkg: CreditPackage) => {
+    // Hard guard: external checkout must never open from the iOS/Android app
+    // (App Store Guideline 3.1.1). Purchase UI is already web-only; this
+    // protects against any future call path.
+    if (Platform.OS !== 'web') return;
     try {
       const res = await fetch(`${API_URL}/sms_credits_api.php`, {
         method: 'POST',
@@ -829,27 +833,35 @@ export default function InvitesScreen() {
             <Text style={styles.creditCardSub}>SMS Credits</Text>
           </View>
 
-          <Text style={styles.sectionTitle}>Buy Credits</Text>
-          <Text style={styles.sectionSubtitle}>1 credit = 1 SMS invitation sent to a player</Text>
+          {/* Credit purchasing is WEB ONLY. On iOS, external payment for a
+              digital good violates App Store Guideline 3.1.1, so native shows
+              the balance with no purchase UI and no mention of buying
+              elsewhere (3.1.3 anti-steering). */}
+          {Platform.OS === 'web' && (
+            <>
+              <Text style={styles.sectionTitle}>Buy Credits</Text>
+              <Text style={styles.sectionSubtitle}>1 credit = 1 SMS invitation sent to a player</Text>
 
-          {CREDIT_PACKAGES.map(pkg => (
-            <TouchableOpacity
-              key={pkg.credits}
-              style={[styles.packageCard, pkg.popular && styles.packageCardPopular]}
-              onPress={() => handleBuyCredits(pkg)}
-            >
-              {pkg.popular && (
-                <View style={styles.popularBadge}>
-                  <Text style={styles.popularBadgeText}>BEST VALUE</Text>
-                </View>
-              )}
-              <View style={styles.packageInfo}>
-                <Text style={styles.packageCredits}>{pkg.credits.toLocaleString()} credits</Text>
-                <Text style={styles.packagePerCredit}>{pkg.perCredit}/credit</Text>
-              </View>
-              <Text style={styles.packagePrice}>{pkg.price}</Text>
-            </TouchableOpacity>
-          ))}
+              {CREDIT_PACKAGES.map(pkg => (
+                <TouchableOpacity
+                  key={pkg.credits}
+                  style={[styles.packageCard, pkg.popular && styles.packageCardPopular]}
+                  onPress={() => handleBuyCredits(pkg)}
+                >
+                  {pkg.popular && (
+                    <View style={styles.popularBadge}>
+                      <Text style={styles.popularBadgeText}>BEST VALUE</Text>
+                    </View>
+                  )}
+                  <View style={styles.packageInfo}>
+                    <Text style={styles.packageCredits}>{pkg.credits.toLocaleString()} credits</Text>
+                    <Text style={styles.packagePerCredit}>{pkg.perCredit}/credit</Text>
+                  </View>
+                  <Text style={styles.packagePrice}>{pkg.price}</Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
         </ScrollView>
       )}
 
@@ -1314,23 +1326,29 @@ export default function InvitesScreen() {
                         Not enough credits! You need {selectedPlayers.length} but have {creditBalance}.
                       </Text>
                     </View>
-                    <Text style={[styles.inputLabel, { marginTop: 16 }]}>Buy Credits to Continue</Text>
-                    <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 13, color: colors.textMuted, marginBottom: 12 }}>
-                      {"Purchase credits below — you'll return right here to send your invites."}
-                    </Text>
-                    {CREDIT_PACKAGES.slice(0, 4).map(pkg => (
-                      <TouchableOpacity
-                        key={pkg.credits}
-                        style={[styles.packageCard, pkg.popular && styles.packageCardPopular]}
-                        onPress={() => handleBuyCredits(pkg)}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.packageCredits}>{pkg.credits.toLocaleString()} credits</Text>
-                          <Text style={styles.packagePerCredit}>{pkg.perCredit}/credit</Text>
-                        </View>
-                        <Text style={styles.packagePrice}>{pkg.price}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {/* Purchasing is web-only (App Store 3.1.1); native shows the
+                        shortfall with no purchase UI and no steering text. */}
+                    {Platform.OS === 'web' && (
+                      <>
+                        <Text style={[styles.inputLabel, { marginTop: 16 }]}>Buy Credits to Continue</Text>
+                        <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 13, color: colors.textMuted, marginBottom: 12 }}>
+                          {"Purchase credits below — you'll return right here to send your invites."}
+                        </Text>
+                        {CREDIT_PACKAGES.slice(0, 4).map(pkg => (
+                          <TouchableOpacity
+                            key={pkg.credits}
+                            style={[styles.packageCard, pkg.popular && styles.packageCardPopular]}
+                            onPress={() => handleBuyCredits(pkg)}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.packageCredits}>{pkg.credits.toLocaleString()} credits</Text>
+                              <Text style={styles.packagePerCredit}>{pkg.perCredit}/credit</Text>
+                            </View>
+                            <Text style={styles.packagePrice}>{pkg.price}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </>
+                    )}
                   </View>
                 )}
 

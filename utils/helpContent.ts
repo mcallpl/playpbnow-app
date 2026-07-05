@@ -1268,9 +1268,8 @@ What is Broadcast?
 | Pro Annual | $29.99/yr | Unlimited | Unlimited | All |
 
 **Payment Methods:**
+- iOS: Through your Apple ID (App Store subscription)
 - Credit/debit card (Visa, Mastercard, Amex)
-- iOS: Through Apple ID
-- Web: Stripe checkout
 
 **After Upgrading:**
 - Immediate access to all Pro features

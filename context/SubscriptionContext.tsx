@@ -247,8 +247,11 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
         }
     }, [fetchSubscription]);
 
-    // Stripe checkout for web
+    // Stripe checkout for web ONLY. Native subscriptions go through StoreKit
+    // (purchaseSubscription above); opening external checkout from the app is
+    // an App Store 3.1.1 violation, so this hard-guards against any call path.
     const purchaseViaStripe = useCallback(async (plan: 'monthly' | 'annual') => {
+        if (!isWeb) return;
         setPurchaseLoading(true);
         try {
             const userId = await AsyncStorage.getItem('user_id');
@@ -303,10 +306,13 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
                 Alert.alert('Welcome!', data.message || 'Pro activated!');
                 return true;
             } else if (data.checkout_url) {
+                // Stripe promo checkout is WEB ONLY (App Store 3.1.1): on
+                // native, an unrecognized code is simply invalid — never open
+                // an external payment page from the app.
                 if (isWeb) {
                     window.location.href = data.checkout_url;
                 } else {
-                    Linking.openURL(data.checkout_url);
+                    Alert.alert('Invalid Code', 'Code not recognized.');
                 }
                 setPurchaseLoading(false);
                 return false;
