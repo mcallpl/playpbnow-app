@@ -216,7 +216,7 @@ jobs:
           #   api      — the PHP backend (deployed separately below)
           #   reports  — user-generated match report images (shared-link targets;
           #              deleting these 404s every already-shared invite link)
-          rsync -avz --delete --exclude='api' --exclude='reports' --include=".htaccess" \
+          rsync -avz --delete --exclude='api' --exclude='reports' --exclude='shared' --include=".htaccess" \
             -e "ssh -i ~/.ssh/deploy_key" \
             dist/ \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/

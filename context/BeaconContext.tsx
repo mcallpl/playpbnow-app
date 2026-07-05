@@ -5,7 +5,7 @@ import { playBeaconChime } from '../utils/sounds';
 
 // Absolute URL required — see hooks/useBeacon.ts (relative URLs break native fetch
 // and resolve to the wrong host on web).
-const SHARED_BEACON_URL = 'https://dinkconnections.com/shared/beacon/api';
+const SHARED_BEACON_URL = 'https://playpbnow.com/shared/beacon/api';
 
 interface BeaconContextValue {
   hasActiveBeacons: boolean;

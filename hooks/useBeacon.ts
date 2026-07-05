@@ -7,7 +7,7 @@ const API_URL = 'https://playpbnow.com/api';
 // and on web they resolve against playpbnow.com which does not serve /shared/.
 // dinkconnections.com hosts the working copy (CORS allows any origin);
 // the peoplestar.com/shared copy is broken (missing db_connect include).
-const SHARED_BEACON_URL = 'https://dinkconnections.com/shared/beacon/api';
+const SHARED_BEACON_URL = 'https://playpbnow.com/shared/beacon/api';
 
 export interface BeaconResponse {
   user_id: string;

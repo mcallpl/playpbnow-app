@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <!-- Absolute host required: this page is served from playpbnow.com, which does not host /shared/ -->
-<link rel="stylesheet" href="https://dinkconnections.com/shared/beacon/beacon-sdk.css">
+<link rel="stylesheet" href="https://playpbnow.com/shared/beacon/beacon-sdk.css">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -137,13 +137,13 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
 <div id="beaconContainer"></div>
 <div id="ppbToast" class="ppb-toast"></div>
 
-<script src="https://dinkconnections.com/shared/beacon/beacon-sdk.js"></script>
+<script src="https://playpbnow.com/shared/beacon/beacon-sdk.js"></script>
 <script>
 (function() {
     var API_URL = 'https://playpbnow.com/api';
     // dinkconnections.com hosts the working shared beacon API (CORS: *);
     // the peoplestar.com/shared copy is broken (missing db_connect include).
-    var SHARED_BEACON_URL = 'https://dinkconnections.com/shared/beacon/api';
+    var SHARED_BEACON_URL = 'https://playpbnow.com/shared/beacon/api';
 
     // Get user info from URL params or localStorage
     var params = new URLSearchParams(window.location.search);
