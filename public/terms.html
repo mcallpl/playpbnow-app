@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Play Pickleball NOW! - Terms of Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f4f6f9;
+            color: #333;
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1b3358 0%, #2a4a6f 100%);
+            padding: 50px 20px 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #87ca37, #6db82a, #87ca37);
+        }
+
+        .header h1 {
+            color: #fff;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .header h1 span {
+            color: #87ca37;
+        }
+
+        .header .subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.05rem;
+            font-weight: 400;
+        }
+
+        .header .updated {
+            display: inline-block;
+            margin-top: 16px;
+            background: rgba(135, 202, 55, 0.15);
+            color: #87ca37;
+            padding: 5px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid rgba(135, 202, 55, 0.3);
+        }
+
+        .intro {
+            max-width: 780px;
+            margin: -20px auto 0;
+            padding: 30px 32px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(27, 51, 88, 0.08);
+            position: relative;
+            z-index: 2;
+            font-size: 1.05rem;
+            color: #555;
+            border-left: 4px solid #87ca37;
+        }
+
+        .intro strong {
+            color: #1b3358;
+        }
+
+        .container {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 20px 20px 40px;
+        }
+
+        .section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 28px 32px;
+            margin-top: 20px;
+            box-shadow: 0 2px 12px rgba(27, 51, 88, 0.06);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .section:hover {
+            box-shadow: 0 4px 20px rgba(27, 51, 88, 0.1);
+        }
+
+        .section h2 {
+            font-size: 1.3rem;
+            color: #1b3358;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f2f5;
+        }
+
+        .section h2 .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .icon-accept { background: #f0fae5; }
+        .icon-account { background: #e8f4fd; }
+        .icon-use { background: #fef5e7; }
+        .icon-content { background: #f3e8fd; }
+        .icon-payment { background: #e8fdf0; }
+        .icon-termination { background: #fde8e8; }
+        .icon-liability { background: #fff3e0; }
+        .icon-changes { background: #f0fae5; }
+
+        .section p {
+            color: #555;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .section ul {
+            list-style: none;
+            padding: 0;
+            margin: 8px 0 16px;
+        }
+
+        .section ul li {
+            padding: 8px 0 8px 28px;
+            position: relative;
+            color: #555;
+            font-size: 0.95rem;
+            border-bottom: 1px solid #f8f9fa;
+        }
+
+        .section ul li:last-child {
+            border-bottom: none;
+        }
+
+        .section ul li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 14px;
+            width: 8px;
+            height: 8px;
+            background: #87ca37;
+            border-radius: 50%;
+        }
+
+        .section ul li strong {
+            color: #1b3358;
+        }
+
+        .highlight-box {
+            background: #f0fae5;
+            border: 1px solid rgba(135, 202, 55, 0.3);
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 12px 0;
+            font-size: 0.9rem;
+            color: #3a6b10;
+        }
+
+        .highlight-box strong {
+            color: #2a5a08;
+        }
+
+        a {
+            color: #87ca37;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: #6db82a;
+            text-decoration: underline;
+        }
+
+        .contact-card {
+            background: linear-gradient(135deg, #1b3358 0%, #2a4a6f 100%);
+            border-radius: 12px;
+            padding: 32px;
+            margin-top: 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #87ca37;
+        }
+
+        .contact-card h2 {
+            color: #fff;
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+            border: none;
+            padding: 0;
+            justify-content: center;
+        }
+
+        .contact-card p {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+        }
+
+        .contact-card .email-btn {
+            display: inline-block;
+            background: #87ca37;
+            color: #fff;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .contact-card .email-btn:hover {
+            background: #6db82a;
+            transform: translateY(-1px);
+            text-decoration: none;
+        }
+
+        /* ── NAV BUTTONS ── */
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #0f1b2d;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .nav-brand img {
+            height: 114px;
+            width: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 0 12px rgba(135,202,55,0.25));
+        }
+        .nav-btns {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .nav-btn {
+            display: inline-block;
+            padding: 9px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .nav-btn-home {
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .nav-btn-home:hover { background: rgba(255,255,255,0.15); text-decoration: none; }
+        .nav-btn-app {
+            background: #87ca37;
+            color: #0f1b2d;
+        }
+        .nav-btn-app:hover { background: #6db82a; transform: translateY(-1px); text-decoration: none; }
+        .nav-btn-pool {
+            background: rgba(135,202,55,0.12);
+            color: #87ca37;
+            border: 1px solid rgba(135,202,55,0.25);
+        }
+        .nav-btn-pool:hover { background: rgba(135,202,55,0.2); text-decoration: none; }
+
+        /* ── CTA CARD ── */
+        .cta-card {
+            background: linear-gradient(135deg, #0f1b2d 0%, #152945 100%);
+            border-radius: 16px;
+            padding: 36px 32px;
+            margin-top: 24px;
+            text-align: center;
+            border: 1px solid rgba(135,202,55,0.15);
+        }
+        .cta-card h3 { color: #fff; font-size: 1.3rem; margin-bottom: 10px; }
+        .cta-card h3 em { color: #87ca37; font-style: normal; }
+        .cta-card p { color: rgba(255,255,255,0.7); margin-bottom: 20px; font-size: 0.95rem; }
+        .cta-card .cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .cta-card .cta-btns a { padding: 12px 28px; border-radius: 12px; font-weight: 700; font-size: 14px; text-decoration: none; transition: all 0.2s; }
+        .cta-card .cta-btns .cta-app { background: #87ca37; color: #0f1b2d; }
+        .cta-card .cta-btns .cta-app:hover { background: #6db82a; text-decoration: none; }
+        .cta-card .cta-btns .cta-pool { background: rgba(135,202,55,0.12); color: #87ca37; border: 1px solid rgba(135,202,55,0.25); }
+        .cta-card .cta-btns .cta-pool:hover { background: rgba(135,202,55,0.2); text-decoration: none; }
+
+        .footer {
+            text-align: center;
+            padding: 30px 20px;
+            color: #999;
+            font-size: 0.85rem;
+        }
+
+        .footer span {
+            color: #87ca37;
+            font-weight: 600;
+        }
+
+        @media (max-width: 600px) {
+            .nav-bar { flex-direction: column; gap: 10px; padding: 10px 16px; }
+            .nav-btns { justify-content: center; }
+            .nav-btn { padding: 8px 14px; font-size: 12px; }
+            .header {
+                padding: 36px 16px 30px;
+            }
+
+            .header h1 {
+                font-size: 1.7rem;
+            }
+
+            .intro {
+                margin: -16px 12px 0;
+                padding: 22px 20px;
+                font-size: 0.95rem;
+            }
+
+            .container {
+                padding: 12px 12px 30px;
+            }
+
+            .section {
+                padding: 20px 20px;
+                border-radius: 10px;
+            }
+
+            .section h2 {
+                font-size: 1.15rem;
+            }
+
+            .contact-card {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAV BAR -->
+    <div class="nav-bar">
+        <a href="/PlayPBNow/" class="nav-brand">
+            <img src="/PlayPBNow/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!">
+        </a>
+        <div class="nav-btns">
+            <a href="/PlayPBNow/" class="nav-btn nav-btn-home">Home</a>
+            <a href="/PlayPBNow/app.html" class="nav-btn nav-btn-app">Launch App</a>
+            <a href="/PlayPBNow/player-signup.html" class="nav-btn nav-btn-pool">Join Player Pool</a>
+        </div>
+    </div>
+
+    <div class="header">
+        <img src="/PlayPBNow/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" style="height:114px;width:auto;object-fit:contain;filter:drop-shadow(0 0 12px rgba(135,202,55,0.25));margin-bottom:8px">
+        <div class="subtitle">Terms of Service</div>
+        <div class="updated">Last Updated: February 18, 2026</div>
+    </div>
+
+    <div class="intro">
+        Welcome to <strong>PlayPBNow</strong>. By using our mobile application or web app, you agree to these Terms of Service. Please read them carefully before using the app.
+    </div>
+
+    <div class="container">
+
+        <div class="section">
+            <h2><span class="icon icon-accept">&#9989;</span> Acceptance of Terms</h2>
+            <p>By accessing or using PlayPBNow, you agree to be bound by these Terms of Service and our <a href="privacy.html">Privacy Policy</a>. If you do not agree to these terms, do not use the app.</p>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon icon-account">&#128100;</span> Account &amp; Registration</h2>
+            <ul>
+                <li>You must provide <strong>accurate information</strong> when creating an account</li>
+                <li>You are responsible for maintaining the <strong>security of your account</strong> and password</li>
+                <li>You must be at least <strong>13 years old</strong> to use PlayPBNow</li>
+                <li>One person may maintain <strong>one account</strong>; duplicate accounts may be removed</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon icon-use">&#127955;</span> Acceptable Use</h2>
+            <p>You agree to use PlayPBNow only for its intended purpose: <strong>organizing and scoring pickleball matches</strong>. You agree not to:</p>
+            <ul>
+                <li><strong>Misuse</strong> the app or attempt to access it through unauthorized means</li>
+                <li><strong>Interfere</strong> with the app's functionality or other users' experience</li>
+                <li>Use the app to transmit <strong>harmful, abusive, or inappropriate</strong> content</li>
+                <li><strong>Reverse engineer</strong>, decompile, or attempt to extract the source code</li>
+                <li>Use automated tools to <strong>scrape or collect data</strong> from the app</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon icon-content">&#128221;</span> User Content</h2>
+            <p>You retain ownership of content you create (group names, player names, match data). By using PlayPBNow, you grant us a limited license to <strong>store, display, and process</strong> this content solely to provide the service.</p>
+            <div class="highlight-box">
+                <strong>Your data is yours.</strong> We do not claim ownership of your match data, player rosters, or group information. You may request deletion at any time.
+            </div>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon icon-payment">&#128176;</span> Subscriptions &amp; Payments</h2>
+            <ul>
+                <li>PlayPBNow offers a <strong>free tier</strong> and a <strong>Pro subscription</strong> with additional features</li>
+                <li>New accounts receive a <strong>30-day free trial</strong> of Pro features</li>
+                <li>Subscriptions are billed through the <strong>App Store</strong>, <strong>Google Play</strong>, or <strong>Stripe</strong> (web)</li>
+                <li>You may <strong>cancel your subscription</strong> at any time through your app store or account settings</li>
+                <li>Refunds are handled according to the respective <strong>app store's refund policy</strong></li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon icon-termination">&#128683;</span> Termination</h2>
+            <p>We reserve the right to <strong>suspend or terminate</strong> your account if you violate these Terms of Service. You may delete your account at any time by contacting us.</p>
+            <p>Upon termination, your right to use the app ceases immediately. We may retain certain data as required by law.</p>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon icon-liability">&#9888;&#65039;</span> Limitation of Liability</h2>
+            <p>PlayPBNow is provided <strong>"as is"</strong> without warranties of any kind. We are not liable for:</p>
+            <ul>
+                <li><strong>Data loss</strong> due to technical issues or service interruptions</li>
+                <li><strong>Inaccuracies</strong> in match scores or statistics</li>
+                <li>Any <strong>indirect, incidental, or consequential damages</strong> arising from use of the app</li>
+            </ul>
+            <p>Our total liability shall not exceed the amount you paid for the service in the <strong>12 months</strong> preceding the claim.</p>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon icon-changes">&#128196;</span> Changes to These Terms</h2>
+            <p>We may update these Terms of Service from time to time. We will notify you of material changes by posting the updated terms within the app. Your continued use of PlayPBNow after changes are posted constitutes acceptance of the updated terms.</p>
+        </div>
+
+        <div class="contact-card">
+            <h2>&#9993;&#65039; Questions?</h2>
+            <p>If you have any questions about these Terms of Service, we'd love to hear from you.</p>
+            <a href="mailto:PlayPBNow@PeopleStar.com" class="email-btn">PlayPBNow@PeopleStar.com</a>
+        </div>
+
+        <!-- CTA CARD -->
+        <div class="cta-card">
+            <h3>Ready to <em>Play Pickleball NOW?</em></h3>
+            <p>500+ eager players are waiting. Fill your foursome in minutes — from beginners to pros.</p>
+            <div class="cta-btns">
+                <a href="/PlayPBNow/app.html" class="cta-app">Launch the App</a>
+                <a href="/PlayPBNow/player-signup.html" class="cta-pool">Join the Player Pool — Free</a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        &copy; 2026 <span>PlayPBNow</span>. All rights reserved.<br>
+        <a href="/PlayPBNow/" style="color:#87ca37">Home</a> &middot;
+        <a href="/PlayPBNow/api/privacy.html" style="color:#87ca37">Privacy Policy</a>
+    </div>
+
+</body>
+</html>
