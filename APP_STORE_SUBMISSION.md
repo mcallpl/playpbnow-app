@@ -6,7 +6,18 @@ Prepared 2026-07-06. Three parts: (1) Submission Checklist, (2) App Review Notes
 
 ## 1 · SUBMISSION CHECKLIST (in order)
 
-### A. RevenueCat + App Store Connect products — ⚠️ THE ONLY REMAINING BLOCKER (you must do this; ~10 min)
+### ⓪ Sign the Apple agreements — ⚠️ HARD BLOCKER (found 2026-07-05; blocks even the binary upload)
+The build-59 upload was rejected by Apple with `FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`
+("This request requires an in-effect agreement that has not been signed or has expired").
+
+As **Account Holder**, go to **appstoreconnect.apple.com → Business (Agreements, Tax, and Banking)**:
+1. Accept the pending **Apple Developer Program License Agreement** (Apple periodically issues new versions that must be re-accepted).
+2. Because the app now sells subscriptions: the **Paid Applications Agreement** must show **Active** — sign it and complete **Banking** and **Tax** forms if not already done. Without this, paid IAPs cannot be offered at all.
+
+Then the upload retries with: `npx eas submit --platform ios --profile production --id e47ee3e8-49e1-4aaf-851e-02fb96c8f33c`
+(build 59 is already compiled and waiting on EAS — nothing needs rebuilding).
+
+### A. RevenueCat + App Store Connect products — ⚠️ BLOCKER #2 (you must do this; ~10 min)
 The app's paywall loads products live from RevenueCat. **The "default" offering currently has ZERO packages attached** — an iOS reviewer could never complete a purchase. Fix:
 
 1. **App Store Connect → PlayPBNow → Monetization → Subscriptions**
