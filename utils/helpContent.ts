@@ -1645,7 +1645,7 @@ PlayPBNow is committed to protecting your privacy. Our full privacy policy cover
 - No data sold to third parties
 
 **View the Full Policy:**
-Visit https://peoplestar.com/PlayPBNow/privacy.html for complete details.
+Visit https://playpbnow.com/privacy.html for complete details.
 
 **Contact Us:**
 Email: mcallpl@gmail.com`,
@@ -1744,6 +1744,6 @@ When you create a match invite and send it to players, we use SMS (text messages
 - Messages are encrypted in transit
 
 **Questions?**
-Check our full Privacy Policy at https://peoplestar.com/PlayPBNow/privacy.html`,
+Check our full Privacy Policy at https://playpbnow.com/privacy.html`,
   },
 ];

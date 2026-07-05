@@ -398,9 +398,9 @@ export default function LoginScreen() {
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>
                             By continuing, you agree to our{' '}
-                            <Text style={styles.footerLink} onPress={() => openLegalUrl('https://peoplestar.com/PlayPBNow/terms.html')}>Terms of Service</Text>
+                            <Text style={styles.footerLink} onPress={() => openLegalUrl('https://playpbnow.com/terms.html')}>Terms of Service</Text>
                             {' '}and{' '}
-                            <Text style={styles.footerLink} onPress={() => openLegalUrl('https://peoplestar.com/PlayPBNow/privacy.html')}>Privacy Policy</Text>.
+                            <Text style={styles.footerLink} onPress={() => openLegalUrl('https://playpbnow.com/privacy.html')}>Privacy Policy</Text>.
                         </Text>
                     </View>
                 </ScrollView>

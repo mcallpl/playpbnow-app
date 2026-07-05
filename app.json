@@ -8,7 +8,7 @@
     "scheme": "playpbnow",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "privacy": "https://peoplestar.com/PlayPBNow/privacy.html",
+    "privacy": "https://playpbnow.com/privacy.html",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.mcallpl.PlayPBNow",
