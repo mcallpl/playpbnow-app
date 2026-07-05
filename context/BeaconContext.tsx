@@ -3,7 +3,9 @@ import React, { createContext, useContext, useRef, useState, useCallback, useEff
 import { useLocation, UserLocation } from '../hooks/useLocation';
 import { playBeaconChime } from '../utils/sounds';
 
-const SHARED_BEACON_URL = '/shared/beacon/api';
+// Absolute URL required — see hooks/useBeacon.ts (relative URLs break native fetch
+// and resolve to the wrong host on web).
+const SHARED_BEACON_URL = 'https://dinkconnections.com/shared/beacon/api';
 
 interface BeaconContextValue {
   hasActiveBeacons: boolean;

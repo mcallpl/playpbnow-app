@@ -563,7 +563,9 @@ export default function PlayNowTab() {
     const others = beacons.filter((b: any) => !b.is_mine).length;
     const own = beacons.some((b: any) => b.is_mine);
     reportBeaconCounts(beacons.length, others, own);
-  }, [beacons.length, reportBeaconCounts]);
+    // Depend on the array itself: composition can change (one expires, one
+    // appears) without the length changing, and own/others would go stale.
+  }, [beacons, reportBeaconCounts]);
 
   // Helper to pass location into every fetchFeed call
   const fetchFeedWithLocation = useCallback(
@@ -1142,7 +1144,10 @@ export default function PlayNowTab() {
                               respondToBeacon(selectedBeacon.id).then((success) => {
                                 if (success) {
                                   const name = `${playerInfo.first_name} ${playerInfo.last_name}`.trim();
-                                  sendChatMessage(selectedBeacon.id, userId, name, "I'll join you!");
+                                  // Best-effort announcement — the response itself already succeeded
+                                  sendChatMessage(selectedBeacon.id, userId, name, "I'll join you!").catch(() => {});
+                                } else {
+                                  Alert.alert('Response Not Sent', 'Could not notify the beacon creator. Please try again.');
                                 }
                               }).catch(() => {});
                             }
@@ -1282,7 +1287,11 @@ export default function PlayNowTab() {
                                   return;
                                 }
                                 const name = `${playerInfo.first_name} ${playerInfo.last_name}`.trim();
-                                sendChatMessage(selectedBeacon.id, userId, name, msg);
+                                sendChatMessage(selectedBeacon.id, userId, name, msg).then((ok) => {
+                                  if (!ok) {
+                                    Alert.alert('Message Not Sent', 'Your message could not be delivered. Please try again.');
+                                  }
+                                });
                               }}
                             >
                               <Text style={styles.cannedChipText}>{msg}</Text>
@@ -1306,9 +1315,15 @@ export default function PlayNowTab() {
                                 return;
                               }
                               const name = `${playerInfo.first_name} ${playerInfo.last_name}`.trim();
-                              sendChatMessage(selectedBeacon.id, userId, name, chatInput.trim());
+                              const text = chatInput.trim();
                               setChatInput('');
                               Keyboard.dismiss();
+                              sendChatMessage(selectedBeacon.id, userId, name, text).then((ok) => {
+                                if (!ok) {
+                                  setChatInput(text); // restore so the user can retry
+                                  Alert.alert('Message Not Sent', 'Your message could not be delivered. Please try again.');
+                                }
+                              });
                             }}
                           />
                           <TouchableOpacity
@@ -1320,9 +1335,15 @@ export default function PlayNowTab() {
                                 return;
                               }
                               const name = `${playerInfo.first_name} ${playerInfo.last_name}`.trim();
-                              sendChatMessage(selectedBeacon!.id, userId, name, chatInput.trim());
+                              const text = chatInput.trim();
                               setChatInput('');
                               Keyboard.dismiss();
+                              sendChatMessage(selectedBeacon!.id, userId, name, text).then((ok) => {
+                                if (!ok) {
+                                  setChatInput(text); // restore so the user can retry
+                                  Alert.alert('Message Not Sent', 'Your message could not be delivered. Please try again.');
+                                }
+                              });
                             }}
                           >
                             <BrandedIcon name="send" size={18} color={colors.accent} />

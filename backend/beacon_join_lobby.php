@@ -28,14 +28,19 @@ if (!$lobby_id || !$user_id) {
 
 $conn = getDBConnection();
 
-// 1. Verify lobby exists and status='gathering'
-$stmt = $conn->prepare("SELECT id, target_players FROM beacon_lobbies WHERE id = ? AND status = 'gathering'");
+// Transaction with a row lock on the lobby so two simultaneous joins can't
+// both pass the capacity check and overfill the lobby.
+$conn->begin_transaction();
+
+// 1. Verify lobby exists and status='gathering' (FOR UPDATE serializes joins)
+$stmt = $conn->prepare("SELECT id, target_players FROM beacon_lobbies WHERE id = ? AND status = 'gathering' FOR UPDATE");
 $stmt->bind_param('i', $lobby_id);
 $stmt->execute();
 $lobby = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if (!$lobby) {
+    $conn->rollback();
     $conn->close();
     echo json_encode(['status' => 'error', 'message' => 'Lobby not found or not accepting players']);
     exit;
@@ -49,6 +54,7 @@ $count = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if ((int)$count['member_count'] >= (int)$lobby['target_players']) {
+    $conn->rollback();
     $conn->close();
     echo json_encode(['status' => 'error', 'message' => 'Lobby is full']);
     exit;
@@ -62,6 +68,7 @@ $existing = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if ($existing) {
+    $conn->rollback();
     $conn->close();
     echo json_encode(['status' => 'error', 'message' => 'User already in this lobby']);
     exit;
@@ -88,9 +95,17 @@ $stmt = $conn->prepare(
      VALUES (?, ?, ?, ?, ?, ?, 'joined', ?)"
 );
 $stmt->bind_param('isisssd', $lobby_id, $user_id, $player_id, $first_name, $last_name, $gender, $reliability_pct);
-$stmt->execute();
+if (!$stmt->execute()) {
+    $stmt->close();
+    $conn->rollback();
+    $conn->close();
+    echo json_encode(['status' => 'error', 'message' => 'Failed to join lobby']);
+    exit;
+}
 $member_id = $conn->insert_id;
 $stmt->close();
+
+$conn->commit();
 
 // Fetch the member to return
 $stmt = $conn->prepare(

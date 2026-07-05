@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { playChatPing } from '../utils/sounds';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://peoplestar.com/PlayPBNow/api';
-const SHARED_BEACON_URL = '/shared/beacon/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://playpbnow.com/api';
+// Absolute URL required — see hooks/useBeacon.ts (relative URLs break native fetch
+// and resolve to the wrong host on web).
+const SHARED_BEACON_URL = 'https://dinkconnections.com/shared/beacon/api';
 const POLL_INTERVAL = 3000;
 
 export interface ChatMessage {
@@ -85,7 +87,9 @@ export function useBeaconChat() {
               }
               return prev;
             });
-            const maxId = data.messages[data.messages.length - 1].id;
+            // Shared API orders by created_at, so the last element is not
+            // guaranteed to have the highest id — take the true max.
+            const maxId = Math.max(...data.messages.map((m: ChatMessage) => m.id));
             if (maxId > lastIdRef.current) {
               lastIdRef.current = maxId;
             }
@@ -190,7 +194,7 @@ export function useBeaconChat() {
             if (prev.some(m => m.id === localMsg.id)) return prev;
             return [...prev, localMsg];
           });
-          lastIdRef.current = data.message_id;
+          lastIdRef.current = Math.max(lastIdRef.current, data.message_id);
           return true;
         }
       } else {
@@ -213,7 +217,7 @@ export function useBeaconChat() {
             if (prev.some(m => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
-          lastIdRef.current = msg.id;
+          lastIdRef.current = Math.max(lastIdRef.current, msg.id);
           return true;
         }
       }

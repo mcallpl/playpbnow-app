@@ -1,9 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
-// Shared beacon API — used by both DinkConnections and PlayPBNow
-const SHARED_BEACON_URL = '/shared/beacon/api';
+const API_URL = 'https://playpbnow.com/api';
+// Shared beacon API — used by both DinkConnections and PlayPBNow.
+// Must be an ABSOLUTE URL: relative URLs fail outright in React Native fetch,
+// and on web they resolve against playpbnow.com which does not serve /shared/.
+// dinkconnections.com hosts the working copy (CORS allows any origin);
+// the peoplestar.com/shared copy is broken (missing db_connect include).
+const SHARED_BEACON_URL = 'https://dinkconnections.com/shared/beacon/api';
 
 export interface BeaconResponse {
   user_id: string;
@@ -213,7 +217,6 @@ export function useBeacon() {
       const userId = await getUserId();
 
       // Fetch from shared beacon API (all cross-app casual beacons)
-      const { userName: currentUserName } = await getUserInfo();
       const sharedBody: Record<string, any> = { user_id: parseInt(userId) || 0 };
       if (lat !== undefined && lng !== undefined) {
         sharedBody.lat = lat;
@@ -221,15 +224,9 @@ export function useBeacon() {
         // No radius filter — show all beacons to everyone for now
       }
 
-      // Update creator_name on any existing beacon belonging to this user
-      // (fixes stale names from previous sessions)
-      try {
-        await fetch(`${SHARED_BEACON_URL}/update_name.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: parseInt(userId) || 0, creator_name: currentUserName }),
-        });
-      } catch { /* best effort */ }
+      // NOTE: update_name.php does not exist on the shared beacon API — the old
+      // best-effort call here 404'd on every feed fetch, so it was removed.
+      // Own-beacon names are corrected client-side below via `userName`.
 
       const [sharedRes, localRes] = await Promise.all([
         fetch(`${SHARED_BEACON_URL}/feed.php`, {
