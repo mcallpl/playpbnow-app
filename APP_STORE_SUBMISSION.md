@@ -23,14 +23,14 @@ The app's paywall loads products live from RevenueCat. **The "default" offering 
 1. **App Store Connect → PlayPBNow → Monetization → Subscriptions**
    - Create a Subscription Group (e.g. "PlayPBNow Pro").
    - Add two auto-renewable subscriptions:
-     - `pbn_pro_monthly` — $4.99/month
-     - `pbn_pro_annual` — $29.99/year
+     - `PPBN_499_MONTHLY` — $4.99/month
+     - `PPBN_2999_ANNUAL` — $29.99/year
    - For each: add localized display name + description, and **attach a review screenshot** (screenshot of the paywall is fine).
    - If you want an intro offer, add it here (e.g. 1 week free) — optional; the app's 30-day trial is server-side and does not require an Apple intro offer.
    - Status must reach **"Ready to Submit"** (they get reviewed WITH the app build).
 2. **RevenueCat dashboard → Project → Products**: import/add both product IDs (iOS App Store app `com.mcallpl.PlayPBNow`).
 3. **RevenueCat → Entitlements**: entitlement **`pro`** (must be exactly `pro` — the app checks this ID) → attach both products.
-4. **RevenueCat → Offerings → default**: add two packages — **Monthly** (`$rc_monthly`) → `pbn_pro_monthly`, **Annual** (`$rc_annual`) → `pbn_pro_annual`.
+4. **RevenueCat → Offerings → default**: add two packages — **Monthly** (`$rc_monthly`) → `PPBN_499_MONTHLY`, **Annual** (`$rc_annual`) → `PPBN_2999_ANNUAL`.
 5. Verify: the paywall in a TestFlight build shows real prices instead of "Unable to load subscription options."
 
 ### B. App Store Connect metadata
