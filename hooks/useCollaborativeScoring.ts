@@ -1,22 +1,33 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+const API_URL = 'https://playpbnow.com/api';
 const POLL_INTERVAL = 2000;
 const MAX_POLL_INTERVAL = 30000; // cap for exponential backoff on repeated failures
 const PROTECTION_WINDOW = 3000;
 const MAX_RETRIES = 3;
+const MAX_HEAL_PUSHES_PER_POLL = 4; // self-heal budget per poll cycle
 
 /**
- * useCollaborativeScoring V4 — ROCK SOLID
+ * useCollaborativeScoring V5 — OWNER-RESUME + SELF-HEALING
  *
- * CHANGES FROM V3:
+ * CHANGES FROM V4:
+ * - resumeOwnerSession(): the creator can leave and come back — reconnects to
+ *   their own live session, adopts their last-pushed schedule, merges server
+ *   scores over local, and re-pushes anything the server is missing.
+ * - Host is authoritative for the schedule: only collaborators adopt schedule
+ *   changes from the server (kills the host self-overwrite loop after shuffle).
+ * - Self-healing sync: every poll re-pushes local scores the server is missing
+ *   (heals offline typing / failed syncs). Convergence is guaranteed.
+ * - Conclusive finish: when the session is finished (by anyone), polling stops
+ *   permanently — no redirect loops, no zombie polls.
+ * - Expired sessions are surfaced (sessionExpired) instead of failing silently.
+ *
+ * CHANGES FROM V3 (retained):
  * - All session-dependent functions use REFS, never closure values
  * - Retry logic on all syncs (3 attempts)
- * - Server response is validated
  * - Full pull on every poll (since=0) — no timestamp-based misses
  * - Functional setState for all merges — no race conditions
- * - Exposes a ref-backed sync handler for FlatList cell stability
  */
 
 interface CollabConfig {
@@ -41,18 +52,23 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     const [matchFinishedByRemote, setMatchFinishedByRemote] = useState(false);
     const [finishedGroupName, setFinishedGroupName] = useState<string | null>(null);
     const [finishedSessionId, setFinishedSessionId] = useState<string | null>(null);
+    const [sessionExpired, setSessionExpired] = useState(false);
 
     const pollIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pollFailuresRef = useRef(0); // consecutive poll failures, for backoff
     const localUpdatesRef = useRef<Set<string>>(new Set());
+    // Once the session is finished/expired, polling stops PERMANENTLY for it.
+    const sessionOverRef = useRef(false);
 
     // ── ALL session values as refs — immune to stale closures ──
     const sessionIdRef = useRef(sessionId);
     const shareCodeRef = useRef(shareCode);
     const initialSyncDoneRef = useRef(initialSyncDone);
+    const isCollaboratorRef = useRef(isCollaborator);
     useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
     useEffect(() => { shareCodeRef.current = shareCode; }, [shareCode]);
     useEffect(() => { initialSyncDoneRef.current = initialSyncDone; }, [initialSyncDone]);
+    useEffect(() => { isCollaboratorRef.current = isCollaborator; }, [isCollaborator]);
 
     // ── RETRY FETCH helper ─────────────────────────────────────
     const fetchWithRetry = useCallback(async (
@@ -116,10 +132,13 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         );
 
         const results = await Promise.allSettled(promises);
-        const failed = results.filter(r => r.status === 'rejected').length;
+        // fetchWithRetry never rejects — failures come back as {status:'error'}
+        const failed = results.filter(r =>
+            r.status === 'rejected' || (r.status === 'fulfilled' && r.value?.status !== 'success')
+        ).length;
         console.log(`📤 Pushed ${Object.keys(gameMap).length - failed}/${Object.keys(gameMap).length} games to server`);
         if (failed > 0) {
-            console.warn(`⚠️ ${failed} score updates failed to sync`);
+            console.warn(`⚠️ ${failed} score updates failed to sync (self-heal will retry on next poll)`);
         }
     }, [fetchWithRetry]);
 
@@ -200,7 +219,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     const pollForUpdates = useCallback(async () => {
         const sid = sessionIdRef.current;
         const code = shareCodeRef.current;
-        if (!sid || !code || !initialSyncDoneRef.current) return;
+        if (!sid || !code || !initialSyncDoneRef.current || sessionOverRef.current) return;
 
         try {
             const userId = await AsyncStorage.getItem('user_id') || '';
@@ -212,12 +231,13 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             if (data.status === 'success') {
                 // Check if the match was finished by another device
                 if (data.session_status === 'finished') {
-                    console.log('🏁 Match finished by collaborator!');
+                    console.log('🏁 Match finished by a connected device!');
+                    sessionOverRef.current = true; // stop polling for good
                     setFinishedGroupName(data.group_name || null);
                     setFinishedSessionId(data.saved_session_id ? String(data.saved_session_id) : null);
                     setMatchFinishedByRemote(true);
                     if (pollIntervalRef.current) {
-                        clearInterval(pollIntervalRef.current);
+                        clearTimeout(pollIntervalRef.current);
                         pollIntervalRef.current = null;
                     }
                     return;
@@ -225,8 +245,11 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
 
                 setConnectedUsers(data.connected_users || 0);
 
-                // ── Sync schedule from server (detects creator shuffle/swap) ──
-                if (data.schedule && setSchedule) {
+                // ── Sync schedule from server — COLLABORATORS ONLY ──────
+                // The host is authoritative for matchups: adopting its own pushes
+                // back from the server caused a replace loop that stole input
+                // focus mid-typing. Collaborators adopt host shuffles/swaps.
+                if (data.schedule && setSchedule && isCollaboratorRef.current) {
                     const serverScheduleStr = JSON.stringify(data.schedule);
                     if (serverScheduleHashRef.current === '') {
                         // First poll — just record the hash
@@ -252,43 +275,66 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                     }
                 }
 
+                // Build the server's current view of every game's scores
+                const serverState: { [key: string]: string } = {};
                 if (data.updates && data.updates.length > 0) {
-                    // Compare server state against our synchronous ref
-                    const changes: { [key: string]: string } = {};
-                    const current = scoresRef.current;
-
                     for (const update of data.updates) {
-                        const key1 = `${update.round_idx}_${update.game_idx}_t1`;
-                        const key2 = `${update.round_idx}_${update.game_idx}_t2`;
-
-                        if (!localUpdatesRef.current.has(key1)) {
-                            const serverVal = update.s1_str ?? '';
-                            if (serverVal !== '' && current[key1] !== serverVal) {
-                                changes[key1] = serverVal;
-                            }
-                        }
-
-                        if (!localUpdatesRef.current.has(key2)) {
-                            const serverVal = update.s2_str ?? '';
-                            if (serverVal !== '' && current[key2] !== serverVal) {
-                                changes[key2] = serverVal;
-                            }
-                        }
-                    }
-
-                    if (Object.keys(changes).length > 0) {
-                        // Functional setState — MERGES, never overwrites local edits
-                        setScores(prev => ({ ...prev, ...changes }));
-                        setToastMessage('Scores updated from collaborator');
+                        serverState[`${update.round_idx}_${update.game_idx}_t1`] = update.s1_str ?? '';
+                        serverState[`${update.round_idx}_${update.game_idx}_t2`] = update.s2_str ?? '';
                     }
                 }
+
+                // ── MERGE server → local (never blanks a local value) ──
+                const changes: { [key: string]: string } = {};
+                const current = scoresRef.current;
+                for (const [key, serverVal] of Object.entries(serverState)) {
+                    if (localUpdatesRef.current.has(key)) continue; // just typed here
+                    if (serverVal !== '' && current[key] !== serverVal) {
+                        changes[key] = serverVal;
+                    }
+                }
+                if (Object.keys(changes).length > 0) {
+                    // Functional setState — MERGES, never overwrites local edits
+                    setScores(prev => ({ ...prev, ...changes }));
+                    setToastMessage('Scores updated from collaborator');
+                }
+
+                // ── SELF-HEAL local → server ────────────────────────────
+                // Any local score the server is missing (offline typing, a sync
+                // that exhausted its retries) gets re-pushed, a few games per
+                // poll. This guarantees both sides converge — no lost scores.
+                const gamesToHeal = new Set<string>();
+                for (const [key, localVal] of Object.entries(scoresRef.current)) {
+                    if (!localVal || localVal === '') continue;
+                    if (localUpdatesRef.current.has(key)) continue;  // in-flight
+                    if ((serverState[key] ?? '') === localVal) continue; // server has it
+                    if ((serverState[key] ?? '') !== '') continue;   // server has a DIFFERENT value — server wins (merged above)
+                    const parts = key.split('_');
+                    if (parts.length !== 3) continue;
+                    gamesToHeal.add(`${parts[0]}_${parts[1]}`);
+                    if (gamesToHeal.size >= MAX_HEAL_PUSHES_PER_POLL) break;
+                }
+                for (const gameKey of gamesToHeal) {
+                    const [r, g] = gameKey.split('_').map(Number);
+                    const s1 = scoresRef.current[`${r}_${g}_t1`] || '';
+                    const s2 = scoresRef.current[`${r}_${g}_t2`] || '';
+                    console.log(`🩹 Self-heal: re-pushing game ${gameKey} (${s1}-${s2})`);
+                    syncScoreToServer(r, g, s1, s2);
+                }
+            } else if (/not found|expired/i.test(data.message || '')) {
+                // The 12h session window lapsed (or the session vanished).
+                // Surface it — scores stay safe on-device — and stop polling.
+                console.warn('⌛ Live session expired');
+                sessionOverRef.current = true;
+                setSessionExpired(true);
+                setToastMessage('Live session expired — your scores are safe on this device');
             }
             pollFailuresRef.current = 0; // success — reset backoff
         } catch (err) {
             pollFailuresRef.current += 1; // failure — grow backoff
             console.error('Poll failed:', err);
         }
-    }, [setScores, setSchedule]);
+    }, [setScores, setSchedule, syncScoreToServer]);
 
     // ── LIFECYCLE: Start polling after initial sync ──────────────
     // Self-scheduling loop with exponential backoff: polls every POLL_INTERVAL
@@ -305,9 +351,11 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
 
         let cancelled = false;
         pollFailuresRef.current = 0;
+        sessionOverRef.current = false; // fresh session — polling allowed
+        setSessionExpired(false);
 
         const scheduleNext = () => {
-            if (cancelled) return;
+            if (cancelled || sessionOverRef.current) return; // finished/expired = stop for good
             const delay = Math.min(
                 POLL_INTERVAL * Math.pow(2, pollFailuresRef.current),
                 MAX_POLL_INTERVAL
@@ -333,6 +381,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     useEffect(() => {
         if (!sessionId || !shareCode) {
             setInitialSyncDone(false);
+            serverScheduleHashRef.current = '';
         }
     }, [sessionId, shareCode]);
 
@@ -391,6 +440,85 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         return serverScores;
     }, [pullAllScoresFromServer]);
 
+    // ── RESUME SESSION (Unit A returning to their own live match) ──
+    // The creator left the screen (LIVE tab round-trip, app relaunch) and is
+    // back. Reconnect without losing anything: adopt the last schedule THEY
+    // pushed, MERGE server scores over local (never blanking local values),
+    // and re-push anything the server is missing. Then polling resumes.
+    const resumeOwnerSession = useCallback(async (code: string): Promise<boolean> => {
+        console.log('🔁 Owner resuming live session...');
+        try {
+            const userId = await AsyncStorage.getItem('user_id') || '';
+            const res = await fetch(
+                `${API_URL}/collab_get_scores.php?share_code=${code}&since=0&user_id=${userId}`
+            );
+            const data = await res.json();
+            if (data.status !== 'success') {
+                if (/not found|expired/i.test(data.message || '')) {
+                    sessionOverRef.current = true;
+                    setSessionExpired(true);
+                }
+                return false;
+            }
+            if (data.session_status === 'finished') {
+                sessionOverRef.current = true;
+                setFinishedGroupName(data.group_name || null);
+                setFinishedSessionId(data.saved_session_id ? String(data.saved_session_id) : null);
+                setMatchFinishedByRemote(true);
+                return false;
+            }
+
+            setConnectedUsers(data.connected_users || 0);
+
+            // Adopt the schedule we last pushed (source of truth after a relaunch),
+            // and record its hash so polls don't re-adopt it.
+            if (data.schedule && Array.isArray(data.schedule) && data.schedule.length > 0 && setSchedule) {
+                serverScheduleHashRef.current = JSON.stringify(data.schedule);
+                const safeSchedule = data.schedule.map((round: any, rIdx: number) => ({
+                    ...round,
+                    id: round.id || `round-${rIdx}`,
+                    games: round.games.map((g: any, gIdx: number) => ({
+                        ...g,
+                        id: g.id || `game-${rIdx}-${gIdx}-${Date.now()}`,
+                        score_team1: g.score_team1 || 0,
+                        score_team2: g.score_team2 || 0
+                    }))
+                }));
+                setSchedule(safeSchedule);
+            }
+
+            // MERGE server scores over local (server values win; blanks never do)
+            const serverScores: { [key: string]: string } = {};
+            if (data.updates && data.updates.length > 0) {
+                for (const update of data.updates) {
+                    const s1 = update.s1_str ?? '';
+                    const s2 = update.s2_str ?? '';
+                    if (s1 !== '') serverScores[`${update.round_idx}_${update.game_idx}_t1`] = s1;
+                    if (s2 !== '') serverScores[`${update.round_idx}_${update.game_idx}_t2`] = s2;
+                }
+            }
+            setScores(prev => ({ ...prev, ...serverScores }));
+
+            // Re-push anything local the server is missing (self-heal on arrival)
+            const merged = { ...scoresRef.current, ...serverScores };
+            const missing: { [key: string]: string } = {};
+            for (const [key, val] of Object.entries(merged)) {
+                if (val && val !== '' && (serverScores[key] ?? '') === '') missing[key] = val;
+            }
+            if (Object.keys(missing).length > 0) {
+                console.log(`🩹 Resume heal: pushing ${Object.keys(missing).length} local values to server`);
+                await pushAllScoresToServer(code, sessionIdRef.current || '', missing);
+            }
+
+            setInitialSyncDone(true); // polling resumes
+            console.log('✅ Owner reconnected to live session');
+            return true;
+        } catch (err) {
+            console.error('Owner resume failed:', err);
+            return false;
+        }
+    }, [setSchedule, setScores, pushAllScoresToServer]);
+
     // ── PUSH SCHEDULE UPDATE (Unit A after shuffle/swap) ─────────
     const pushScheduleToServer = useCallback(async (scheduleData: any[]) => {
         const sid = sessionIdRef.current;
@@ -427,6 +555,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         syncScoreToServer,
         createCollabSession,
         joinAndSync,
+        resumeOwnerSession,
         pushScheduleToServer,
         isSyncing,
         connectedUsers,
@@ -436,6 +565,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         matchFinishedByRemote,
         finishedGroupName,
         finishedSessionId,
-        clearMatchFinished
+        clearMatchFinished,
+        sessionExpired
     };
 };

@@ -181,9 +181,9 @@ export default function GameScreen() {
   });
 
   const {
-      syncScoreToServer, createCollabSession, joinAndSync, pushScheduleToServer,
+      syncScoreToServer, createCollabSession, joinAndSync, resumeOwnerSession, pushScheduleToServer,
       isSyncing, connectedUsers, toastMessage, dismissToast,
-      matchFinishedByRemote, finishedGroupName, finishedSessionId, clearMatchFinished
+      matchFinishedByRemote, finishedGroupName, finishedSessionId, clearMatchFinished, sessionExpired
   } = useCollaborativeScoring({
       sessionId, shareCode, isCollaborator, schedule, setSchedule, scores, setScores, scoresRef, inputRefs
   });
@@ -290,18 +290,37 @@ export default function GameScreen() {
               matchTitle: saveTitle || groupName,
               courtName: courtName || undefined,
               isOwner: false,
+              creatorUserId: (params.creatorUserId as string) || undefined,
               schedule,
               players: currentRoster,
           });
       }
   }, [params.isCollaborator, params.shareCode, params.sessionId, navCollabScores, schedule, joinAndSync, flatListRef, groupName, groupKey, saveTitle, courtName, currentRoster]);
 
-  // When a collaborator finishes the match, redirect all other devices to podium
+  // UNIT A RESUME: the owner returning to their own live match (LIVE tab
+  // round-trip, back-button trip to home, app relaunch). Reconnect to the
+  // session and restore the scoring UI — the creator is the scorekeeper.
+  useEffect(() => {
+      if (params.shareCode && params.sessionId && params.isCollaborator !== 'true' && !sessionId) {
+          const code = params.shareCode as string;
+          const sid = params.sessionId as string;
+          setIsCollaborator(false);
+          setShareCode(code);
+          setSessionId(sid);
+          setIsMatchScored(true); // a live session IS a scoring session
+          resumeOwnerSession(code);
+      }
+  }, [params.shareCode, params.sessionId, params.isCollaborator, sessionId, resumeOwnerSession]);
+
+  // When ANY device finishes the match, every other device concludes too:
+  // session torn down, scores archived, straight to the trophies/leaderboard.
+  // saveModalVisible is a dep so a device sitting in the save dialog still
+  // concludes the moment the dialog closes (previously it got stranded).
   useEffect(() => {
       if (matchFinishedByRemote && !saveModalVisible) {
           clearMatchFinished();
           clearScores();
-          clearActiveMatch();
+          endLiveSessionLocally();
           setMatchEndToast(true);
           // Auto-navigate to leaderboard after brief delay
           setTimeout(() => {
@@ -316,7 +335,17 @@ export default function GameScreen() {
               });
           }, 1500);
       }
-  }, [matchFinishedByRemote]);
+  }, [matchFinishedByRemote, saveModalVisible]);
+
+  // Session expired (12h window lapsed): disconnect cleanly but KEEP the scores
+  // and the scoring UI — the organizer can keep scoring locally and still save.
+  useEffect(() => {
+      if (sessionExpired && sessionId) {
+          setSessionId(null);
+          setShareCode(null);
+          clearActiveMatch();
+      }
+  }, [sessionExpired, sessionId]);
 
   useEffect(() => {
       if (newPlayerName.length < 2) { setSearchResults([]); return; }
@@ -551,7 +580,7 @@ export default function GameScreen() {
   const handleTextMatchPress = () => { setDateTimeConfirmed(false); setShowCourtPicker(false); setReportModalVisible(true); handleGenerateReport(); };
   const handleGatekeeperSuccess = (newId: string) => setUserId(newId);
 
-  // CREATE COLLAB SESSION (only when in scoring mode)
+  // CREATE COLLAB SESSION
   const createNewCollabSession = async () => {
       if (sessionId && shareCode) { setShareModalVisible(true); return; }
       const batchId = groupKey || `collab_${Date.now()}`;
@@ -559,6 +588,7 @@ export default function GameScreen() {
       if (result) {
           setShareCode(result.shareCode);
           setSessionId(result.sessionId.toString());
+          setIsMatchScored(true); // a shared match IS a scoring match — keep the host's score boxes on
           setShareModalVisible(true);
           setActiveMatch({
               shareCode: result.shareCode,
@@ -568,12 +598,24 @@ export default function GameScreen() {
               matchTitle: saveTitle || groupName,
               courtName: courtName || undefined,
               isOwner: true,
+              creatorUserId: userId || undefined,
               schedule,
               players: currentRoster,
           });
       } else {
           Alert.alert('Error', 'Could not create collaboration session. Try again.');
       }
+  };
+
+  // CONCLUSIVE SESSION TEARDOWN — one path, every device. When a live match
+  // ends (finished here, finished remotely, or expired) the session state is
+  // fully cleared so nothing polls, redirects, or resurrects it afterward.
+  const endLiveSessionLocally = () => {
+      setSessionId(null);
+      setShareCode(null);
+      setIsCollaborator(false);
+      setIsMatchScored(false);
+      clearActiveMatch();
   };
 
   // THUNDERBOLT PRESS — show options based on scoring mode
@@ -671,12 +713,17 @@ export default function GameScreen() {
 
         if (data.status === 'success') {
             haptic.save();
+            const wasLiveSession = !!shareCode;
             await clearScores(); setSaveModalVisible(false);
-            clearActiveMatch();
-            if (Platform.OS === 'web') {
-                if (typeof window !== 'undefined') window.alert(data.message || "Match saved successfully!");
-            } else {
-                Alert.alert("Success!", data.message || "Match saved successfully!");
+            endLiveSessionLocally();
+            // Live matches conclude smoothly: no blocking popup — the finisher
+            // goes straight to the trophies (connected devices follow via poll).
+            if (!wasLiveSession) {
+                if (Platform.OS === 'web') {
+                    if (typeof window !== 'undefined') window.alert(data.message || "Match saved successfully!");
+                } else {
+                    Alert.alert("Success!", data.message || "Match saved successfully!");
+                }
             }
             // Compute tournament placements if applicable
             let tournamentPlacements = '';
@@ -713,7 +760,15 @@ export default function GameScreen() {
             } });
         } else if (data.status === 'already_exists') {
             setSaveModalVisible(false);
-            if (Platform.OS === 'web') {
+            if (shareCode) {
+                // Someone else on the live session finished first — same result,
+                // conclude here too and head to the trophies.
+                await clearScores();
+                endLiveSessionLocally();
+                router.replace({ pathname: '/(tabs)/leaderboard', params: {
+                    groupName, forceGlobal: 'true', refresh: Date.now().toString(),
+                } });
+            } else if (Platform.OS === 'web') {
                 if (typeof window !== 'undefined') window.alert("This match has already been saved with identical scores. Nothing to update.");
             } else {
                 Alert.alert("Already Saved", "This match has already been saved with identical scores. Nothing to update.");
@@ -1104,8 +1159,10 @@ export default function GameScreen() {
                     <Text style={[styles.btnText, { color: colors.accentText }]}>GENERATE FINALS</Text>
                 </TouchableOpacity>
             )}
-            {/* Normal FINISH button — hide during tournament round-robin/semis phases */}
-            {isMatchScored && (!isCollaborator || matchIsComplete) && (!isTournament || tournamentPhase === 'finals' || tournamentPhase === 'complete') && (
+            {/* FINISH button — either the originator OR a collaborator can end the
+                match (both get the same not-complete warning). Hidden only during
+                tournament round-robin/semifinal phases. */}
+            {isMatchScored && (!isTournament || tournamentPhase === 'finals' || tournamentPhase === 'complete') && (
                 <TouchableOpacity ref={finishButtonRef} style={[styles.actionBtn, styles.finishBtn]} onPress={handleFinish} activeOpacity={0.8}>
                     <Text style={styles.btnText}>{isTournament ? 'FINISH TOURNAMENT' : 'FINISH MATCH'}</Text>
                 </TouchableOpacity>

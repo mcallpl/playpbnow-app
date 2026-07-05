@@ -37,6 +37,7 @@ export default function LiveTab() {
                                 shareCode: activeMatch.shareCode,
                                 sessionId: activeMatch.sessionId,
                                 isCollaborator: activeMatch.isOwner ? 'false' : 'true',
+                                creatorUserId: activeMatch.creatorUserId || '',
                             } : {}),
                         },
                     });

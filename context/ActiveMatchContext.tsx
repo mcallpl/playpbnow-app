@@ -13,6 +13,7 @@ export interface ActiveMatchData {
     matchTitle: string;
     courtName?: string;
     isOwner: boolean;
+    creatorUserId?: string; // live sessions: who the saved match belongs to
     schedule: any[];
     players: any[];
 }
