@@ -27,6 +27,9 @@ function setupReducer(state: SetupState, action: SetupAction): SetupState {
         players: state.players.map(p => (p.id === action.payload.id ? action.payload : p)),
       };
     case 'SET_PLAYERS_ORDER':
+      // Defense in depth: a bad payload must never wipe the roster (a wiped
+      // roster crashes every state.players.filter/map downstream).
+      if (!Array.isArray(action.payload)) return state;
       return { ...state, players: action.payload };
     case 'SET_NEW_PLAYER_NAME':
       return { ...state, newPlayerName: action.payload };

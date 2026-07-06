@@ -123,7 +123,12 @@ export default function SetupFlow() {
     dispatch({ type: 'SET_SAVE_MODAL_VISIBLE', payload: true });
   };
 
-  const handleDragEnd = ({ data }: { data: Player[] }) => {
+  // PlayerListStep calls onDragEnd(data) with the reordered ARRAY — do not
+  // destructure {data} here. The old signature received the array, read .data
+  // (undefined), wiped the roster, and crashed the next render on
+  // state.players.filter ("Cannot read property 'filter' of undefined").
+  const handleDragEnd = (data: Player[]) => {
+    if (!Array.isArray(data) || data.length === 0) return; // never wipe the roster
     dispatch({ type: 'SET_PLAYERS_ORDER', payload: data });
     if (state.groupKey && state.deviceId) {
       fetch(`${API_URL}/save_players.php`, {

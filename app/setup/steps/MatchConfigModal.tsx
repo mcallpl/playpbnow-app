@@ -15,6 +15,7 @@ import { createSetupStyles } from '../styles/setupStyles';
 import { BrandedIcon } from '@/components/BrandedIcon';
 import { storeNavData } from '@/utils/navData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { generateFixedTeamsLocal } from '@/hooks/useGameLogic';
 
 const API_URL = 'https://playpbnow.com/api';
 
@@ -57,18 +58,37 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
           }))
         : undefined;
 
-      const payload = state.isFixedTeams
-        ? {
-            group_key: state.groupKey,
-            mode: 'fixed_teams',
-            teams: teamsPayload,
-            players: state.players.map((p) => ({
-              id: p.id,
-              first_name: p.first_name,
-              gender: p.gender,
-            })),
-          }
-        : {
+      // Fixed teams: the schedule is a deterministic round-robin over the
+      // pairings — generate it locally. (The server's generate_schedule.php has
+      // no fixed_teams mode and returned an EMPTY schedule, which landed users
+      // on "No Matches Generated".)
+      if (state.isFixedTeams && teamsPayload) {
+        const localSchedule = generateFixedTeamsLocal(teamsPayload);
+        if (localSchedule.length === 0) {
+          Alert.alert('Error', 'Could not build matchups from these teams.');
+          return;
+        }
+        const navId = await storeNavData({
+          schedule: localSchedule,
+          players: state.players,
+          isFixedTeams: true,
+          teams: teamsPayload,
+        });
+        router.push({
+          pathname: '/(tabs)/game',
+          params: {
+            navId,
+            groupName: state.groupName,
+            groupKey: state.groupKey,
+            courtName: state.courtName,
+            courtId: (state.courtId || '').toString(),
+            isFixedTeams: 'true',
+          },
+        });
+        return;
+      }
+
+      const payload = {
             group_key: state.groupKey,
             round_configs: state.roundsConfig,
             group: state.groupName,
