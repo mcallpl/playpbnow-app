@@ -88,6 +88,16 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
             const userId = await AsyncStorage.getItem('user_id');
             if (!userId) return;
 
+            // The cache must NEVER cross accounts: if it was written for a
+            // different user, drop it and reset state BEFORE fetching. (Bug:
+            // an admin's cached subscription survived logging into another
+            // account on the same device, exposing the ADMIN tab.)
+            const cacheOwner = await AsyncStorage.getItem(`${STORAGE_KEY}_owner`);
+            if (cacheOwner !== userId) {
+                await AsyncStorage.removeItem(STORAGE_KEY);
+                setSubscription(null);
+            }
+
             const response = await fetch(`${API_URL}/check_subscription.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -117,16 +127,19 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
                 setSubscription(subData);
                 try {
                     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(subData));
+                    await AsyncStorage.setItem(`${STORAGE_KEY}_owner`, userId);
                 } catch (storageError) {
                     console.error('Failed to cache subscription:', storageError);
                 }
             }
         } catch (e) {
             console.error('Failed to fetch subscription:', e);
-            // Fall back to cached data
+            // Fall back to cached data — only if it belongs to THIS user.
             try {
+                const userId = await AsyncStorage.getItem('user_id');
+                const cacheOwner = await AsyncStorage.getItem(`${STORAGE_KEY}_owner`);
                 const cached = await AsyncStorage.getItem(STORAGE_KEY);
-                if (cached && !subscription) {
+                if (cached && !subscription && userId && cacheOwner === userId) {
                     setSubscription(JSON.parse(cached));
                 }
             } catch (ce) {
@@ -139,8 +152,12 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
     useEffect(() => {
         (async () => {
             try {
+                // Hydrate from cache ONLY when it belongs to the logged-in user
+                // (a previous user's cached subscription must never leak in).
+                const userId = await AsyncStorage.getItem('user_id');
+                const cacheOwner = await AsyncStorage.getItem(`${STORAGE_KEY}_owner`);
                 const cached = await AsyncStorage.getItem(STORAGE_KEY);
-                if (cached) {
+                if (cached && userId && cacheOwner === userId) {
                     setSubscription(JSON.parse(cached));
                 }
             } catch (e) {

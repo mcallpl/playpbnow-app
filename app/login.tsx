@@ -20,6 +20,7 @@ import {
 import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import {
     ThemeColors,
     FONT_DISPLAY_BOLD,
@@ -35,6 +36,7 @@ const API_URL = 'https://playpbnow.com/api';
 export default function LoginScreen() {
     const router = useRouter();
     const { colors } = useTheme();
+    const { refreshSubscription } = useSubscription();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -128,6 +130,11 @@ export default function LoginScreen() {
                 if (data.user.last_name) pairs.push(['user_last_name', data.user.last_name]);
                 await AsyncStorage.multiSet(pairs);
                 setAuthToken(data.session_token); // keep the fetch interceptor's token current
+
+                // Re-resolve the subscription for THIS account immediately —
+                // the previous user's admin/pro state must never carry over
+                // (it briefly exposed the ADMIN tab after an account switch).
+                await refreshSubscription();
 
                 setLoading(false);
                 router.replace('/(tabs)/groups');
