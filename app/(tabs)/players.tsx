@@ -260,7 +260,12 @@ export default function PlayersScreen() {
 
     // Execute the actual merge API calls
     const executeMerge = async (keepPlayer: any, mergeTargets: any[], preferredPhone: string | null, groupKey: string) => {
-        if (!canMerge) { showPaywall('Merging duplicate players is a Pro feature.'); return; }
+        if (!canMerge) {
+            // iOS: the paywall Modal can't present over the merge modal — close it first.
+            setMergeModalVisible(false);
+            setTimeout(() => showPaywall('Merging duplicate players is a Pro feature.'), 450);
+            return;
+        }
         setIsMerging(true);
         let mergedCount = 0;
 
@@ -543,7 +548,12 @@ export default function PlayersScreen() {
 
     // Merge from edit modal — merge current player into another
     const handleMergeFromEdit = () => {
-        if (!canMerge) { showPaywall('Merging duplicate players is a Pro feature.'); return; }
+        if (!canMerge) {
+            // iOS: close the edit modal before presenting the paywall Modal.
+            setEditModalVisible(false);
+            setTimeout(() => showPaywall('Merging duplicate players is a Pro feature.'), 450);
+            return;
+        }
         if (!editingPlayer) return;
         const sameName = players.filter(
             p => p.id !== editingPlayer.id &&
@@ -589,7 +599,12 @@ export default function PlayersScreen() {
     // Share a player's universal profile (Phase 3): fetch their claim code and
     // open the printable player card the person scans to claim their record.
     const handleShareProfile = async () => {
-        if (!canMerge) { showPaywall('Sharing a universal player profile is a Pro feature.'); return; }
+        if (!canMerge) {
+            // iOS: close the edit modal before presenting the paywall Modal.
+            setEditModalVisible(false);
+            setTimeout(() => showPaywall('Sharing a universal player profile is a Pro feature.'), 450);
+            return;
+        }
         if (!editingPlayer) return;
         try {
             const res = await fetch(`${API_URL}/get_claim_code.php`, {

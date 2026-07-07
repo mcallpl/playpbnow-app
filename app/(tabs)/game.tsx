@@ -1175,7 +1175,11 @@ export default function GameScreen() {
                 <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>GENERATE HD REPORT</Text>
                 {isFree && !isTrial && !isAdmin && (
-                    <TouchableOpacity onPress={() => showPaywall('Upgrade to Pro for clean, watermark-free reports!')} style={styles.watermarkBadge}>
+                    <TouchableOpacity onPress={() => {
+                        // iOS: close the report modal before presenting the paywall Modal.
+                        setReportModalVisible(false);
+                        setTimeout(() => showPaywall('Upgrade to Pro for clean, watermark-free reports!'), 450);
+                    }} style={styles.watermarkBadge}>
                         <BrandedIcon name="lock" size={12} color="#ff6b35" />
                         <Text style={styles.watermarkBadgeText}>FREE — Reports include watermark</Text>
                     </TouchableOpacity>

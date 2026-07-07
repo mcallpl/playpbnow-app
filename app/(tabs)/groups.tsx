@@ -525,7 +525,13 @@ export default function HomeScreen() {
           )}
 
           <TouchableOpacity style={styles.addCourtBtn} onPress={() => {
-            if (!(isPro || isTrial || isAdmin)) { showPaywall('Adding a court to the shared catalog is a Pro feature.'); return; }
+            if (!(isPro || isTrial || isAdmin)) {
+              // Close the host modal first — iOS can't present the paywall
+              // Modal over this one (the tap would silently do nothing).
+              setModalVisible(false);
+              setTimeout(() => showPaywall('Adding a court to the shared catalog is a Pro feature.'), 450);
+              return;
+            }
             setNewCourtName(''); setNewCourtCity(''); setNewCourtState('');
             setModalView('addCourt');
           }}>
@@ -735,7 +741,14 @@ export default function HomeScreen() {
                 </Text>
               )}
               {!isPro && (
-                <TouchableOpacity style={styles.upgradeBtn} onPress={() => showPaywall('Unlock all features with Pro!')}>
+                <TouchableOpacity style={styles.upgradeBtn} onPress={() => {
+                  // iOS presents ONE native modal at a time: the paywall Modal
+                  // cannot appear while Settings is open — the tap silently did
+                  // nothing (Apple's 2.1 rejection: "Upgrade to Pro button was
+                  // unresponsive"). Close Settings first, then present.
+                  setSettingsVisible(false);
+                  setTimeout(() => showPaywall('Unlock all features with Pro!'), 450);
+                }}>
                   <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
                 </TouchableOpacity>
               )}
