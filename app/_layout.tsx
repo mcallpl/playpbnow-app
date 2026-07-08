@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { ActivityIndicator, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Alert } from '@/utils/crossAlert';
 import { useFonts } from 'expo-font';
@@ -28,7 +28,7 @@ import { PaywallModal } from '../components/PaywallModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useAuth } from '../hooks/useAuth';
 import { useSoundPlayers } from '../utils/sounds';
-import { installAuthInterceptor } from '@/utils/apiClient';
+import { installAuthInterceptor, setOnUnauthorized } from '@/utils/apiClient';
 
 // Install the API auth-token interceptor as early as possible, before any
 // screen/hook issues a fetch, so every API call carries the session token.
@@ -194,9 +194,21 @@ function PhoneGate({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayoutInner() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, checkAuth } = useAuth();
   const { colors } = useTheme();
+  const router = useRouter();
   useSoundPlayers();
+
+  // When the API rejects our session (401), the interceptor clears the dead
+  // token and calls this: re-check auth (now false) and land on /login —
+  // instead of stranding the user on "Invalid or expired session" errors.
+  useEffect(() => {
+    setOnUnauthorized(() => {
+      checkAuth();
+      router.replace('/login');
+    });
+    return () => setOnUnauthorized(null);
+  }, []);
 
   if (isAuthenticated === null) {
     return (

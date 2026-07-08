@@ -201,7 +201,18 @@
         busy($('otpBtn'), false, 'Verify &amp; claim');
         if(d.status==='success'){
           // Persist the session so opening the app lands logged-in.
-          try{ if(d.session_token){ localStorage.setItem('pbnow_session_token', d.session_token); localStorage.setItem('session_token', d.session_token); } }catch(e){}
+          // Persist the claim session so "Open PlayPBNow" can land logged-in —
+          // but NEVER overwrite an existing app login (clobbering it strands
+          // the signed-in user on a dead token).
+          try{
+            if(d.session_token){
+              localStorage.setItem('pbnow_session_token', d.session_token);
+              if(!localStorage.getItem('session_token')){
+                localStorage.setItem('session_token', d.session_token);
+                localStorage.setItem('user_id', String((d.user && d.user.id) || ''));
+              }
+            }
+          }catch(e){}
           renderRecord(d.identity_id);
           show('step-done'); msg('');
         } else {
