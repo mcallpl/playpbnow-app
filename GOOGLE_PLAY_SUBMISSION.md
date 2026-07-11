@@ -90,3 +90,45 @@ has been uploaded (the react-native-purchases library adds the permission automa
 - Download latest AAB: `npx eas-cli build:list -p android --limit 1` → artifact URL
 - Play Console: https://play.google.com/console
 - RevenueCat: https://app.revenuecat.com
+
+---
+
+## DATA SAFETY — exact answer key (2026-07-10)
+_The form got into a confused "no data collection" state during unsupervised entry and was NOT saved wrong.
+Complete it with these verified answers (mirror the iOS privacy labels; "Shared"=transfer to a third
+party — sharing content with other **app users** is NOT "shared" in Google's sense, so all No)._
+
+**Step 2 — Data collection & security**
+- Collect/share required user data types? → **Yes**
+- Account creation methods → **Username and password**
+- Delete account URL → **https://playpbnow.com/delete-account.html** (LIVE, created this session)
+- Provide account deletion? → **Yes**
+- Delete some data w/o deleting account (optional) → **No**
+- Independent security review badge → **No**
+
+**Step 3 — Data types** (each: Collected=Yes, Shared=No, Processed ephemerally=No):
+| Data type | Collected | Purpose | Required? |
+|---|---|---|---|
+| Location → Approximate location | Yes | App functionality | Optional (beacons) |
+| Location → Precise location | Yes | App functionality | Optional (beacons) |
+| Personal info → Name | Yes | App functionality, Account management | Required |
+| Personal info → Email address | Yes | Account management | Required |
+| Personal info → Phone number | Yes | Account management | Optional |
+| Photos and videos → Photos | Yes | App functionality | Optional (match photos) |
+| Device or other IDs → User IDs | Yes | App functionality, Account management | Required |
+
+**Step 4 — Data usage & handling**
+- Is all user data encrypted in transit? → **Yes** (HTTPS everywhere)
+- Do you provide a way for users to request data deletion? → **Yes** (account deletion URL above)
+
+**Step 5 — Preview** should then show the 7 rows above (NOT "No data collection declared"), then Save.
+
+## QUICK DECLARATIONS still to do (single answer each)
+- Government apps → **No** · Financial features → **None of the above** · Health → **No**
+- App category → **Sports** · Contact email PSInfo@PeopleStar.com · website playpbnow.com
+
+## STORE-LISTING ASSETS (this session)
+- Feature graphic 1024×500 → `store-assets/feature-graphic-1024x500.png` (READY to upload)
+- App icon 512×512 → `store-assets/app-icon-512.png`
+- Copy (short + full description, category, tags) → `store-assets/store-listing-copy.md`
+- Screenshots → STILL NEEDED from Chip (Android sizes; iPhone shots too tall for Play's 2:1)
