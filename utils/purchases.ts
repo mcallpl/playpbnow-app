@@ -4,7 +4,7 @@ import Purchases, { CustomerInfo, LOG_LEVEL, PurchasesOfferings, PurchasesPackag
 
 // RevenueCat API keys — replace with your actual keys from RevenueCat dashboard
 const REVENUECAT_IOS_KEY = 'appl_gmrZHsjrYBjpKrbulbIRAjWVnMp';
-const REVENUECAT_ANDROID_KEY = 'goog_YOUR_REVENUECAT_ANDROID_API_KEY';
+const REVENUECAT_ANDROID_KEY = 'goog_SCuqRSOfQRaKUQGEkqLyBOOGSkB';
 
 // Entitlement ID configured in RevenueCat dashboard
 export const PRO_ENTITLEMENT_ID = 'pro';
