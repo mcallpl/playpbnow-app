@@ -53,3 +53,4 @@ deploy-*.sh
 
 # API has its own git repo (mcallpl/playpbnow-api)
 playpbnow-api/
+builds/
