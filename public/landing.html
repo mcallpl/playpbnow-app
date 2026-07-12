@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Play Pickleball NOW! — Fill Your Courts in Minutes.</title>
-<meta name="description" content="Play Pickleball NOW! The easiest way to organize pickleball games and find players. Connect coordinators with hundreds of eager players — from beginners to pros. Fill your foursome in minutes.">
+<title>Play Pickleball NOW! — Now on iPhone &amp; Android.</title>
+<meta name="description" content="Play Pickleball NOW! is now available free on the App Store and Google Play. Fill your courts in minutes — beacons, live scoring, SMS match invites, and hundreds of eager players ready to play.">
 <meta property="og:title" content="Play Pickleball NOW! — Fill Your Courts in Minutes.">
 <meta property="og:description" content="The easiest way to organize pickleball games. Connect with players and fill your foursome in minutes, not days.">
 <meta property="og:image" content="https://playpbnow.PeopleStar.com/images/og-image.png">
@@ -192,6 +192,31 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
   border:2px solid rgba(255,255,255,0.15);transition:all .3s ease;backdrop-filter:blur(6px);
 }
 .btn-outline:hover{border-color:rgba(135,202,55,0.5);background:var(--accent-dim)}
+
+/* ═══════════════════ STORE BADGES ═══════════════════ */
+.store-badges{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:center}
+.store-badge{
+  display:inline-flex;align-items:center;gap:12px;
+  background:#000;color:#fff;text-decoration:none;
+  border:1px solid rgba(255,255,255,0.16);border-radius:14px;
+  padding:11px 22px 11px 18px;
+  box-shadow:0 4px 22px rgba(0,0,0,0.4);transition:all .3s ease;
+}
+.store-badge:hover{transform:translateY(-3px);border-color:rgba(135,202,55,0.55);box-shadow:0 12px 36px rgba(0,0,0,0.5)}
+.store-badge svg{width:27px;height:27px;flex-shrink:0}
+.store-badge-text{display:flex;flex-direction:column;line-height:1.12;text-align:left}
+.store-badge-text small{font-size:10px;font-weight:500;letter-spacing:.6px;color:rgba(255,255,255,0.72);text-transform:uppercase}
+.store-badge-text strong{font-family:'Outfit',sans-serif;font-weight:700;font-size:18px;letter-spacing:-.3px}
+.store-note{margin-top:16px;font-size:13px;color:var(--muted);letter-spacing:.3px}
+.store-note b{color:var(--accent);font-weight:700}
+
+/* ═══════════════════ DOWNLOAD SECTION ═══════════════════ */
+.download{padding:96px 0;position:relative;overflow:hidden;background:linear-gradient(180deg,var(--bg),rgba(21,41,69,0.55))}
+.download::before{content:'';position:absolute;top:-140px;left:50%;transform:translateX(-50%);width:780px;height:540px;background:radial-gradient(ellipse,rgba(135,202,55,0.11),transparent 70%);pointer-events:none}
+.download-inner{position:relative;z-index:1;text-align:center;max-width:760px;margin:0 auto}
+.download-icon{width:108px;height:108px;border-radius:26px;object-fit:contain;margin-bottom:26px;box-shadow:0 18px 50px rgba(0,0,0,0.45),0 0 44px rgba(135,202,55,0.14);background:var(--surface);padding:8px}
+.download h2{font-weight:900;font-size:clamp(2rem,4.6vw,3rem);letter-spacing:-1px;line-height:1.08;margin-bottom:16px}
+.download-inner>p{color:var(--soft);font-size:1.12rem;max-width:560px;margin:0 auto 34px;line-height:1.7}
 
 /* ═══════════════════ LIVE ACTIVITY TICKER ═══════════════════ */
 .ticker{
@@ -450,6 +475,9 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 </head>
 <body>
 
+<!-- Google Play badge gradient — defined once, referenced by every Play badge -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="gpGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00d3ff"/><stop offset=".38" stop-color="#00e676"/><stop offset=".7" stop-color="#ffd500"/><stop offset="1" stop-color="#ff3d47"/></linearGradient></defs></svg>
+
 <!-- ════════════ NAV ════════════ -->
 <nav class="nav" id="nav">
   <div class="container nav-inner">
@@ -460,6 +488,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
       <a href="#features">Features</a>
       <a href="#players">For Players</a>
       <a href="#organizers">For Organizers</a>
+      <a href="#download">Download</a>
       <a href="privacy.html">Privacy</a>
       <a href="terms.html">Terms</a>
       <a href="support.html">Support</a>
@@ -477,16 +506,26 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
   <div class="hero-content">
     <div class="hero-pill">
       <span class="hero-pill-dot"></span>
-      500+ Eager Players Ready Right Now
+      Now on iPhone &amp; Android &middot; Download Free
     </div>
     <h1>Play Pickleball<br><span class="now">NOW.</span></h1>
     <p class="hero-sub">
       Need a foursome filled in minutes? A tournament roster packed by tonight? This is the <em>only</em> app that puts coordinators in front of hundreds of eager players&mdash;from beginners to pros&mdash;ready to play <strong style="color:var(--accent)">right now</strong>.
     </p>
-    <div class="hero-ctas">
-      <a href="app.html" class="btn-primary">
-        Launch the App
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+    <div class="store-badges">
+      <a href="https://apps.apple.com/app/id6758897943" class="store-badge" target="_blank" rel="noopener" aria-label="Download PlayPBNow on the App Store">
+        <svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.63 0 2.91.06 4.42 2.16-.13.09-2.43 1.42-2.43 4.24 0 3.26 2.87 4.41 2.955 4.44z"/></svg>
+        <span class="store-badge-text"><small>Download on the</small><strong>App Store</strong></span>
+      </a>
+      <a href="https://play.google.com/store/apps/details?id=com.mcallpl.playpbnow" class="store-badge" target="_blank" rel="noopener" aria-label="Get PlayPBNow on Google Play">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.4 L18.7 12 L5 20.6 Z" fill="url(#gpGrad)"/></svg>
+        <span class="store-badge-text"><small>Get it on</small><strong>Google Play</strong></span>
+      </a>
+    </div>
+    <p class="store-note">Free to download &middot; <b>iPhone available now</b> &middot; Android launching this week</p>
+    <div class="hero-ctas" style="margin-top:26px">
+      <a href="app.html" class="btn-outline">
+        Or open the Web App
       </a>
       <a href="player-signup.html" class="btn-outline">
         Join the Player Pool
@@ -730,6 +769,29 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
   </div>
 </section>
 
+<!-- ════════════ DOWNLOAD ════════════ -->
+<section class="download" id="download">
+  <div class="container">
+    <div class="download-inner reveal">
+      <img src="playpbnow-app-icon-192.png" alt="Play Pickleball NOW! app icon" class="download-icon">
+      <span class="section-tag">Available Now</span>
+      <h2>Get PlayPBNow<br><span class="accent">Free on iPhone &amp; Android.</span></h2>
+      <p>The full experience in your pocket — drop map beacons, keep score live, fire off SMS match invites, and reach hundreds of players ready to play. Download free on your platform and fill your next court in minutes.</p>
+      <div class="store-badges">
+        <a href="https://apps.apple.com/app/id6758897943" class="store-badge" target="_blank" rel="noopener" aria-label="Download PlayPBNow on the App Store">
+          <svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.63 0 2.91.06 4.42 2.16-.13.09-2.43 1.42-2.43 4.24 0 3.26 2.87 4.41 2.955 4.44z"/></svg>
+          <span class="store-badge-text"><small>Download on the</small><strong>App Store</strong></span>
+        </a>
+        <a href="https://play.google.com/store/apps/details?id=com.mcallpl.playpbnow" class="store-badge" target="_blank" rel="noopener" aria-label="Get PlayPBNow on Google Play">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.4 L18.7 12 L5 20.6 Z" fill="url(#gpGrad)"/></svg>
+          <span class="store-badge-text"><small>Get it on</small><strong>Google Play</strong></span>
+        </a>
+      </div>
+      <p class="store-note">Free to download &middot; <b>iPhone available now</b> &middot; Android launching this week</p>
+    </div>
+  </div>
+</section>
+
 <!-- ════════════ CTA BANNER ════════════ -->
 <section style="padding:100px 0;background:var(--surface);text-align:center;position:relative;overflow:hidden">
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(135,202,55,0.06),transparent 70%)"></div>
@@ -740,8 +802,18 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
     <p style="color:var(--muted);font-size:1.1rem;max-width:520px;margin:0 auto 36px;line-height:1.7">
       500+ players are waiting. 223 courts are ready. The only question is — are you a player looking for a game, or a coordinator ready to fill one?
     </p>
+    <div class="store-badges" style="margin-bottom:24px">
+      <a href="https://apps.apple.com/app/id6758897943" class="store-badge" target="_blank" rel="noopener" aria-label="Download PlayPBNow on the App Store">
+        <svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.63 0 2.91.06 4.42 2.16-.13.09-2.43 1.42-2.43 4.24 0 3.26 2.87 4.41 2.955 4.44z"/></svg>
+        <span class="store-badge-text"><small>Download on the</small><strong>App Store</strong></span>
+      </a>
+      <a href="https://play.google.com/store/apps/details?id=com.mcallpl.playpbnow" class="store-badge" target="_blank" rel="noopener" aria-label="Get PlayPBNow on Google Play">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.4 L18.7 12 L5 20.6 Z" fill="url(#gpGrad)"/></svg>
+        <span class="store-badge-text"><small>Get it on</small><strong>Google Play</strong></span>
+      </a>
+    </div>
     <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-      <a href="app.html" class="btn-primary">Launch the App</a>
+      <a href="app.html" class="btn-outline">Open the Web App</a>
       <a href="player-signup.html" class="btn-outline">Join the Player Pool</a>
     </div>
   </div>
@@ -755,12 +827,14 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
         <a href="#top" class="nav-logo" style="display:inline-flex">
           <img src="images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" class="footer-logo-img">
         </a>
-        <p>Play Pickleball NOW. The only app that connects coordinators with hundreds of eager players — from beginners to pros — and fills courts in minutes.</p>
+        <p>Play Pickleball NOW. The only app that connects coordinators with hundreds of eager players — from beginners to pros — and fills courts in minutes. Now free on iPhone &amp; Android.</p>
       </div>
       <div class="footer-col">
-        <h4>Product</h4>
+        <h4>Get the App</h4>
+        <a href="https://apps.apple.com/app/id6758897943" target="_blank" rel="noopener">iPhone — App Store</a>
+        <a href="https://play.google.com/store/apps/details?id=com.mcallpl.playpbnow" target="_blank" rel="noopener">Android — Google Play</a>
+        <a href="app.html">Web App</a>
         <a href="#features">Features</a>
-        <a href="app.html">Launch App</a>
         <a href="player-signup.html">Player Pool</a>
       </div>
       <div class="footer-col">
