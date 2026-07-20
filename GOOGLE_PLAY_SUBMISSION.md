@@ -132,3 +132,67 @@ party — sharing content with other **app users** is NOT "shared" in Google's s
 - App icon 512×512 → `store-assets/app-icon-512.png`
 - Copy (short + full description, category, tags) → `store-assets/store-listing-copy.md`
 - Screenshots → STILL NEEDED from Chip (Android sizes; iPhone shots too tall for Play's 2:1)
+
+---
+
+# ⛔ REJECTION #1 — 2026-07-16 (and the fix, 2026-07-20)
+
+The 2026-07-12 production submission was **REJECTED on Jul 16**. Discovered Jul 20 — the Console
+notification sat unread for 4 days. **Google does not reliably email these; check Publishing overview.**
+
+## What Google said
+> **Play Console Requirements: Violation of Play Console Requirements**
+> We could not review your app because of the following issue/s with the log-in credentials you provided:
+> **Login credentials are incorrect.**
+
+**Google never reviewed the app.** They could not get past the login screen. There was NO content, policy,
+data-safety, billing, or store-listing objection.
+
+## Root cause
+The **Sign in details** declaration (App content → Sign in details, formerly "App access") held the bare
+string **`mcallpl`** as the identifier — not an email, not a phone.
+
+Confirmed three ways:
+1. The Console field literally contained `mcallpl` (7/100 chars).
+2. Google's evidence screenshot shows `mcallpl` typed into the app's "EMAIL OR PHONE" field, with the red
+   error *"The email/phone or password you entered is incorrect. Please try again."*
+3. `api/email_login.php` resolves the user via `WHERE email = ?` then `WHERE phone = ?` — **exact match
+   only**. A bare username matches no row and can never authenticate.
+
+The instructions field even said "email or phone both work" — but the value supplied was neither.
+A Jul 10 data-entry slip, not an app defect.
+
+## The fix (Jul 20)
+| Field | Was | Now |
+|---|---|---|
+| Name | Admin Account | Reviewer Account |
+| Identifier | `mcallpl` ❌ | `applereview@playpbnow.com` ✅ |
+| Password | `Amazing123#` | `ReviewPBN2026!` |
+| Instructions | "email or phone both work" | explicit: type the COMPLETE email including the domain |
+
+## Reviewer-account rule (IMPORTANT)
+A reviewer account must be **non-admin AND on an active premium subscription.**
+
+`applereview@playpbnow.com` (users.id 69) — non-admin, `subscription_status=active`, `tier=premium`
+through 2027-07-05, already passed Apple review, credential verified live against
+`https://playpbnow.com/api/email_login.php`. Documented in `APP_STORE_SUBMISSION.md:44`.
+
+Rejected as candidates:
+- `mcallpl@gmail.com` (id 5) — `is_admin=1`, exposes the ADMIN tab to Google; also expired/free.
+- `psinfo@peoplestar.com` (id 20, "App Review") — non-admin but **expired/free**, so every Pro-gated
+  feature stays locked → invites a *second* rejection for "cannot access all functionality".
+
+## Notes
+- **No rebuild was needed.** All 11 changes stayed staged through the rejection — Production release
+  5 (1.4.3) full rollout, 177 countries, store listing, content rating, data safety. No new AAB, no EAS build.
+- **Do NOT appeal.** The issue page states that if you've corrected the credentials you don't need to contact
+  policy support. An appeal carries a 5-8 day wait and only adds delay. There is no way to expedite a Play
+  review — fix-and-resubmit is the fast path.
+- The instructions textarea has a **500-character limit** (a 731-char draft turned red and blocked Save).
+- **Verify the field's character counter before clicking Add/Save/Submit.** During this fix the password
+  appeared unchanged (11/100 = the old `Amazing123#`; the new one is 14/100) because it had been typed into
+  a different browser window. Submitting unverified costs a full review cycle.
+
+## Status
+**Resubmitted 2026-07-20** — "11 changes sent for review"; Publishing overview shows **Changes in review**.
+Managed publishing is OFF, so it auto-goes-live on approval. Expect 1-7 days.
