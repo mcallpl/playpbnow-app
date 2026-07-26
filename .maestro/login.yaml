@@ -1,0 +1,38 @@
+# Login screen — happy path sign-in.
+#
+# Hits the REAL production API (https://playpbnow.com/api/email_login.php) and
+# creates a real session for whatever account you pass in. Use a test account.
+#
+#   maestro test -e APP_ID=com.mcallpl.playpbnow \
+#                -e LOGIN_EMAIL=you@example.com \
+#                -e LOGIN_PASSWORD=secret \
+#                .maestro/login.yaml
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+
+# --- login screen renders -------------------------------------------------
+- assertVisible: "MATCH TRACKING"
+- assertVisible: "EMAIL OR PHONE"
+- assertVisible: "PASSWORD"
+- assertVisible: "SIGN IN"
+
+# --- fill credentials -----------------------------------------------------
+- tapOn: "Email or phone number"
+- inputText: ${LOGIN_EMAIL}
+- hideKeyboard
+
+- tapOn: "Your password"
+- inputText: ${LOGIN_PASSWORD}
+- hideKeyboard
+
+- tapOn: "SIGN IN"
+
+# --- lands on the Groups tab ---------------------------------------------
+# router.replace('/(tabs)/groups') on success — wait out the network round trip.
+- extendedWaitUntil:
+    visible: "Your Groups"
+    timeout: 20000
+- assertVisible: "GROUPS"
+- assertNotVisible: "SIGN IN"

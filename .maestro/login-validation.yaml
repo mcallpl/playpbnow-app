@@ -1,0 +1,53 @@
+# Login screen — error paths and the register-mode toggle.
+#
+# Safe to run against production: the empty-submit case never leaves the device,
+# and the bad-credentials case only ever fails auth. No account is created.
+#
+#   maestro test -e APP_ID=com.mcallpl.playpbnow .maestro/login-validation.yaml
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- assertVisible: "MATCH TRACKING"
+
+# --- client-side: empty form ---------------------------------------------
+- tapOn: "SIGN IN"
+- assertVisible: "Please enter your email"
+
+# --- server-side: wrong credentials --------------------------------------
+# email_login.php returns one generic message so it never leaks which field
+# was wrong — assert exactly that.
+- tapOn: "Email or phone number"
+- inputText: "no-such-user@playpbnow.test"
+- hideKeyboard
+
+- tapOn: "Your password"
+- inputText: "definitely-not-the-password"
+- hideKeyboard
+
+- tapOn: "SIGN IN"
+- extendedWaitUntil:
+    visible: "you entered is incorrect"
+    timeout: 20000
+- assertVisible: "SIGN IN"   # still on the login screen
+
+# --- toggle into register mode -------------------------------------------
+- tapOn: "Create one"
+- assertVisible: "FIRST NAME"
+- assertVisible: "PHONE NUMBER"
+- assertVisible: "CREATE ACCOUNT"
+
+# register mode requires a first name even when email + password are filled
+- tapOn: "Email address"
+- inputText: "someone@playpbnow.test"
+- hideKeyboard
+- tapOn: "6\\+ characters"
+- inputText: "hunter2345"
+- hideKeyboard
+- tapOn: "CREATE ACCOUNT"
+- assertVisible: "Please enter your first name"
+
+# --- toggle back to login -------------------------------------------------
+- tapOn: "Already have an account"
+- assertVisible: "SIGN IN"
+- assertNotVisible: "FIRST NAME"
