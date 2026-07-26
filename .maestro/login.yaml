@@ -21,11 +21,11 @@ appId: ${APP_ID}
 # --- fill credentials -----------------------------------------------------
 - tapOn: "Email or phone number"
 - inputText: ${LOGIN_EMAIL}
-- hideKeyboard
+- tapOn: "EMAIL OR PHONE"
 
 - tapOn: "Your password"
 - inputText: ${LOGIN_PASSWORD}
-- hideKeyboard
+- tapOn: "PASSWORD"
 
 - tapOn: "SIGN IN"
 

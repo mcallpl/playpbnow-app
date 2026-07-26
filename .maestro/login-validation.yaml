@@ -12,42 +12,53 @@ appId: ${APP_ID}
 
 # --- client-side: empty form ---------------------------------------------
 - tapOn: "SIGN IN"
-- assertVisible: "Please enter your email"
+- assertVisible: "Please enter your email.*"
 
 # --- server-side: wrong credentials --------------------------------------
 # email_login.php returns one generic message so it never leaks which field
 # was wrong — assert exactly that.
 - tapOn: "Email or phone number"
 - inputText: "no-such-user@playpbnow.test"
-- hideKeyboard
+- tapOn: "EMAIL OR PHONE"
 
 - tapOn: "Your password"
 - inputText: "definitely-not-the-password"
-- hideKeyboard
+- tapOn: "PASSWORD"
 
 - tapOn: "SIGN IN"
 - extendedWaitUntil:
-    visible: "you entered is incorrect"
+    visible: ".*you entered is incorrect.*"
     timeout: 20000
 - assertVisible: "SIGN IN"   # still on the login screen
 
 # --- toggle into register mode -------------------------------------------
-- tapOn: "Create one"
+# Relaunch first. toggleMode() deliberately keeps the email/password state, so
+# coming here straight from the failed sign-in leaves both fields populated —
+# their placeholders are then hidden and the taps below can't find them.
+- launchApp:
+    clearState: true
+- assertVisible: "MATCH TRACKING"
+
+- tapOn: ".*Create one"
 - assertVisible: "FIRST NAME"
 - assertVisible: "PHONE NUMBER"
 - assertVisible: "CREATE ACCOUNT"
 
-# register mode requires a first name even when email + password are filled
-- tapOn: "Email address"
-- inputText: "someone@playpbnow.test"
-- hideKeyboard
-- tapOn: "6\\+ characters"
-- inputText: "hunter2345"
-- hideKeyboard
+# Register mode enforces its own required fields. Submit the form untouched —
+# no typing means no keyboard, which matters here: the register form is tall
+# enough that the iOS keyboard covers its lower half, and a tapOn against an
+# occluded element silently taps the KEYBOARD instead (it types stray letters
+# into whatever field still has focus rather than failing).
+#
+# One more dev-build wrinkle: Expo's LogBox pins a "Open debugger to view
+# warnings" toast to the bottom of the screen, right on top of CREATE ACCOUNT.
+# Maestro happily taps the toast and reports COMPLETED. Scroll the form up so
+# the button clears it. (Release builds have no LogBox, so this is a no-op there.)
+- scroll
 - tapOn: "CREATE ACCOUNT"
-- assertVisible: "Please enter your first name"
+- assertVisible: "Email and password are required.*"
 
 # --- toggle back to login -------------------------------------------------
-- tapOn: "Already have an account"
+- tapOn: ".*Already have an account.*"
 - assertVisible: "SIGN IN"
 - assertNotVisible: "FIRST NAME"
