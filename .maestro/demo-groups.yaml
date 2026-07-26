@@ -1,0 +1,126 @@
+# DEMO REEL — "Groups" value + usage walkthrough.
+#
+# Rendered to video with:
+#   maestro record -e APP_ID=com.mcallpl.PlayPBNow .maestro/demo-groups.yaml
+#
+# ⚠️  NOT a test. This is a screen-recording script, and it WRITES REAL DATA:
+# it creates a group called "Friday Night Crew" in the signed-in account and
+# adds a roster to it. Delete the group after filming (trash icon on the card).
+#
+# ⚠️  No `clearState` — ON PURPOSE. This flow needs the existing signed-in
+# session, and clearing state would sign the account out.
+#
+# Roster is the real Pickleheads lineup, ordered by win % so the standings read
+# well on camera.
+appId: ${APP_ID}
+---
+- launchApp
+
+# A warm launch lands on the entry gate rather than the tabs. Conditional so the
+# flow works from either state.
+- runFlow:
+    when:
+      visible: "Enter App"
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - tapOn: "Enter App"
+
+# ── Scene 1 · the problem: your groups live here ─────────────────────────
+# "Enter App" lands on Play Now and keeps navigating for a beat — tapping the
+# tab too early gets overridden, so let it settle first.
+# Tab bar exposes no text, only an a11y label ("GROUPS, tab, 2 of 10").
+- waitForAnimationToEnd:
+    timeout: 4000
+
+# Dev builds only: Expo's LogBox toast sits over the tab bar and silently eats
+# taps meant for it. Dismiss via its × (no toast in a release build, so this
+# whole block is skipped — and release is what you should actually film on).
+- runFlow:
+    when:
+      visible: ".*Open debugger to view warnings.*"
+    commands:
+      - tapOn:
+          point: "92%,94%"
+      - waitForAnimationToEnd:
+          timeout: 1000
+
+- tapOn: "GROUPS, tab.*"
+- extendedWaitUntil:
+    visible: "Your Groups"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# ── Scene 2 · open the crew ──────────────────────────────────────────────
+# Scenes 2+3 used to CREATE the group and type all 16 names. That is gone on
+# purpose: Friday Night Crew (group 103) already holds all 16 real players, and
+# re-adding them created duplicate 0-0 records every run. Open the group instead
+# — shorter, and the roster shows real win/loss history straight away.
+
+# The group card is exposed as ONE a11y label — "Friday Night Crew, 16, 9 Male,
+# 7 Female" — and Maestro matches the WHOLE string, so a bare "Friday Night Crew"
+# never matches. It is also the first card (list is ordered updated_at DESC), so
+# no scrolling is needed.
+- tapOn: "Friday Night Crew.*"
+- extendedWaitUntil:
+    visible: "Search or add player..."
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3500
+
+# ── Scene 4 · generate the match ─────────────────────────────────────────
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "CREATE MATCH"
+- extendedWaitUntil:
+    visible: "MATCH SETUP"
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "GENERATE MATCH"
+- waitForAnimationToEnd:
+    timeout: 4000
+
+# ── Scene 5 · swap two players between teams ─────────────────────────────
+# game.tsx:967-969 colours each chip: male rgba(79,172,254,.15), female
+# rgba(247,140,162,.15) — both faint over the dark card. A chip turns ORANGE
+# (#ffa500) when partnerCounts[pair] > 1, i.e. that pair is booked to partner
+# more than once. First tap turns the chip YELLOW (#ffff00) = selected; the
+# second tap swaps the two players.
+#
+# Only CRT 1-3 of round 1 are above the fold. Tapping an off-screen chip does
+# NOT fail — the hierarchy still reports its bounds, so the tap lands on
+# whatever is actually at those coordinates (TEXT MATCH, which opens the HD
+# report modal). Every player named here must be visible without scrolling.
+- extendedWaitUntil:
+    visible: "ROUND 1.*"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 2500
+
+# The match is randomly generated on every run, so the lineup is never the same
+# twice — tapping chips BY NAME is unreliable (a named player may land on CRT 4,
+# below the fold, and the tap then hits TEXT MATCH instead). These are positional
+# taps on the CRT 2 / CRT 3 chip slots, which sit at a fixed layout position
+# whoever happens to be in them.
+
+# swap 1 — the two top chips on CRT 2 trade places (first tap turns one YELLOW)
+- tapOn:
+    point: "27%,54%"
+- waitForAnimationToEnd:
+    timeout: 2500
+- tapOn:
+    point: "73%,54%"
+- waitForAnimationToEnd:
+    timeout: 3500
+
+# swap 2 — same move on CRT 3
+- tapOn:
+    point: "27%,69%"
+- waitForAnimationToEnd:
+    timeout: 2500
+- tapOn:
+    point: "73%,69%"
+- waitForAnimationToEnd:
+    timeout: 4000

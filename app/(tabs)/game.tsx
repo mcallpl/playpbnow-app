@@ -964,11 +964,17 @@ export default function GameScreen() {
     const isFemale = genderStr.startsWith('f');
     const isSelected = swapSource?.r === rIdx && swapSource?.g === gIdx && swapSource?.t === tIdx && swapSource?.p === pIdx;
     const isEditing = editingPlayer?.r === rIdx && editingPlayer?.g === gIdx && editingPlayer?.t === tIdx && editingPlayer?.p === pIdx;
-    let bg = isFemale ? 'rgba(247,140,162,0.15)' : 'rgba(79,172,254,0.15)'; let txt = colors.text;
-    if (isTeamConflict) { bg = '#ffa500'; txt = '#ffffff'; }
-    if (isSelected) { bg = '#ffff00'; txt = '#000000'; }
+    // Gender designation: pink for women, blue for men. The fill used to be 15%
+    // opacity, which read as the same dark navy as the card — the distinction was
+    // effectively invisible. Stronger fill + a solid border in the full-strength
+    // colour makes it legible at a glance without washing out the white label.
+    let bg = isFemale ? 'rgba(247,140,162,0.38)' : 'rgba(79,172,254,0.38)';
+    let bd = isFemale ? '#f78ca2' : '#4facfe';
+    let txt = colors.text;
+    if (isTeamConflict) { bg = '#ffa500'; bd = '#e08e00'; txt = '#ffffff'; }
+    if (isSelected) { bg = '#ffff00'; bd = '#ffff00'; txt = '#000000'; }
     return (
-      <TouchableOpacity style={[styles.playerBox, { backgroundColor: bg }, isSelected && styles.selectedBox]}
+      <TouchableOpacity style={[styles.playerBox, { backgroundColor: bg, borderWidth: 1.5, borderColor: bd }, isSelected && styles.selectedBox]}
         onPress={() => { if (!isEditing) handlePlayerTapGuarded(rIdx, gIdx, tIdx, pIdx); }}
         onLongPress={() => { setSwapSource(null); setEditingPlayer({ r: rIdx, g: gIdx, t: tIdx, p: pIdx }); }} activeOpacity={0.7}>
         {isEditing ? (
