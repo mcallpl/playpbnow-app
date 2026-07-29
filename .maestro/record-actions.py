@@ -5,7 +5,8 @@ Record what you do in the simulator into a draft Maestro flow.
     ./.maestro/record-actions.py                  # writes .maestro/recorded.yaml
     ./.maestro/record-actions.py -o my-flow.yaml
 
-Tap around in the simulator; press Ctrl-C when done.
+Tap around in the simulator; press Ctrl-C when done. The file is rewritten after
+EVERY step, so it exists even if the process is killed instead of interrupted.
 
 HOW IT WORKS — and its one real limitation
 ------------------------------------------
@@ -32,13 +33,25 @@ If a physical iPhone is paired — even over Wi-Fi, even unplugged — Maestro s
 "multiple devices" and may grab the phone instead of the simulator. This always
 passes --device explicitly to avoid that.
 """
-import argparse, hashlib, json, os, re, subprocess, sys, time
+import argparse, hashlib, json, os, re, signal, subprocess, sys, time
 
 POLL = 0.35          # screenshot interval
 SETTLE = 2           # consecutive identical frames before we call it settled
 NOISE = re.compile(
     r'^(PlayPBNow|\d+%|No signal|Not charging|Cellular|SSID.*|'
     r'\d{1,2}:\d{2}(\s?[AP]M)?|.*battery power|.*scroll bar.*|)$', re.I)
+
+STOP = False
+
+
+def _stop(_sig, _frame):
+    global STOP
+    STOP = True
+    print("\n▶ stopping…", flush=True)
+
+
+signal.signal(signal.SIGINT, _stop)
+signal.signal(signal.SIGTERM, _stop)
 
 
 def env():
@@ -51,8 +64,7 @@ def env():
 def booted():
     out = subprocess.run(["xcrun", "simctl", "list", "devices", "booted"],
                          capture_output=True, text=True).stdout
-    ids = re.findall(r'([0-9A-F]{8}(?:-[0-9A-F]{4}){3}-[0-9A-F]{12})', out)
-    return ids
+    return re.findall(r'([0-9A-F]{8}(?:-[0-9A-F]{4}){3}-[0-9A-F]{12})', out)
 
 
 def shot(udid, path):
@@ -85,18 +97,16 @@ def flatten(node, out=None):
     hint = (a.get('hintText') or '').strip()
     label = text or acc
     if label or hint:
-        out.append({
-            'label': label, 'hint': hint,
-            'focused': str(a.get('focused', '')).lower() == 'true',
-            'bounds': a.get('bounds') or '',
-        })
+        out.append({'label': label, 'hint': hint,
+                    'focused': str(a.get('focused', '')).lower() == 'true',
+                    'bounds': a.get('bounds') or ''})
     for c in node.get('children') or []:
         flatten(c, out)
     return out
 
 
 def signal_labels(els):
-    """Drop status bar / chrome noise, de-duplicate, keep order."""
+    """Drop status-bar / chrome noise, de-duplicate, keep visual order."""
     seen, keep = set(), []
     for e in els:
         l = e['label']
@@ -108,19 +118,15 @@ def signal_labels(els):
 
 
 def escape(s):
-    """Maestro matches the WHOLE string as a regex, so escape literals and
-    anchor loosely — this is the rule that breaks bare selectors."""
-    out = re.sub(r'([.^$*+?()\[\]{}|\\])', r'\\\1', s)
-    return out
+    """Maestro matches the WHOLE string as a regex — escape literals."""
+    return re.sub(r'([.^$*+?()\[\]{}|\\])', r'\\\1', s)
 
 
 def selector_for(label):
     """Card/tab labels are often one long a11y string ('Friday Night Crew, 16,
     9 Male, 7 Female'); match the leading part and wildcard the rest."""
     head = label.split(',')[0].strip()
-    if head != label:
-        return f'"{escape(head)}.*"'
-    return f'"{escape(label)}"'
+    return f'"{escape(head)}.*"' if head != label else f'"{escape(label)}"'
 
 
 def title_of(els):
@@ -131,41 +137,70 @@ def title_of(els):
 
 
 def guess_tap(prev, curr):
-    """Which element did they most likely tap?
+    """Which element was most likely tapped?
 
-    Strongest signal: the new screen's title matches something that was on the
-    old screen (tapping 'Friday Night Crew' opens a screen titled 'FRIDAY NIGHT
-    CREW'). Otherwise: something that was there and is now gone.
+    Strongest signal: the new screen's title matches something on the old screen
+    (tapping 'Friday Night Crew' opens a screen titled 'FRIDAY NIGHT CREW').
+    Otherwise: something that was there and is now gone.
     """
     curr_labels = {e['label'] for e in curr}
-    new_title = title_of(curr)
     norm = lambda s: re.sub(r'[^a-z0-9]', '', s.lower())
-    tn = norm(new_title)
+    tn = norm(title_of(curr))
 
     scored = []
     for e in prev:
         n = norm(e['label'])
         if not n:
             continue
-        if n and tn and (n == tn or n.startswith(tn) or tn.startswith(n)):
+        if tn and (n == tn or n.startswith(tn) or tn.startswith(n)):
             scored.append((100, e))                      # title match
         elif e['label'] not in curr_labels:
-            weight = 60 if e['label'].isupper() else 40  # gone; buttons look shouty
-            scored.append((weight, e))
+            scored.append((60 if e['label'].isupper() else 40, e))
     scored.sort(key=lambda s: -s[0])
     return [e for _, e in scored[:4]]
 
 
 def typed_text(prev, curr):
-    """A field whose hint vanished and gained a value => text was typed."""
-    prev_hints = {e['hint'] for e in prev if e['hint']}
-    curr_hints = {e['hint'] for e in curr if e['hint']}
-    gone = prev_hints - curr_hints
+    """A field whose placeholder vanished and gained a value => text was typed."""
+    gone = {e['hint'] for e in prev if e['hint']} - {e['hint'] for e in curr if e['hint']}
+    prev_labels = {p['label'] for p in prev}
     for h in gone:
         for e in curr:
-            if e['label'] and e['label'] not in {p['label'] for p in prev}:
+            if e['label'] and e['label'] not in prev_labels:
                 return h, e['label']
     return None, None
+
+
+def render(steps, app_id):
+    lines = [
+        "# DRAFT — recorded from a live session by .maestro/record-actions.py",
+        "# Each tap is a best GUESS from screen diffing (iOS exposes no touch log).",
+        "# Alternatives are listed beside each step — swap one in if a guess is wrong.",
+        f"appId: {app_id}",
+        "---",
+        "- launchApp",
+        "",
+    ]
+    for st in steps:
+        if st['kind'] == 'input':
+            lines += [f'- tapOn: "{escape(st["hint"])}"',
+                      f'- inputText: "{st["value"]}"', ""]
+        else:
+            best, *rest = st['cands']
+            lines.append(f'- tapOn: {selector_for(best["label"])}')
+            if rest:
+                lines.append('  # alternatives: ' + " | ".join(r['label'][:30] for r in rest))
+            lines += ['- extendedWaitUntil:',
+                      f'    visible: {selector_for(st["title"])}',
+                      '    timeout: 10000', ""]
+    return "\n".join(lines) + "\n"
+
+
+def save(path, steps, app_id):
+    """Called after EVERY step so the file always exists on disk."""
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, 'w') as fh:
+        fh.write(render(steps, app_id))
 
 
 def main():
@@ -177,78 +212,59 @@ def main():
 
     devices = booted()
     if not devices:
-        sys.exit("✗ No booted simulator.")
+        sys.exit("✗ No booted simulator. Open Simulator.app first.")
     udid = args.device or devices[0]
     if len(devices) > 1 and not args.device:
         print(f"⚠ {len(devices)} simulators booted; using {udid}. Use -d to pick another.")
 
     tmp = "/tmp/_rec_frame.png"
-    print(f"▶ recording {udid}\n▶ tap around the simulator — PAUSE ~3s between taps\n▶ Ctrl-C to stop\n")
+    steps = []
+    save(args.out, steps, args.app_id)          # create the file immediately
+    print(f"▶ recording {udid}")
+    print(f"▶ writing   {os.path.abspath(args.out)}")
+    print("▶ tap around the simulator — PAUSE ~3s between taps")
+    print("▶ Ctrl-C to stop\n", flush=True)
 
     prev = signal_labels(flatten(hierarchy(udid) or {}))
-    print(f"  [start] {title_of(prev)}")
-    steps, last, stable = [], shot(udid, tmp), 0
+    if not prev:
+        print("⚠ could not read the screen — is Maestro Studio still open?", flush=True)
+    print(f"  [start] {title_of(prev)}", flush=True)
 
-    try:
-        while True:
+    last, stable = shot(udid, tmp), 0
+    while not STOP:
+        time.sleep(POLL)
+        h = shot(udid, tmp)
+        if h == last:
+            continue
+        last, stable = h, 0
+        while stable < SETTLE and not STOP:      # wait for the screen to settle
             time.sleep(POLL)
-            h = shot(udid, tmp)
-            if h == last:
-                if stable >= 0:
-                    stable += 1
-                continue
-            last, stable = h, 0
-            # wait for the screen to stop moving
-            while stable < SETTLE:
-                time.sleep(POLL)
-                h2 = shot(udid, tmp)
-                stable = stable + 1 if h2 == last else 0
-                last = h2
+            h2 = shot(udid, tmp)
+            stable = stable + 1 if h2 == last else 0
+            last = h2
+        if STOP:
+            break
 
-            curr = signal_labels(flatten(hierarchy(udid) or {}))
-            if not curr:
-                continue
-            hint, val = typed_text(prev, curr)
-            if hint:
-                steps.append({'kind': 'input', 'hint': hint, 'value': val})
-                print(f"  [{len(steps)}] typed into {hint!r}")
-            else:
-                cands = guess_tap(prev, curr)
-                if not cands:
-                    prev = curr
-                    continue
-                steps.append({'kind': 'tap', 'cands': cands, 'title': title_of(curr)})
-                print(f"  [{len(steps)}] tap {cands[0]['label'][:40]!r} → {title_of(curr)[:34]}")
-            prev = curr
-    except KeyboardInterrupt:
-        pass
-
-    lines = [
-        "# DRAFT — recorded from a live session by .maestro/record-actions.py",
-        "# Each tap is a best GUESS from screen diffing (iOS exposes no touch log).",
-        "# Alternatives are listed beside each step — swap them in if a guess is wrong.",
-        f"appId: {args.app_id}",
-        "---",
-        "- launchApp",
-        "",
-    ]
-    for s in steps:
-        if s['kind'] == 'input':
-            lines += [f'- tapOn: "{escape(s["hint"])}"',
-                      f'- inputText: "{s["value"]}"', ""]
+        curr = signal_labels(flatten(hierarchy(udid) or {}))
+        if not curr:
+            continue
+        hint, val = typed_text(prev, curr)
+        if hint:
+            steps.append({'kind': 'input', 'hint': hint, 'value': val})
+            print(f"  [{len(steps)}] typed into {hint!r}", flush=True)
         else:
-            best, *rest = s['cands']
-            lines.append(f'- tapOn: {selector_for(best["label"])}')
-            if rest:
-                alts = " | ".join(r['label'][:30] for r in rest)
-                lines.append(f'  # alternatives: {alts}')
-            lines += ['- extendedWaitUntil:',
-                      f'    visible: {selector_for(s["title"])}',
-                      '    timeout: 10000', ""]
+            cands = guess_tap(prev, curr)
+            if not cands:
+                prev = curr
+                continue
+            steps.append({'kind': 'tap', 'cands': cands, 'title': title_of(curr)})
+            print(f"  [{len(steps)}] tap {cands[0]['label'][:40]!r} → {title_of(curr)[:34]}",
+                  flush=True)
+        save(args.out, steps, args.app_id)
+        prev = curr
 
-    os.makedirs(os.path.dirname(args.out) or '.', exist_ok=True)
-    open(args.out, 'w').write("\n".join(lines) + "\n")
-    print(f"\n✓ {len(steps)} steps → {args.out}")
+    save(args.out, steps, args.app_id)
+    print(f"\n✓ {len(steps)} steps → {os.path.abspath(args.out)}")
     print("  Review it: the taps are guesses, the selectors are exact.")
 
 
