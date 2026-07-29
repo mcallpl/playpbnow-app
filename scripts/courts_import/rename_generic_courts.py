@@ -18,6 +18,7 @@ import argparse, json, os, re, subprocess, sys, time, urllib.parse, urllib.reque
 
 SERVER = "root@64.227.108.128"
 NEARBY = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+DETAILS = "https://maps.googleapis.com/maps/api/place/details/json"
 
 # Google's own amenity pins — never a venue name
 GENERIC = ('pickleball', 'basketball', 'tennis court', 'playground', 'restroom',
@@ -77,6 +78,29 @@ def nearby(lat, lng, api_key, radius=250):
     if d.get('status') not in ('OK', 'ZERO_RESULTS'):
         print(f"   ! places: {d.get('status')} {d.get('error_message','')}", file=sys.stderr)
     return d.get('results', [])
+
+
+def details(place_id, api_key):
+    """Place Details for the court's own pin — sometimes carries a venue name or
+    a `vicinity` that a coordinate search misses."""
+    url = f"{DETAILS}?{urllib.parse.urlencode({'place_id': place_id, 'fields': 'name,vicinity,formatted_address,types', 'key': api_key})}"
+    r = subprocess.run(["curl", "-s", "--max-time", "20", url], capture_output=True, text=True)
+    try:
+        return json.loads(r.stdout).get('result', {}) or {}
+    except json.JSONDecodeError:
+        return {}
+
+
+def widen(lat, lng, api_key, city):
+    """Second pass: step the radius out. A court whose address is city-only is
+    still pinned precisely, so a park slightly further out is usually the venue.
+    Capped at 600m — beyond that the nearest park is not necessarily the court's
+    park, and a confident wrong name is the thing we are avoiding."""
+    for radius in (500, 600):
+        venue, types = pick_venue(nearby(lat, lng, api_key, radius), city)
+        if venue:
+            return venue, types, radius
+    return None, None, None
 
 
 def is_generic(name):
@@ -150,6 +174,38 @@ def propose(path):
     print("  Review it, blank out any new_name you reject, then run --apply")
 
 
+def retry(path):
+    """Re-attempt only the rows a first pass could not resolve."""
+    api_key = key()
+    rows = sql("SELECT id, name, address, city, lat, lng, google_place_id FROM courts "
+               "WHERE name REGEXP '^[Pp]ickleball [Cc]ourts?( [0-9]+)?$' ORDER BY city, id;")
+    print(f"▶ retrying {len(rows)} unresolved courts\n")
+    out, got = [], 0
+    for r in rows:
+        cid, name, address, city, lat, lng, pid = (r + [''] * 7)[:7]
+        venue, types, radius = widen(lat, lng, api_key, city)
+        src = f"nearby@{radius}m"
+        if not venue and pid:
+            d = details(pid, api_key)
+            cand = (d.get('name') or '').strip()
+            if cand and not is_generic(cand) and not LISTING.search(cand) and len(cand) <= 55:
+                venue, src = cand, 'place-details'
+        if venue:
+            got += 1
+            new = compose(venue, name)
+            out.append((cid, name, new, address, city, src))
+            print(f"  {cid:>5}  {name:<20} → {new}   [{src}]")
+        else:
+            out.append((cid, name, '', address, city, 'STILL UNRESOLVED'))
+            print(f"  {cid:>5}  {name:<20} → (still unresolved)")
+        time.sleep(0.12)
+    with open(path, 'w') as fh:
+        fh.write("id\told_name\tnew_name\taddress\tcity\tsource\n")
+        for o in out:
+            fh.write("\t".join(str(x) for x in o) + "\n")
+    print(f"\n✓ {got} newly resolved of {len(rows)} → {path}")
+
+
 def apply(path):
     if not os.path.exists(path):
         sys.exit(f"✗ {path} not found — run --propose first")
@@ -175,10 +231,13 @@ def apply(path):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--propose', action='store_true')
+    ap.add_argument('--retry-unresolved', action='store_true')
     ap.add_argument('--apply', action='store_true')
     ap.add_argument('-f', '--file', default='scripts/courts_import/proposals.tsv')
     a = ap.parse_args()
-    if a.apply:
+    if a.retry_unresolved:
+        retry(a.file)
+    elif a.apply:
         apply(a.file)
     elif a.propose:
         propose(a.file)
