@@ -1,0 +1,61 @@
+# DRAFT — recorded from a live session by .maestro/record-actions.py
+# Each tap is a best GUESS from screen diffing (iOS exposes no touch log).
+# Alternatives are listed beside each step — swap one in if a guess is wrong.
+appId: com.mcallpl.PlayPBNow
+---
+- launchApp
+
+- tapOn: "TEST GROUP"
+- extendedWaitUntil:
+    visible: "TEST GROUP"
+    timeout: 10000
+
+- tapOn: "21"
+- inputText: "SAVE"
+
+- tapOn: "TEST GROUP"
+  # alternatives: SAVE | 8 M | 8 F
+- extendedWaitUntil:
+    visible: "MATCH SETUP"
+    timeout: 10000
+
+- tapOn: "MATCH SETUP"
+  # alternatives: ROUNDS: | MIXED | GENDER
+- extendedWaitUntil:
+    visible: "TEST GROUP"
+    timeout: 10000
+
+- tapOn: "TEST GROUP"
+- extendedWaitUntil:
+    visible: "TEST GROUP"
+    timeout: 10000
+
+- tapOn: "TEST GROUP"
+- extendedWaitUntil:
+    visible: "TEST GROUP"
+    timeout: 10000
+
+- tapOn: "TEST GROUP"
+  # alternatives: ROUND 1 (SAME GENDER)
+- extendedWaitUntil:
+    visible: "TEST GROUP"
+    timeout: 10000
+
+- tapOn: "21"
+- inputText: "GENERATE HD REPORT"
+
+- tapOn: "GENERATE HD REPORT"
+  # alternatives: Tue, Jul 28 | 9:15 PM on Tuesday, July 28, 2
+- extendedWaitUntil:
+    visible: "GENERATE HD REPORT"
+    timeout: 10000
+
+- tapOn: "GENERATE HD REPORT"
+  # alternatives: Test Group | 9:15 PM on Saturday, August 1,
+- extendedWaitUntil:
+    visible: "GENERATE HD REPORT"
+    timeout: 10000
+
+- tapOn: "Enter Title"
+- inputText: "TEST GROUP"
+
