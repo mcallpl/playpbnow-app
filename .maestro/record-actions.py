@@ -23,6 +23,14 @@ That means:
 The output is a DRAFT to clean up, not a finished flow. What it does get exactly
 right is the selectors — pulled from the live hierarchy, already regex-escaped
 and anchored the way Maestro's whole-string matching needs.
+
+CLOSE MAESTRO STUDIO BEFORE RECORDING. Two Maestro processes cannot share one
+device driver. If Studio (or a `maestro test` run) holds the device, this reads
+stale hierarchies and emits the same screen over and over.
+
+If a physical iPhone is paired — even over Wi-Fi, even unplugged — Maestro sees
+"multiple devices" and may grab the phone instead of the simulator. This always
+passes --device explicitly to avoid that.
 """
 import argparse, hashlib, json, os, re, subprocess, sys, time
 
