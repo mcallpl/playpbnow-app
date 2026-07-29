@@ -37,6 +37,9 @@ import argparse, hashlib, json, os, re, signal, subprocess, sys, time
 
 POLL = 0.35          # screenshot interval
 SETTLE = 2           # consecutive identical frames before we call it settled
+DATEISH = re.compile(
+    r'^(mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)'
+    r'|^\d{1,2}:\d{2}|\bon (mon|tue|wed|thu|fri|sat|sun)', re.I)
 NOISE = re.compile(
     r'^(PlayPBNow|\d+%|No signal|Not charging|Cellular|SSID.*|'
     r'\d{1,2}:\d{2}(\s?[AP]M)?|.*battery power|.*scroll bar.*|)$', re.I)
@@ -150,6 +153,13 @@ def guess_tap(prev, curr):
           the title matches itself on every same-screen tap and wins every time.
       60  an element that vanished and looks like a button (ALL CAPS)
       40  an element that vanished
+     +25  shares a word with the new screen's title ("CREATE MATCH" -> "MATCH
+          SETUP") — only when the screen actually changed
+     +20  sits in the bottom third, where primary actions live (flat, not
+          graded — see the comment below for why depth-grading is worse)
+
+    Never proposed: labels ending in ':' (field captions), date/time readouts,
+    and anything longer than a short button caption.
 
     The screen's own header is never a candidate: it is what you navigated TO,
     not what you tapped.
@@ -159,6 +169,23 @@ def guess_tap(prev, curr):
     that changes is the clock. Those taps are recovered afterwards instead —
     see the pending/typing logic in main().
     """
+    def tappable(label):
+        """Rule out things that are never tap targets. Session two guessed
+        'ROUNDS:' and 'PLAY TO:' — field labels — and '9:30 PM on Wednesday'."""
+        if label.rstrip().endswith(':'):
+            return False                                   # field label
+        if DATEISH.match(label):
+            return False                                   # date / time readout
+        if len(label) > 45:
+            return False                                   # a sentence, not a button
+        return True
+
+    def centre_y(el):
+        m = re.findall(r'-?\d+', el.get('bounds') or '')
+        return (int(m[1]) + int(m[3])) / 2 if len(m) >= 4 else 0
+
+    screen_h = max([centre_y(e) for e in prev + curr] or [0]) or 1
+
     prev_title, curr_title = title_of(prev), title_of(curr)
     changed_screen = prev_title != curr_title
     curr_labels = {e['label'] for e in curr}
@@ -173,7 +200,24 @@ def guess_tap(prev, curr):
         if changed_screen and tn and (n == tn or n.startswith(tn) or tn.startswith(n)):
             scored.append((90, e))
         elif e['label'] not in curr_labels:
-            scored.append((60 if e['label'].isupper() else 40, e))
+            if not tappable(e['label']):
+                continue
+            score = 60 if e['label'].isupper() else 40
+            # A button usually shares a word with the screen it opens:
+            # "CREATE MATCH" -> "MATCH SETUP". This is the signal that would
+            # have caught session two's step 2.
+            if changed_screen and (set(re.findall(r'[a-z]+', e['label'].lower()))
+                                   & set(re.findall(r'[a-z]+', curr_title.lower()))):
+                score += 25
+            # Primary actions live at the bottom (GENERATE MATCH, TEXT MATCH,
+            # SIGN IN). Without this, they tie with every other button on the
+            # screen and lose on list order.
+            # Flat, deliberately. A depth-graded version was tried and scored
+            # WORSE (1/3 vs 2/3 on real screens): CANCEL sits below GENERATE
+            # MATCH, and CRT 4 below CRT 3, so "lowest wins" actively misleads.
+            if centre_y(e) > screen_h * 0.62:
+                score += 20
+            scored.append((score, e))
 
     scored.sort(key=lambda x: -x[0])
     top = scored[0][0] if scored else 0

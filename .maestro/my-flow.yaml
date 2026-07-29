@@ -1,61 +1,77 @@
-# DRAFT — recorded from a live session by .maestro/record-actions.py
-# Each tap is a best GUESS from screen diffing (iOS exposes no touch log).
-# Alternatives are listed beside each step — swap one in if a guess is wrong.
+# Login → open Test Group → generate a match → open the HD report.
+#
+# Recorded with .maestro/record-actions.py, then corrected by hand. The six
+# steps the recorder flagged LOW CONFIDENCE were all wrong: when a tap replaces
+# the whole screen, every element vanishes at once, so its "what disappeared?"
+# ranking had nothing to discriminate on. Two of its picks ("ROUNDS:",
+# "PLAY TO:") were field labels, not buttons.
+#
+#   maestro test -e LOGIN_PASSWORD='...' .maestro/my-flow.yaml
+#
+# ⚠️  NEVER hardcode the password here — .maestro/ is committed to GitHub.
 appId: com.mcallpl.PlayPBNow
 ---
-- launchApp
+- launchApp:
+    clearState: true
 
-- tapOn: "TEST GROUP"
+# ── sign in ──────────────────────────────────────────────────────────────
+# Tapping a static label after each field dismisses the keyboard. Without it,
+# the keyboard covers SIGN IN and the tap lands on a KEY instead — silently
+# appending a character to the password. hideKeyboard is flaky on iOS 26.5.
+- tapOn: "Email or phone number"
+- inputText: "9497359415"
+- tapOn: "EMAIL OR PHONE"
+- tapOn: "Your password"
+- inputText: ${LOGIN_PASSWORD}
+- tapOn: "PASSWORD"
+- tapOn: "SIGN IN"
+
+- extendedWaitUntil:
+    visible: "Your Groups"
+    timeout: 25000
+
+# ── open the group ───────────────────────────────────────────────────────
+# Card is one a11y label ("Test Group, 1 Daisy, Ladera Ranch, 16, 8 …"), and
+# Maestro matches whole strings — hence the trailing .*
+- tapOn: "Test Group.*"
 - extendedWaitUntil:
     visible: "TEST GROUP"
-    timeout: 10000
+    timeout: 15000
 
-- tapOn: "21"
-- inputText: "SAVE"
-
-- tapOn: "TEST GROUP"
-  # alternatives: SAVE | 8 M | 8 F
+# ── build the match ──────────────────────────────────────────────────────
+# was: tapOn "SAVE"  — SAVE only vanished because the screen was replaced
+- tapOn: "CREATE MATCH"
 - extendedWaitUntil:
     visible: "MATCH SETUP"
-    timeout: 10000
+    timeout: 15000
 
-- tapOn: "MATCH SETUP"
-  # alternatives: ROUNDS: | MIXED | GENDER
+# was: tapOn "ROUNDS:" — a field label on the MATCH SETUP sheet, not a button
+- tapOn: "GENERATE MATCH"
 - extendedWaitUntil:
-    visible: "TEST GROUP"
-    timeout: 10000
+    visible: "ROUND 1.*"
+    timeout: 20000
 
-- tapOn: "TEST GROUP"
-- extendedWaitUntil:
-    visible: "TEST GROUP"
-    timeout: 10000
-
-- tapOn: "TEST GROUP"
-- extendedWaitUntil:
-    visible: "TEST GROUP"
-    timeout: 10000
-
-- tapOn: "TEST GROUP"
-  # alternatives: ROUND 1 (SAME GENDER)
-- extendedWaitUntil:
-    visible: "TEST GROUP"
-    timeout: 10000
-
-- tapOn: "21"
-- inputText: "GENERATE HD REPORT"
-
-- tapOn: "GENERATE HD REPORT"
-  # alternatives: Tue, Jul 28 | 9:15 PM on Tuesday, July 28, 2
+# ── open the shareable report ────────────────────────────────────────────
+# was: tapOn "PLAY TO:" — another field label. TEXT MATCH is what opens the
+# GENERATE HD REPORT sheet.
+- tapOn: "TEXT MATCH"
 - extendedWaitUntil:
     visible: "GENERATE HD REPORT"
-    timeout: 10000
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 2000
 
-- tapOn: "GENERATE HD REPORT"
-  # alternatives: Test Group | 9:15 PM on Saturday, August 1,
+# The recorder logged two more steps here ("1 Daisy", "Test Group") that stayed
+# on GENERATE HD REPORT — those were the date/time stepper arrows. They are
+# UNLABELLED icon buttons, so there is no text to select them by; they need
+# positional taps, and the sheet scrolls, so the coordinates are not stable
+# enough to hardcode blind. Left out rather than guessed at. Add them with
+# Studio's right-click-to-insert if you need them.
+
+# ── close it ─────────────────────────────────────────────────────────────
+# was: tapOn "REFRESH PREVIEW" — CANCEL is what returns to TEST GROUP, which is
+# the screen the recorder observed next.
+- tapOn: "CANCEL"
 - extendedWaitUntil:
-    visible: "GENERATE HD REPORT"
-    timeout: 10000
-
-- tapOn: "Enter Title"
-- inputText: "TEST GROUP"
-
+    visible: "TEST GROUP"
+    timeout: 15000
