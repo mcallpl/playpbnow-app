@@ -1,7 +1,7 @@
-import { BrandedIcon } from '../../components/BrandedIcon';
+import { BrandedIcon } from '../components/BrandedIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { storeNavData } from '../../utils/navData';
+import { storeNavData } from '../utils/navData';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,9 +23,8 @@ import {
 import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GroupSelector } from '../../components/GroupSelector';
-import { PlayerInput } from '../../components/PlayerInput';
-import { PlayerRow } from '../../components/PlayerRow';
+import { GroupSelector } from '../components/GroupSelector';
+import { PlayerRow } from '../components/PlayerRow';
 import {
     ThemeColors,
     FONT_DISPLAY_BOLD,
@@ -34,16 +33,16 @@ import {
     FONT_BODY_MEDIUM,
     FONT_BODY_BOLD,
     FONT_BODY_SEMIBOLD,
-} from '../../constants/theme';
-import { useTheme } from '../../context/ThemeContext';
-import { useSubscription } from '../../context/SubscriptionContext';
-import { useGroupManagement } from '../../hooks/useGroupManagement';
-import { usePlayerManagement } from '../../hooks/usePlayerManagement';
-import { usePlayerSelection } from '../../hooks/usePlayerSelection';
+} from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import { useSubscription } from '../context/SubscriptionContext';
+import { useGroupManagement } from '../hooks/useGroupManagement';
+import { usePlayerManagement } from '../hooks/usePlayerManagement';
+import { usePlayerSelection } from '../hooks/usePlayerSelection';
 
 const API_URL = 'https://playpbnow.com/api';
 
-export default function PlayersScreen() {
+export default function RosterScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
     const { isPro, isTrial, isAdmin, showPaywall } = useSubscription();
@@ -184,20 +183,6 @@ export default function PlayersScreen() {
             loadCourts();
         }, [])
     );
-
-    // Add new player
-    const handleAddPlayer = async (name: string, playerGender: 'male' | 'female') => {
-        try {
-            const userId = await AsyncStorage.getItem('user_id');
-            if (!userId) {
-                Alert.alert('Error', 'Please login first');
-                return;
-            }
-            Alert.alert('Info', 'Please select a group from the Groups tab first, then add players there.');
-        } catch (error) {
-            // Error details logged in development mode only
-        }
-    };
 
     // Open edit modal
     const handleEditPlayer = (player: any) => {
@@ -715,9 +700,6 @@ export default function PlayersScreen() {
                     </View>
                 </TouchableOpacity>
             )}
-
-            {/* Player Input - ALWAYS VISIBLE AT TOP */}
-            <PlayerInput onAddPlayer={handleAddPlayer} />
 
             {/* Player List */}
             <FlatList
@@ -1245,7 +1227,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
     duprInputRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     duprClearBtn: { padding: 8 },
     saveBtn: { backgroundColor: c.accent, borderRadius: 8, padding: 12, marginTop: 24, alignItems: 'center' },
-    saveBtnText: { color: c.accentText, fontSize: 14, fontFamily: FONT_DISPLAY_BOLD },
+    saveBtnText: { color: c.bg, fontSize: 14, fontFamily: FONT_DISPLAY_BOLD },
 
     // Court selector in edit modal
     courtSelector: {

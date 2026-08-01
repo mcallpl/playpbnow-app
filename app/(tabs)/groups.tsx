@@ -674,10 +674,19 @@ export default function HomeScreen() {
       />
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.createBtn} onPress={openCreateModal} disabled={loading}>
-          <Text style={styles.createBtnPlus}>+</Text>
-          <Text style={styles.createBtnText}>NEW GROUP</Text>
-        </TouchableOpacity>
+        <View style={styles.footerRow}>
+          <TouchableOpacity style={styles.createBtn} onPress={openCreateModal} disabled={loading}>
+            <Text style={styles.createBtnPlus}>+</Text>
+            <Text style={styles.createBtnText}>NEW GROUP</Text>
+          </TouchableOpacity>
+          {/* Cross-group roster tools (merge duplicates, edit, claim codes) used
+              to be their own PLAYERS tab. Players are created inside a group,
+              so the tools live under Groups now. */}
+          <TouchableOpacity style={styles.rosterBtn} onPress={() => router.push('/roster')}>
+            <BrandedIcon name="players" size={16} color={colors.text} />
+            <Text style={styles.rosterBtnText}>ALL PLAYERS</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* GROUP MODAL */}
@@ -990,6 +999,24 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   emptySub: { color: c.textMuted, fontSize: 14, fontFamily: FONT_BODY_REGULAR, marginTop: 6 },
 
   footer: { position: 'absolute', bottom: 32, width: '100%', alignItems: 'center' },
+  footerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rosterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: c.border,
+    backgroundColor: c.surface,
+    gap: 6,
+  },
+  rosterBtnText: {
+    fontFamily: FONT_DISPLAY_EXTRABOLD,
+    fontSize: 13,
+    color: c.text,
+    letterSpacing: 0.5,
+  },
   createBtn: {
     flexDirection: 'row',
     alignItems: 'center',

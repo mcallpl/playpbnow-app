@@ -270,7 +270,7 @@ export default function SetupFlow() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.editPlayersBtn}
-              onPress={() => router.push('/(tabs)/players')}
+              onPress={() => router.push('/roster')}
             >
               <BrandedIcon name="groups" size={18} color={colors.textSoft} />
               <Text style={styles.editPlayersBtnText}>ALL PLAYERS</Text>
