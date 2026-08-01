@@ -21,7 +21,6 @@ export interface HistoryModalProps {
     onClose: () => void;
     history: MatchRecord[];
     sessionLabel: string;
-    isGlobal: boolean;
     deviceId: string;
     onDeleteSession: () => void;
     onSaveMatch: (match: MatchRecord, s1: number, s2: number, names: any) => void;
@@ -34,7 +33,6 @@ export function HistoryModal({
     onClose,
     history,
     sessionLabel,
-    isGlobal,
     deviceId,
     onDeleteSession,
     onSaveMatch,
@@ -117,8 +115,8 @@ export function HistoryModal({
         const isEditingThisRow = editTargetId === item._uniqueId;
         const isT1Win = item.s1 > item.s2;
 
-        // GLOBAL mode is always read-only, MINE mode allows editing
-        const canEdit = !isGlobal;
+        // Every session shown belongs to this organizer, so rows are editable.
+        const canEdit = true;
         const displayLabel = item.derivedLabel || 'Game';
 
         if (isEditingThisRow) {

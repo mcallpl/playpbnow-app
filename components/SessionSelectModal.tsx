@@ -27,7 +27,6 @@ interface SessionSelectModalProps {
     selectedId: string;
     onSelectPodium: (session: UniversalSession | 'all') => void; // Text area click
     onSelectHistory: (session: UniversalSession) => void; // Icon click
-    isGlobal: boolean;
     currentDeviceId: string;
 }
 
@@ -38,7 +37,6 @@ export function SessionSelectModal({
     selectedId,
     onSelectPodium,
     onSelectHistory,
-    isGlobal,
     currentDeviceId
 }: SessionSelectModalProps) {
 
@@ -55,8 +53,8 @@ export function SessionSelectModal({
         let showPencil = false;
 
         if (!isAll) {
-            // MINE mode = pencil, GLOBAL mode = eye (always)
-            showPencil = !isGlobal;
+            // Sessions are always the organizer's own now, so always editable.
+            showPencil = true;
         }
 
         return (

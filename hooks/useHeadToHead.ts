@@ -24,8 +24,7 @@ export const useHeadToHead = (
     groupName: string,
     history: MatchRecord[],
     roster: RosterItem[],
-    deviceId: string,
-    isGlobal: boolean
+    deviceId: string
 ) => {
     const [p1, setP1] = useState<RosterItem | null>(null);
     const [p2, setP2] = useState<RosterItem | null>(null);

@@ -22,7 +22,6 @@ interface HeadToHeadProps {
     history: MatchRecord[];
     roster: RosterItem[];
     deviceId: string;
-    isGlobal: boolean;
 }
 
 export default function HeadToHeadModal({
@@ -31,8 +30,7 @@ export default function HeadToHeadModal({
     groupName,
     history,
     roster,
-    deviceId,
-    isGlobal
+    deviceId
 }: HeadToHeadProps) {
     const insets = useSafeAreaInsets();
     const { colors } = useTheme();
@@ -46,7 +44,7 @@ export default function HeadToHeadModal({
         reset,
         getOptionsForP1,
         getOptionsForP2
-    } = useHeadToHead(groupName, history, roster, deviceId, isGlobal);
+    } = useHeadToHead(groupName, history, roster, deviceId);
 
     const [pickingFor, setPickingFor] = useState<'p1'|'p2'|null>(null);
     const [rosterSearch, setRosterSearch] = useState('');
@@ -88,7 +86,7 @@ export default function HeadToHeadModal({
                 </View>
 
                 <Text style={styles.subtitle}>
-                    DATA SOURCE: {isGlobal ? 'GLOBAL' : 'MY ENTRIES'}
+                    DATA SOURCE: MY ENTRIES
                 </Text>
 
                 <View style={styles.selectors}>

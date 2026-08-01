@@ -3,7 +3,11 @@ import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { Alert } from '@/utils/crossAlert';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+// Canonical, same-origin host. The auth interceptor in utils/apiClient.ts only
+// attaches the Bearer token to URLs matching 'playpbnow.com/api', so the legacy
+// peoplestar host would leave these calls unauthenticated and force the server
+// back onto the spoofable user_id query param.
+const API_URL = 'https://playpbnow.com/api';
 
 export interface LeaderboardItem {
   id: string;
@@ -50,7 +54,6 @@ export const useLeaderboardLogic = (
     
     const [selectedBatchId, setSelectedBatchId] = useState('all');
     const [loading, setLoading] = useState(true);
-    const [isGlobal, setIsGlobal] = useState(false); 
     const [deviceId, setDeviceId] = useState(''); // Actually user_id now
     const [sortMode, setSortMode] = useState<'pct' | 'diff' | 'wins'>('pct');
     const [sessionMeta, setSessionMeta] = useState<{ is_fixed_teams?: boolean; tournament_placements?: any[] | null }>({});
@@ -147,10 +150,12 @@ export const useLeaderboardLogic = (
     };
 
     // --- 4. API ACTIONS ---
-    const fetchUniversalSessions = async (uid: string, globalMode: boolean): Promise<UniversalSession[]> => {
+    // Rankings are always the caller's own groups. The old GLOBAL mode sent an
+    // empty user_id to get an unfiltered, database-wide aggregate; both this
+    // endpoint and get_leaderboard.php now require an owning user.
+    const fetchUniversalSessions = async (uid: string): Promise<UniversalSession[]> => {
         try {
-            const userParam = globalMode ? '' : uid;
-            const res = await fetch(`${API_URL}/get_universal_sessions.php?user_id=${encodeURIComponent(userParam)}&is_global=${globalMode}`);
+            const res = await fetch(`${API_URL}/get_universal_sessions.php?user_id=${encodeURIComponent(uid)}`);
             const responseText = await res.text();
             console.log('📥 Sessions response:', responseText);
             const data = JSON.parse(responseText);
@@ -159,7 +164,7 @@ export const useLeaderboardLogic = (
 
                 const finalSessions = sessions.map((s: any) => ({
                     ...s,
-                    isYours: globalMode ? (s.isYours || false) : true
+                    isYours: true
                 }));
 
                 setUniversalSessions(finalSessions);
@@ -168,7 +173,7 @@ export const useLeaderboardLogic = (
                     const latest = finalSessions[0];
                     setGroupName(latest.group);
                     await AsyncStorage.setItem('active_group_name', latest.group);
-                    fetchLeaderboard(latest.group, uid, globalMode, 'all');
+                    fetchLeaderboard(latest.group, uid, 'all');
                 }
                 return finalSessions;
             }
@@ -176,14 +181,13 @@ export const useLeaderboardLogic = (
         return [];
     };
 
-    const fetchLeaderboard = async (targetGroup: string, uid: string, globalMode: boolean, explicitBatchId?: string) => {
+    const fetchLeaderboard = async (targetGroup: string, uid: string, explicitBatchId?: string) => {
         try {
-            const idParam = globalMode ? '' : uid;
             const batchToUse = explicitBatchId !== undefined ? explicitBatchId : selectedBatchId;
-            const url = `${API_URL}/get_leaderboard.php?group=${encodeURIComponent(targetGroup)}&batch_id=${encodeURIComponent(batchToUse)}&user_id=${encodeURIComponent(idParam)}&is_global=${globalMode}`;
-            
-            console.log('📊 Fetching leaderboard:', { globalMode, idParam, url });
-            
+            const url = `${API_URL}/get_leaderboard.php?group=${encodeURIComponent(targetGroup)}&batch_id=${encodeURIComponent(batchToUse)}&user_id=${encodeURIComponent(uid)}`;
+
+            console.log('📊 Fetching leaderboard:', { uid, url });
+
             const res = await fetch(url);
             const data = await res.json();
                        
@@ -263,7 +267,7 @@ export const useLeaderboardLogic = (
             
             if (data.status === 'success') {
                 Alert.alert("Success!", "Match updated!");
-                fetchLeaderboard(groupName, deviceId, isGlobal, selectedBatchId);
+                fetchLeaderboard(groupName, deviceId, selectedBatchId);
             } else {
                 Alert.alert("Update Failed", data.message); 
             }
@@ -298,7 +302,7 @@ export const useLeaderboardLogic = (
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
-                    fetchLeaderboard(groupName, deviceId, isGlobal, selectedBatchId);
+                    fetchLeaderboard(groupName, deviceId, selectedBatchId);
                 } else { Alert.alert("Error", data.message); }
             } catch (e) { Alert.alert("Error", "Network error."); }
             finally { setLoading(false); }
@@ -337,8 +341,8 @@ export const useLeaderboardLogic = (
                 const data = await res.json();
                 if (data.status === 'success') {
                     setSelectedBatchId('all');
-                    fetchLeaderboard(groupName, deviceId, isGlobal, 'all');
-                    fetchUniversalSessions(deviceId, isGlobal);
+                    fetchLeaderboard(groupName, deviceId, 'all');
+                    fetchUniversalSessions(deviceId);
                 } else {
                     Alert.alert("Error", data.message);
                 }
@@ -369,7 +373,6 @@ export const useLeaderboardLogic = (
         universalSessions,
         selectedBatchId, setSelectedBatchId,
         loading, setLoading,
-        isGlobal, setIsGlobal,
         deviceId, setDeviceId,
         sortMode, setSortMode,
         sessionMeta,

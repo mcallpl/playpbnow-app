@@ -9,7 +9,6 @@ import {
     Keyboard,
     RefreshControl,
     StyleSheet,
-    Switch,
     Text,
     TouchableOpacity,
     View
@@ -49,7 +48,6 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       universalSessions,
       selectedBatchId, setSelectedBatchId,
       loading, setLoading,
-      isGlobal, setIsGlobal,
       deviceId, setDeviceId,
       sortMode, setSortMode,
       sessionMeta,
@@ -164,34 +162,9 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [compareModalVisible, setCompareModalVisible] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
-  const [skipBatchReset, setSkipBatchReset] = useState(false);
 
-  // Load saved MINE/GLOBAL preference on mount
-  useEffect(() => {
-      const loadPreference = async () => {
-          const saved = await AsyncStorage.getItem('leaderboard_mode');
-          if (saved === 'global') {
-              setIsGlobal(true);
-          } else if (saved === 'mine') {
-              setIsGlobal(false);
-          }
-      };
-      loadPreference();
-  }, []);
-
-  // Save MINE/GLOBAL preference when it changes
-  useEffect(() => {
-      const savePreference = async () => {
-          await AsyncStorage.setItem('leaderboard_mode', isGlobal ? 'global' : 'mine');
-          // Reset to 'all' when toggling — UNLESS we just came from a finished match
-          if (skipBatchReset) {
-              setSkipBatchReset(false);
-          } else {
-              setSelectedBatchId('all');
-          }
-      };
-      savePreference();
-  }, [isGlobal]);
+  // MINE/GLOBAL preference removed — rankings are always scoped to the
+  // organizer's own playgroups, so there is no mode left to remember.
 
   // --- INIT LOGIC ---
   useFocusEffect(
@@ -199,17 +172,13 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
         if (localHistory && localHistory.length > 0) return;
 
         const init = async () => {
-            const forceGlobal = params.forceGlobal === 'true';
+            // forceGlobal is a legacy param name — it means "coming from a
+            // finished match", not "show global data". Kept for the existing
+            // navigation calls; the branch it selects is unchanged.
+            const cameFromMatch = params.forceGlobal === 'true';
             const incomingSessionId = params.sessionId as string;
 
-            if (forceGlobal) {
-                // CASE: Coming from a finished match — show that specific session in MINE mode
-                if (isGlobal) {
-                    setSkipBatchReset(true);
-                    setIsGlobal(false);
-                    await AsyncStorage.setItem('leaderboard_mode', 'mine');
-                }
-
+            if (cameFromMatch) {
                 let activeGroup = params.groupName as string;
                 if (!activeGroup) {
                     activeGroup = await AsyncStorage.getItem('active_group_name') || '';
@@ -223,41 +192,27 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
                 setSelectedBatchId(batchToUse);
 
                 if (deviceId) {
-                    fetchLeaderboard(activeGroup || '', deviceId, false, batchToUse);
-                    fetchUniversalSessions(deviceId, false);
+                    fetchLeaderboard(activeGroup || '', deviceId, batchToUse);
+                    fetchUniversalSessions(deviceId);
                 }
             } else if (deviceId) {
-                // CASE: Rankings tab click — check if user has their own sessions
+                // CASE: Rankings tab click. A user with no sessions of their own
+                // now simply sees an empty board — the old fallback dropped them
+                // into GLOBAL, which ranked them against organizers they had
+                // never played.
                 setSelectedBatchId('all');
-                const mineSessions = await fetchUniversalSessions(deviceId, false);
+                await fetchUniversalSessions(deviceId);
 
-                if (mineSessions.length > 0) {
-                    // User has matches → MINE + ALL TIME
-                    setSkipBatchReset(true);
-                    setIsGlobal(false);
-                    await AsyncStorage.setItem('leaderboard_mode', 'mine');
-
-                    let activeGroup = await AsyncStorage.getItem('active_group_name') || '';
-                    if (activeGroup) setGroupName(activeGroup);
-                    fetchLeaderboard(activeGroup, deviceId, false, 'all');
-                } else {
-                    // New user (no matches) → GLOBAL + ALL TIME
-                    setSkipBatchReset(true);
-                    setIsGlobal(true);
-                    await AsyncStorage.setItem('leaderboard_mode', 'global');
-
-                    let activeGroup = await AsyncStorage.getItem('active_group_name_global') || '';
-                    if (activeGroup) setGroupName(activeGroup);
-                    fetchLeaderboard(activeGroup || '', deviceId, true, 'all');
-                    fetchUniversalSessions(deviceId, true);
-                }
+                let activeGroup = await AsyncStorage.getItem('active_group_name') || '';
+                if (activeGroup) setGroupName(activeGroup);
+                fetchLeaderboard(activeGroup, deviceId, 'all');
             }
         };
         init();
     }, [params.groupName, params.forceGlobal, params.sessionId, localHistory, deviceId])
   );
 
-  // --- RE-FETCH ON TOGGLE ---
+  // --- RE-FETCH ON SESSION CHANGE ---
   useEffect(() => {
       if (localHistory && localHistory.length > 0) return;
 
@@ -266,30 +221,24 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           const incomingSessionId = params.sessionId as string;
           const batchToUse = incomingSessionId || selectedBatchId;
 
-          // Load the correct group name for the current mode
-          const storageKey = isGlobal ? 'active_group_name_global' : 'active_group_name';
-          const modeGroupName = await AsyncStorage.getItem(storageKey);
+          const storedGroupName = await AsyncStorage.getItem('active_group_name');
 
           // Use stored name if exists, otherwise keep current groupName
-          const nameToUse = modeGroupName || groupName;
+          const nameToUse = storedGroupName || groupName;
 
           if (nameToUse && deviceId) {
-              if (modeGroupName) setGroupName(modeGroupName);
+              if (storedGroupName) setGroupName(storedGroupName);
               setLoading(true);
-              fetchLeaderboard(nameToUse, deviceId, isGlobal, batchToUse);
-              fetchUniversalSessions(deviceId, isGlobal);
+              fetchLeaderboard(nameToUse, deviceId, batchToUse);
+              fetchUniversalSessions(deviceId);
           } else if (deviceId) {
-              if (isGlobal) {
-                  setLoading(true);
-                  fetchLeaderboard('', deviceId, true, batchToUse);
-              }
-              fetchUniversalSessions(deviceId, isGlobal);
-              if (!isGlobal) setLoading(false);
+              fetchUniversalSessions(deviceId);
+              setLoading(false);
           }
       };
 
       refetch();
-  }, [isGlobal, selectedBatchId, localHistory]);
+  }, [selectedBatchId, localHistory]);
 
   const sortedLeaderboard = useMemo(() => {
       let data = [...leaderboard];
@@ -317,14 +266,12 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       setLoading(true);
       if (session === 'all') {
           setSelectedBatchId('all');
-          fetchLeaderboard(groupName, deviceId, isGlobal, 'all');
+          fetchLeaderboard(groupName, deviceId, 'all');
       } else {
           setGroupName(session.group);
           setSelectedBatchId(session.id);
-          // Save group name specific to mode (MINE or GLOBAL)
-          const storageKey = isGlobal ? 'active_group_name_global' : 'active_group_name';
-          await AsyncStorage.setItem(storageKey, session.group);
-          fetchLeaderboard(session.group, deviceId, isGlobal, session.id);
+          await AsyncStorage.setItem('active_group_name', session.group);
+          fetchLeaderboard(session.group, deviceId, session.id);
           // DON'T open history - just show podium/leaderboard
       }
   };
@@ -334,10 +281,8 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       setLoading(true);
       setGroupName(session.group);
       setSelectedBatchId(session.id);
-      // Save group name specific to mode (MINE or GLOBAL)
-      const storageKey = isGlobal ? 'active_group_name_global' : 'active_group_name';
-      await AsyncStorage.setItem(storageKey, session.group);
-      fetchLeaderboard(session.group, deviceId, isGlobal, session.id);
+      await AsyncStorage.setItem('active_group_name', session.group);
+      fetchLeaderboard(session.group, deviceId, session.id);
       setHistoryModalVisible(true); // Open game history
   };
 
@@ -351,7 +296,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   const checkDeleteSessionPermission = () => {
       if (localHistory && localHistory.length > 0) return false;
       const currentSession = universalSessions.find((s: any) => s.id === selectedBatchId);
-      return selectedBatchId !== 'all' && (!isGlobal || isSessionOwner(currentSession));
+      return selectedBatchId !== 'all' && isSessionOwner(currentSession);
   };
 
   const isSessionOwner = (session: any) => {
@@ -498,18 +443,6 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
         <View style={{alignItems:'center', gap: 5}}>
             <Text style={styles.title}>GAME STATS</Text>
 
-            <View style={styles.toggleRow}>
-                <Text style={[styles.toggleLabel, !isGlobal && styles.activeLabel]}>MINE</Text>
-                <Switch
-                    value={isGlobal}
-                    onValueChange={setIsGlobal}
-                    trackColor={{false: colors.textMuted, true: colors.accent}}
-                    thumbColor={colors.text}
-                    style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-                />
-                <Text style={[styles.toggleLabel, isGlobal && styles.activeLabel]}>GLOBAL</Text>
-            </View>
-
             <View style={styles.sortRow}>
                 <TouchableOpacity onPress={() => setSortMode('wins')} style={[styles.sortBtn, sortMode === 'wins' && styles.sortBtnActive]}>
                     <Text style={[styles.sortBtnText, sortMode === 'wins' && styles.sortBtnTextActive]}>WINS</Text>
@@ -534,7 +467,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
       </View>
 
       <TouchableOpacity onPress={() => {
-          fetchUniversalSessions(deviceId, isGlobal);
+          fetchUniversalSessions(deviceId);
           setFilterModalVisible(true);
       }} style={styles.dateBar}>
           <Text style={styles.dateBarText}>
@@ -553,7 +486,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             alwaysBounceHorizontal={false}
             contentContainerStyle={{padding: 16, paddingBottom: 100}}
             ListEmptyComponent={<Text style={styles.empty}>{sortedTeamLeaderboard.length === 0 ? "No data found." : ""}</Text>}
-            refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchLeaderboard} />}
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={() => fetchLeaderboard(groupName, deviceId, selectedBatchId)} />}
         />
       ) : (
         <FlatList
@@ -564,7 +497,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             alwaysBounceHorizontal={false}
             contentContainerStyle={{padding: 16, paddingBottom: 100}}
             ListEmptyComponent={<Text style={styles.empty}>{leaderboard.length === 0 ? "No data found." : ""}</Text>}
-            refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchLeaderboard} />}
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={() => fetchLeaderboard(groupName, deviceId, selectedBatchId)} />}
         />
       )}
 
@@ -576,7 +509,6 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           selectedId={selectedBatchId}
           onSelectPodium={handleSessionSelectPodium}
           onSelectHistory={handleSessionSelectHistory}
-          isGlobal={isGlobal}
           currentDeviceId={deviceId}
       />
 
@@ -585,7 +517,6 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           onClose={() => setHistoryModalVisible(false)}
           history={history}
           sessionLabel={getActiveFilterLabel()}
-          isGlobal={isGlobal}
           deviceId={deviceId}
           onDeleteSession={deleteSession}
           onSaveMatch={saveMatchUpdate}
@@ -600,7 +531,6 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           history={history}
           roster={roster}
           deviceId={deviceId}
-          isGlobal={isGlobal}
       />
 
     </SafeAreaView>
@@ -611,9 +541,6 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg },
   header: { padding: 16, paddingTop: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: c.surface },
   title: { color: c.accent, fontSize: 12, fontFamily: FONT_DISPLAY_EXTRABOLD, textTransform: 'uppercase', textAlign:'center', marginBottom: 8 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  toggleLabel: { color: c.textMuted, fontFamily: FONT_BODY_BOLD, fontSize: 11 },
-  activeLabel: { color: c.text },
   sortRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   sortBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: c.surfaceLight },
   sortBtnActive: { backgroundColor: isDark ? c.text : c.card, borderWidth: 1, borderColor: c.border },
