@@ -111,6 +111,10 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
                     subscriptionStatus: data.subscription.subscriptionStatus,
                     expiryDate: data.subscription.expiryDate,
                     trialStartDate: data.subscription.trialStartDate,
+                    // Older API builds omit this; absent means "already started",
+                    // which keeps the previous behaviour rather than showing every
+                    // existing trial as unstarted.
+                    trialStarted: data.subscription.trialStarted ?? true,
                     trialDaysRemaining: data.subscription.trialDaysRemaining,
                     trialExpired: data.subscription.trialExpired,
                     isPro: data.subscription.isPro,

@@ -216,7 +216,13 @@ jobs:
           #   api      — the PHP backend (deployed separately below)
           #   reports  — user-generated match report images (shared-link targets;
           #              deleting these 404s every already-shared invite link)
-          rsync -avz --delete --exclude='api' --exclude='reports' --exclude='shared' --include=".htaccess" \
+          #   videos   — how-to videos served to the Help tab. Uploaded out of
+          #              band (they are large binaries, not part of the web
+          #              bundle), so --delete removed the whole directory on the
+          #              first deploy after they were added. Nothing 404s when
+          #              that happens either: the nginx SPA fallback answers 200
+          #              with app.html, so the videos just silently stop playing.
+          rsync -avz --delete --exclude='api' --exclude='reports' --exclude='shared' --exclude='videos' --include=".htaccess" \
             -e "ssh -i ~/.ssh/deploy_key" \
             dist/ \
             ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:/var/www/html/PlayPBNow/

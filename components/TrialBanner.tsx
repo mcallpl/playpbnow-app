@@ -13,6 +13,28 @@ export const TrialBanner: React.FC = () => {
 
     if (dismissed || isAdmin) return null;
 
+    // Trial not started yet: the clock begins on the first saved match, so
+    // showing "30 days remaining" here would imply it is already counting down.
+    const trialStarted = subscription?.trialStarted ?? true;
+    if (isTrial && !trialStarted) {
+        return (
+            <View style={[styles.banner, styles.trialBanner]}>
+                <View style={styles.bannerContent}>
+                    <BrandedIcon name="star" size={18} color={colors.text} />
+                    <Text style={styles.bannerText}>
+                        {`Pro Trial \u2014 your ${trialDaysRemaining} days start with your first match`}
+                    </Text>
+                    <TouchableOpacity style={styles.subscribeBtn} onPress={() => showPaywall('Your Pro trial includes all premium features!')}>
+                        <Text style={styles.subscribeBtnText}>Learn More</Text>
+                    </TouchableOpacity>
+                </View>
+                <TouchableOpacity style={styles.dismissBtn} onPress={() => setDismissed(true)}>
+                    <BrandedIcon name="close" size={16} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
     // Show trial banner during active trial
     if (isTrial && trialDaysRemaining > 0) {
         const isUrgent = trialDaysRemaining <= 3;

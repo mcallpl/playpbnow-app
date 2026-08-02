@@ -14,6 +14,9 @@ export interface SubscriptionData {
     subscriptionStatus: string;
     expiryDate: string | null;
     trialStartDate: string | null;
+    /** False until the user's first saved session — the trial clock is
+     *  usage-triggered, not started at registration. See api/trial.php. */
+    trialStarted: boolean;
     trialDaysRemaining: number;
     trialExpired: boolean;
     isPro: boolean;
