@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_SEMIBOLD, FONT_BODY_BOLD } from '../../constants/theme';
 import { BrandedIcon } from '../../components/BrandedIcon';
+import { HelpVideoStrip } from '../../components/HelpVideoStrip';
 import { HELP_TOPICS, HelpTopic } from '../../utils/helpContent';
 import { useAuth } from '../../hooks/useAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -220,6 +221,11 @@ export default function HelpScreen() {
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
+          {/* Videos sit above the topic accordions, and only when the user
+              isn't searching — a search is a request for a specific answer, and
+              the strip would push the results off screen. */}
+          {!searchQuery ? <HelpVideoStrip /> : null}
+
           {Object.entries(filteredTopics).map(([category, topics]) => (
             <View key={category} style={styles.categorySection}>
               {/* Category Header */}
