@@ -98,7 +98,9 @@ export default function HomeScreen() {
   const [newCourtState, setNewCourtState] = useState('');
   const [savingCourt, setSavingCourt] = useState(false);
 
-  const backgroundRefreshIntervalRef = useRef<NodeJS.Timeout>();
+  // ReturnType<typeof setInterval> rather than NodeJS.Timeout: on web/RN this is
+  // a number, not a Node Timeout, and useRef needs an explicit initial value.
+  const backgroundRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useFocusEffect(
     useCallback(() => {
