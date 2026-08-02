@@ -34,7 +34,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
     slug: 'm1-quick-tour-v2',
     title: 'Quick Tour',
     blurb: 'A fast walk through the whole app',
-    seconds: 25,
+    seconds: 21,
   },
   {
     slug: 'm2-groups',
