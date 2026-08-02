@@ -166,7 +166,10 @@ export function useApiMultiple<T extends Record<string, any>>(
         if (result.status === 'fulfilled') {
           const { key, result: value, error: err } = result.value;
           if (value) {
-            newData[key] = value;
+            // apiClient.request returns untyped JSON, so TS cannot prove this
+            // matches T[keyof T]. The caller declares the shape via the hook's
+            // generic; this cast is where that assertion is made explicit.
+            newData[key] = value as T[keyof T];
             delete newErrors[key];
           }
           if (err) {

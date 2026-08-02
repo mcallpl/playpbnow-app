@@ -8,8 +8,16 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   clear: jest.fn(),
 }));
 
-// Mock React Native modules
-jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
+// Mock React Native modules.
+// NativeAnimatedHelper moved in newer React Native versions, so mocking it by
+// its old path throws "module not found" and takes every suite down with it.
+// jest-expo already mocks the native animation layer, so this is only a
+// belt-and-braces guard for RN versions that still expose the old path.
+try {
+  jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
+} catch {
+  // path no longer exists in this RN version — jest-expo has it covered
+}
 
 // Mock fetch globally
 global.fetch = jest.fn();

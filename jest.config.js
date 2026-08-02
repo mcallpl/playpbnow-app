@@ -1,15 +1,15 @@
 module.exports = {
-  preset: 'react-native',
-  testEnvironment: 'node',
+  // jest-expo, not 'react-native': the bare RN preset does not strip Flow types
+  // out of react-native's own jest/setup.js, so every suite died at parse time
+  // before a single test ran. jest-expo is the supported preset for Expo apps
+  // and handles the node_modules transform correctly.
+  preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testMatch: [
     '**/__tests__/**/*.test.[jt]s?(x)',
     '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  transformIgnorePatterns: [
-    'node_modules/(?!(react-native|expo|expo-modules-core)/)',
-  ],
   collectCoverageFrom: [
     'lib/**/*.{ts,tsx}',
     'hooks/**/*.{ts,tsx}',

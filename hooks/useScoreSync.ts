@@ -15,7 +15,9 @@ export function useScoreSync({ isCollaborator, shareCode, setScores }: ScoreSync
     useEffect(() => {
         if (!isCollaborator || !shareCode) return;
 
-        let pollInterval: NodeJS.Timeout | null = null;
+        // ReturnType<typeof setInterval>, not NodeJS.Timeout: on web/RN this is a
+        // number. Same mismatch previously fixed in groups.tsx.
+        let pollInterval: ReturnType<typeof setInterval> | null = null;
         let pollCount = 0;
         let consecutiveErrors = 0;
         const MAX_CONSECUTIVE_ERRORS = 3;
