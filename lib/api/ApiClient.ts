@@ -292,8 +292,17 @@ export class ApiClient {
       } catch (err) {
         lastError = err as Error;
 
-        // Don't retry on client errors (4xx) unless it's 429
-        if (err instanceof ApiError && err.statusCode >= 400 && err.statusCode !== 429) {
+        // Don't retry on client errors (4xx) unless it's 429.
+        // The upper bound matters: without `< 500` this also caught server
+        // errors, so 5xx was never retried — the exact opposite of the intent
+        // stated above, and of what request() advertises with its retryCount
+        // option. A transient 502 from the API failed on the first attempt.
+        if (
+          err instanceof ApiError &&
+          err.statusCode >= 400 &&
+          err.statusCode < 500 &&
+          err.statusCode !== 429
+        ) {
           throw err;
         }
 

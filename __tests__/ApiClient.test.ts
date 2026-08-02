@@ -3,8 +3,10 @@
  * Comprehensive tests for singleton API client functionality
  */
 
-import ApiClient from '../lib/api/ApiClient';
-import * as AsyncStorage from '@react-native-async-storage/async-storage';
+// The DEFAULT export is the singleton INSTANCE (`export default
+// ApiClient.getInstance()`), which has no .getInstance(). The class does.
+import { ApiClient } from '../lib/api/ApiClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ApiError,
   ValidationError,
@@ -147,7 +149,7 @@ describe('ApiClient', () => {
     });
 
     it('throws ApiError on 400 response', async () => {
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 400,
         text: async () => JSON.stringify({
@@ -156,11 +158,11 @@ describe('ApiClient', () => {
         }),
       } as Response);
 
-      await expect(ApiClient.getInstance().get('/api/test')).rejects.toThrow(ApiError);
+      await expect(ApiClient.getInstance().get('/api/test', { retryCount: 0 })).rejects.toThrow(ApiError);
     });
 
     it('throws NotFoundError on 404 response', async () => {
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 404,
         text: async () => JSON.stringify({
@@ -169,13 +171,13 @@ describe('ApiClient', () => {
         }),
       } as Response);
 
-      await expect(ApiClient.getInstance().get('/api/players/999')).rejects.toThrow(
+      await expect(ApiClient.getInstance().get('/api/players/999', { retryCount: 0 })).rejects.toThrow(
         NotFoundError
       );
     });
 
     it('throws ValidationError on 422 with field errors', async () => {
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 422,
         text: async () => JSON.stringify({
@@ -189,7 +191,7 @@ describe('ApiClient', () => {
       } as Response);
 
       try {
-        await ApiClient.getInstance().post('/api/players', {});
+        await ApiClient.getInstance().post('/api/players', {}, { retryCount: 0 });
         fail('Should have thrown ValidationError');
       } catch (error) {
         expect(error).toBeInstanceOf(ValidationError);
@@ -201,7 +203,7 @@ describe('ApiClient', () => {
     });
 
     it('throws AuthError on 401 response', async () => {
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 401,
         text: async () => JSON.stringify({
@@ -210,11 +212,11 @@ describe('ApiClient', () => {
         }),
       } as Response);
 
-      await expect(ApiClient.getInstance().get('/api/protected')).rejects.toThrow(AuthError);
+      await expect(ApiClient.getInstance().get('/api/protected', { retryCount: 0 })).rejects.toThrow(AuthError);
     });
 
     it('throws RateLimitError on 429 response', async () => {
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 429,
         headers: new Map([['Retry-After', '60']]),
@@ -225,7 +227,7 @@ describe('ApiClient', () => {
       } as Response);
 
       try {
-        await ApiClient.getInstance().get('/api/test');
+        await ApiClient.getInstance().get('/api/test', { retryCount: 0 });
         fail('Should have thrown RateLimitError');
       } catch (error) {
         expect(error).toBeInstanceOf(RateLimitError);
@@ -234,7 +236,7 @@ describe('ApiClient', () => {
     });
 
     it('throws ApiError on 5xx response', async () => {
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
         text: async () => JSON.stringify({
@@ -243,13 +245,13 @@ describe('ApiClient', () => {
         }),
       } as Response);
 
-      await expect(ApiClient.getInstance().get('/api/test')).rejects.toThrow(ApiError);
+      await expect(ApiClient.getInstance().get('/api/test', { retryCount: 0 })).rejects.toThrow(ApiError);
     });
 
     it('throws NetworkError on network failure', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network request failed'));
+      mockFetch.mockRejectedValue(new Error('Network request failed'));
 
-      await expect(ApiClient.getInstance().get('/api/test')).rejects.toThrow();
+      await expect(ApiClient.getInstance().get('/api/test', { retryCount: 0 })).rejects.toThrow();
     });
   });
 
@@ -293,6 +295,9 @@ describe('ApiClient', () => {
     });
 
     it('stops retrying after max retries', async () => {
+      // The previous test's backoff can still be in flight when this starts,
+      // leaking a fetch into the count; beforeEach clears too early to catch it.
+      mockFetch.mockClear();
       mockFetch.mockRejectedValue(new Error('Network error'));
 
       await expect(
@@ -400,20 +405,29 @@ describe('ApiClient', () => {
     it('respects timeout option', async () => {
       jest.useFakeTimers();
 
+      // The mock must honour init.signal. Without it, aborting the controller
+      // does nothing, the promise never settles, and the test dies on Jest's
+      // own 5s timeout rather than exercising the client's timeout at all.
       mockFetch.mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            setTimeout(() => {
+        (_url: any, init: any) =>
+          new Promise((resolve, reject) => {
+            const t = setTimeout(() => {
               resolve({
                 ok: true,
                 status: 200,
                 text: async () => JSON.stringify({ status: 'success', data: {} }),
               } as Response);
             }, 5000);
+            init?.signal?.addEventListener?.('abort', () => {
+              clearTimeout(t);
+              const err = new Error('The operation was aborted');
+              err.name = 'AbortError';
+              reject(err);
+            });
           })
       );
 
-      const promise = ApiClient.getInstance().get('/api/test', { timeout: 1000 });
+      const promise = ApiClient.getInstance().get('/api/test', { timeout: 1000, retryCount: 0 });
 
       jest.advanceTimersByTime(1100);
 
