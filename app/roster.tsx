@@ -1227,7 +1227,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
     duprInputRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     duprClearBtn: { padding: 8 },
     saveBtn: { backgroundColor: c.accent, borderRadius: 8, padding: 12, marginTop: 24, alignItems: 'center' },
-    saveBtnText: { color: c.bg, fontSize: 14, fontFamily: FONT_DISPLAY_BOLD },
+    saveBtnText: { color: c.accentText, fontSize: 14, fontFamily: FONT_DISPLAY_BOLD },
 
     // Court selector in edit modal
     courtSelector: {

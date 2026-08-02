@@ -8,6 +8,12 @@ export const Colors = {
     card: '#1e3a5f',
     cardHover: '#254570',
     accent: '#87ca37',
+    // Text/icon colour for content sitting ON an accent background. 13 call
+    // sites across 6 screens already referenced `accentText`; the key was never
+    // added, so every one of them rendered with an undefined colour. Deliberately
+    // dark in BOTH themes: the accent is a mid-green in each, so dark text gives
+    // ~9:1 contrast while a light value would give roughly 2.6:1 and fail.
+    accentText: '#0f1b2d',
     accentGlow: 'rgba(135, 202, 55, 0.15)',
     accentSoft: 'rgba(135, 202, 55, 0.08)',
     secondary: '#6c5ce7',
@@ -43,6 +49,9 @@ export const Colors = {
     card: '#ffffff',
     cardHover: '#f8f9fb',
     accent: '#6db82c',
+    // Dark here too — NOT the light `bg`. On #6db82c a near-white label is about
+    // 2.6:1 (unreadable); this near-black is about 7:1.
+    accentText: '#1a1d26',
     accentGlow: 'rgba(109, 184, 44, 0.12)',
     accentSoft: 'rgba(109, 184, 44, 0.06)',
     secondary: '#6c5ce7',
