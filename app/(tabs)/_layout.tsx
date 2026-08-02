@@ -89,13 +89,18 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      {/* INVITES hidden pending the rebuild as anonymous criteria "requests".
+          The screen and every endpoint, table and RSVP page behind it are kept
+          intact — the request/claim model reuses match_invites, invite_responses
+          and invite.html. Hiding, not deleting, so this is a one-line reversal.
+          Two reasons it comes out now rather than later: the player picker
+          exposed a browsable directory of 528 real pool members to any paying
+          user, and the admin iMessage path reported "Invites Sent" for messages
+          that were never delivered. */}
       <Tabs.Screen
         name="invites"
         options={{
-          title: 'INVITES',
-          tabBarIcon: ({ color }) => (
-            <BrandedIcon name="send" size={24} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
