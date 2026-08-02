@@ -445,7 +445,7 @@ export default function HomeScreen() {
     setDeleteLoading(false);
   };
 
-  const appVersion = Constants.expoConfig?.version || '1.4.3';
+  const appVersion = Constants.expoConfig?.version || '1.4.4';
 
   const totalPlayers = groups.reduce((sum, g) => sum + (g.count || 0), 0);
 
