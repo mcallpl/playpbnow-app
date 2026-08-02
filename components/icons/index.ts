@@ -12,5 +12,9 @@ export {
   CheckboxIcon, CheckboxEmptyIcon, GenderMaleIcon, GenderFemaleIcon,
   ThemeToggleIcon, PersonAddIcon, RefreshIcon, GameControllerIcon,
   DocumentIcon, LayersIcon, StatsChartIcon, HeadsetIcon, RocketIcon,
-  TennisballIcon, StarIcon, ChatIcon, SendIcon,
+  // Was TennisballIcon — utility.tsx renamed it to PickleballIcon (no tennis
+  // balls in this app) but this barrel was never updated, so it re-exported a
+  // name that does not exist while failing to export the one that does.
+  // BrandedIcon keeps `tennisball` as a legacy alias onto the same glyph.
+  PickleballIcon, StarIcon, ChatIcon, SendIcon,
 } from './utility';
