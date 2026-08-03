@@ -40,22 +40,22 @@ describe('Setup Screen', () => {
     it('allows photo selection', async () => {
       render(<SetupScreen initialStep={0} />);
 
-      const uploadButton = screen.getByTestID('upload-photo');
+      const uploadButton = screen.getByTestId('upload-photo');
       fireEvent.press(uploadButton);
 
       await waitFor(() => {
-        expect(screen.getByTestID('photo-preview')).toBeTruthy();
+        expect(screen.getByTestId('photo-preview')).toBeTruthy();
       });
     });
 
     it('navigates to next step after photo selection', async () => {
       render(<SetupScreen initialStep={0} />);
 
-      const uploadButton = screen.getByTestID('upload-photo');
+      const uploadButton = screen.getByTestId('upload-photo');
       fireEvent.press(uploadButton);
 
       await waitFor(() => {
-        const nextButton = screen.getByTestID('next-step');
+        const nextButton = screen.getByTestId('next-step');
         fireEvent.press(nextButton);
       });
 
@@ -66,7 +66,7 @@ describe('Setup Screen', () => {
       // Simulate permission denied
       render(<SetupScreen initialStep={0} />);
 
-      const uploadButton = screen.getByTestID('upload-photo');
+      const uploadButton = screen.getByTestId('upload-photo');
       fireEvent.press(uploadButton);
 
       await waitFor(() => {
@@ -79,16 +79,16 @@ describe('Setup Screen', () => {
     it('renders profile form', () => {
       render(<SetupScreen initialStep={1} />);
 
-      expect(screen.getByTestID('first-name-input')).toBeTruthy();
-      expect(screen.getByTestID('last-name-input')).toBeTruthy();
-      expect(screen.getByTestID('email-input')).toBeTruthy();
-      expect(screen.getByTestID('phone-input')).toBeTruthy();
+      expect(screen.getByTestId('first-name-input')).toBeTruthy();
+      expect(screen.getByTestId('last-name-input')).toBeTruthy();
+      expect(screen.getByTestId('email-input')).toBeTruthy();
+      expect(screen.getByTestId('phone-input')).toBeTruthy();
     });
 
     it('validates required profile fields', async () => {
       render(<SetupScreen initialStep={1} />);
 
-      const nextButton = screen.getByTestID('next-step');
+      const nextButton = screen.getByTestId('next-step');
       fireEvent.press(nextButton);
 
       await waitFor(() => {
@@ -99,10 +99,10 @@ describe('Setup Screen', () => {
     it('validates email format', async () => {
       render(<SetupScreen initialStep={1} />);
 
-      const emailInput = screen.getByTestID('email-input');
+      const emailInput = screen.getByTestId('email-input');
       fireEvent.changeText(emailInput, 'invalid-email');
 
-      const nextButton = screen.getByTestID('next-step');
+      const nextButton = screen.getByTestId('next-step');
       fireEvent.press(nextButton);
 
       await waitFor(() => {
@@ -113,10 +113,10 @@ describe('Setup Screen', () => {
     it('validates phone format', async () => {
       render(<SetupScreen initialStep={1} />);
 
-      const phoneInput = screen.getByTestID('phone-input');
+      const phoneInput = screen.getByTestId('phone-input');
       fireEvent.changeText(phoneInput, '123');
 
-      const nextButton = screen.getByTestID('next-step');
+      const nextButton = screen.getByTestId('next-step');
       fireEvent.press(nextButton);
 
       await waitFor(() => {
@@ -127,12 +127,12 @@ describe('Setup Screen', () => {
     it('allows navigation with valid profile data', async () => {
       render(<SetupScreen initialStep={1} />);
 
-      fireEvent.changeText(screen.getByTestID('first-name-input'), 'John');
-      fireEvent.changeText(screen.getByTestID('last-name-input'), 'Doe');
-      fireEvent.changeText(screen.getByTestID('email-input'), 'john@example.com');
-      fireEvent.changeText(screen.getByTestID('phone-input'), '5551234567');
+      fireEvent.changeText(screen.getByTestId('first-name-input'), 'John');
+      fireEvent.changeText(screen.getByTestId('last-name-input'), 'Doe');
+      fireEvent.changeText(screen.getByTestId('email-input'), 'john@example.com');
+      fireEvent.changeText(screen.getByTestId('phone-input'), '5551234567');
 
-      const nextButton = screen.getByTestID('next-step');
+      const nextButton = screen.getByTestId('next-step');
       fireEvent.press(nextButton);
 
       await waitFor(() => {
@@ -151,24 +151,24 @@ describe('Setup Screen', () => {
     it('requests geolocation permission', async () => {
       render(<SetupScreen initialStep={2} />);
 
-      const useCurrentButton = screen.getByTestID('use-current-location');
+      const useCurrentButton = screen.getByTestId('use-current-location');
       fireEvent.press(useCurrentButton);
 
       await waitFor(() => {
-        expect(screen.getByTestID('location-status')).toBeTruthy();
+        expect(screen.getByTestId('location-status')).toBeTruthy();
       });
     });
 
     it('allows manual location entry', async () => {
       render(<SetupScreen initialStep={2} />);
 
-      const cityInput = screen.getByTestID('city-input');
-      const stateInput = screen.getByTestID('state-input');
+      const cityInput = screen.getByTestId('city-input');
+      const stateInput = screen.getByTestId('state-input');
 
       fireEvent.changeText(cityInput, 'New York');
       fireEvent.changeText(stateInput, 'NY');
 
-      const nextButton = screen.getByTestID('next-step');
+      const nextButton = screen.getByTestId('next-step');
       fireEvent.press(nextButton);
 
       await waitFor(() => {
@@ -188,7 +188,7 @@ describe('Setup Screen', () => {
     it('selects play level', async () => {
       render(<SetupScreen initialStep={3} />);
 
-      const advancedButton = screen.getByTestID('play-level-advanced');
+      const advancedButton = screen.getByTestId('play-level-advanced');
       fireEvent.press(advancedButton);
 
       await waitFor(() => {
@@ -199,9 +199,9 @@ describe('Setup Screen', () => {
     it('selects multiple days', async () => {
       render(<SetupScreen initialStep={3} />);
 
-      const mondayButton = screen.getByTestID('day-monday');
-      const wednesdayButton = screen.getByTestID('day-wednesday');
-      const fridayButton = screen.getByTestID('day-friday');
+      const mondayButton = screen.getByTestId('day-monday');
+      const wednesdayButton = screen.getByTestId('day-wednesday');
+      const fridayButton = screen.getByTestId('day-friday');
 
       fireEvent.press(mondayButton);
       fireEvent.press(wednesdayButton);
@@ -217,7 +217,7 @@ describe('Setup Screen', () => {
     it('allows deselection of days', async () => {
       render(<SetupScreen initialStep={3} />);
 
-      const mondayButton = screen.getByTestID('day-monday');
+      const mondayButton = screen.getByTestId('day-monday');
 
       fireEvent.press(mondayButton);
       fireEvent.press(mondayButton);
@@ -255,11 +255,11 @@ describe('Setup Screen', () => {
     it('allows editing previous steps', async () => {
       render(<SetupScreen initialStep={4} />);
 
-      const editButton = screen.getByTestID('edit-profile');
+      const editButton = screen.getByTestId('edit-profile');
       fireEvent.press(editButton);
 
       await waitFor(() => {
-        expect(screen.getByTestID('first-name-input')).toBeTruthy();
+        expect(screen.getByTestId('first-name-input')).toBeTruthy();
       });
     });
 
@@ -276,7 +276,7 @@ describe('Setup Screen', () => {
 
       render(<SetupScreen initialStep={4} />);
 
-      const submitButton = screen.getByTestID('complete-setup');
+      const submitButton = screen.getByTestId('complete-setup');
       fireEvent.press(submitButton);
 
       await waitFor(() => {
@@ -289,7 +289,7 @@ describe('Setup Screen', () => {
     it('allows back navigation', async () => {
       render(<SetupScreen initialStep={2} />);
 
-      const backButton = screen.getByTestID('previous-step');
+      const backButton = screen.getByTestId('previous-step');
       fireEvent.press(backButton);
 
       await waitFor(() => {
@@ -300,7 +300,7 @@ describe('Setup Screen', () => {
     it('prevents going before first step', async () => {
       render(<SetupScreen initialStep={0} />);
 
-      const backButton = screen.queryByTestID('previous-step');
+      const backButton = screen.queryByTestId('previous-step');
 
       expect(backButton).toBeFalsy();
     });
@@ -314,7 +314,7 @@ describe('Setup Screen', () => {
     it('skips optional steps', async () => {
       render(<SetupScreen initialStep={2} />);
 
-      const skipButton = screen.getByTestID('skip-step');
+      const skipButton = screen.getByTestId('skip-step');
       fireEvent.press(skipButton);
 
       await waitFor(() => {
@@ -337,7 +337,7 @@ describe('Setup Screen', () => {
 
       render(<SetupScreen initialStep={4} />);
 
-      const submitButton = screen.getByTestID('complete-setup');
+      const submitButton = screen.getByTestId('complete-setup');
       fireEvent.press(submitButton);
 
       await waitFor(() => {
@@ -366,14 +366,14 @@ describe('Setup Screen', () => {
 
       render(<SetupScreen initialStep={4} />);
 
-      const submitButton = screen.getByTestID('complete-setup');
+      const submitButton = screen.getByTestId('complete-setup');
       fireEvent.press(submitButton);
 
       await waitFor(() => {
         expect(screen.getByText(/error/i)).toBeTruthy();
       });
 
-      const retryButton = screen.getByTestID('retry-button');
+      const retryButton = screen.getByTestId('retry-button');
       fireEvent.press(retryButton);
 
       await waitFor(() => {
@@ -386,17 +386,17 @@ describe('Setup Screen', () => {
     it('preserves data when navigating back', async () => {
       render(<SetupScreen initialStep={1} />);
 
-      fireEvent.changeText(screen.getByTestID('first-name-input'), 'John');
+      fireEvent.changeText(screen.getByTestId('first-name-input'), 'John');
 
-      const nextButton = screen.getByTestID('next-step');
+      const nextButton = screen.getByTestId('next-step');
       fireEvent.press(nextButton);
 
       await waitFor(() => {
-        const backButton = screen.getByTestID('previous-step');
+        const backButton = screen.getByTestId('previous-step');
         fireEvent.press(backButton);
       });
 
-      expect(screen.getByTestID('first-name-input').props.value).toBe('John');
+      expect(screen.getByTestId('first-name-input').props.value).toBe('John');
     });
   });
 });

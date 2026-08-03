@@ -1,0 +1,58 @@
+appId: com.mcallpl.PlayPBNow
+---
+- launchApp:
+    clearState: true
+- tapOn: "Email or phone number"
+- inputText: "9497359415"
+- tapOn: "EMAIL OR PHONE"      # ← static label, dismisses keyboard
+- tapOn: "Your password"
+- inputText: "amazing123"
+- tapOn: "PASSWORD"            # ← same trick
+- tapOn: "SIGN IN"
+- tapOn: "Test Group.*"
+  # alternatives: CHIP · 10 GROUPS · 124 PLAYERS | +, NEW GROUP | Friday Night Crew, 16, 9 Male,
+- extendedWaitUntil:
+    visible: "TEST GROUP"
+    timeout: 10000
+
+  # LOW CONFIDENCE — verify this one
+- tapOn: "SAVE"
+  # alternatives: 8 M | 8 F | ROTATING PARTNERS
+- extendedWaitUntil:
+    visible: "MATCH SETUP"
+    timeout: 10000
+
+  # LOW CONFIDENCE — verify this one
+- tapOn: "ROUNDS:"
+  # alternatives: MIXED | GENDER | MIXER
+- extendedWaitUntil:
+    visible: "TEST GROUP"
+    timeout: 10000
+
+  # LOW CONFIDENCE — verify this one
+- tapOn: "PLAY TO:"
+  # alternatives: ADD PLAYER | ROUND 1 (SAME GENDER) | VS
+- extendedWaitUntil:
+    visible: "GENERATE HD REPORT"
+    timeout: 10000
+
+  # LOW CONFIDENCE — verify this one
+- tapOn: "1 Daisy"
+  # alternatives: Wed, Jul 29 | 9:30 PM on Wednesday, July 29,
+- extendedWaitUntil:
+    visible: "GENERATE HD REPORT"
+    timeout: 10000
+
+  # LOW CONFIDENCE — verify this one
+- tapOn: "Test Group"
+  # alternatives: 7:00 PM on Saturday, August 1,
+- extendedWaitUntil:
+    visible: "GENERATE HD REPORT"
+    timeout: 10000
+
+  # LOW CONFIDENCE — verify this one
+- tapOn: "REFRESH PREVIEW"
+  # alternatives: CANCEL | SHARE NOW | Match Title
+- extendedWaitUntil:
+    visible: "TEST GROUP"
+    timeout: 10000

@@ -4,14 +4,17 @@
  */
 
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { BrandedIcon } from './BrandedIcon';
 
 interface LoadingBoundaryProps {
-  isLoading: boolean;
+  isLoading?: boolean;
   error?: Error | null;
+  /** Renders the empty state instead of children — e.g. a group with no players. */
+  isEmpty?: boolean;
   skeleton?: React.ReactNode;
   errorFallback?: React.ReactNode;
+  emptyFallback?: React.ReactNode;
   children: React.ReactNode;
   onRetry?: () => void;
 }
@@ -29,21 +32,33 @@ interface LoadingBoundaryProps {
  * </LoadingBoundary>
  */
 export function LoadingBoundary({
-  isLoading,
+  isLoading = false,
   error,
+  isEmpty = false,
   skeleton,
   errorFallback,
+  emptyFallback,
   children,
   onRetry,
 }: LoadingBoundaryProps) {
-  // Show loading skeleton
-  if (isLoading && !children) {
-    return skeleton || <DefaultLoadingSpinner />;
+  // Show loading skeleton.
+  // The guard used to be `isLoading && !children`, which meant the skeleton only
+  // appeared when there was nothing to replace it with — every real caller
+  // passes children, so the skeleton never rendered at all. Loading also has to
+  // win over error, or a retry that fails once leaves the error on screen while
+  // the next attempt is already in flight.
+  if (isLoading) {
+    return <>{skeleton || <DefaultLoadingSpinner />}</>;
   }
 
   // Show error state
   if (error) {
-    return errorFallback || <DefaultErrorFallback error={error} onRetry={onRetry} />;
+    return <>{errorFallback || <DefaultErrorFallback error={error} onRetry={onRetry} />}</>;
+  }
+
+  // Show empty state
+  if (isEmpty) {
+    return <>{emptyFallback || <DefaultEmptyState />}</>;
   }
 
   // Show children
@@ -55,9 +70,20 @@ export function LoadingBoundary({
  */
 function DefaultLoadingSpinner() {
   return (
-    <View style={styles.loadingContainer}>
+    <View testID="default-skeleton" style={styles.loadingContainer}>
       <ActivityIndicator size="large" color="#3b82f6" />
       <Text style={styles.loadingText}>Loading...</Text>
+    </View>
+  );
+}
+
+/**
+ * DefaultEmptyState - shown when isEmpty is set and no emptyFallback is given
+ */
+function DefaultEmptyState() {
+  return (
+    <View testID="default-empty" style={styles.loadingContainer}>
+      <Text style={styles.loadingText}>Nothing to show yet.</Text>
     </View>
   );
 }
@@ -78,12 +104,19 @@ function DefaultErrorFallback({ error, onRetry }: { error: Error; onRetry?: () =
 
       <Text style={styles.errorMessage}>{errorMessage}</Text>
 
+      {/* This was a plain View, so onRetry was accepted but never reachable —
+          "Try Again" looked like a button and did nothing when tapped. */}
       {onRetry && (
         <View style={styles.retryButtonContainer}>
-          <View style={styles.retryButton}>
+          <TouchableOpacity
+            testID="loading-boundary-retry"
+            accessibilityRole="button"
+            style={styles.retryButton}
+            onPress={onRetry}
+          >
             <BrandedIcon name="refresh" size={18} color="#3b82f6" strokeWidth={2} />
             <Text style={styles.retryButtonText}>Try Again</Text>
-          </View>
+          </TouchableOpacity>
         </View>
       )}
     </View>

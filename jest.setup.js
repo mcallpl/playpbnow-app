@@ -1,11 +1,20 @@
 import '@testing-library/jest-dom';
 
-// Mock AsyncStorage
+// Mock AsyncStorage.
+// Every method must resolve a promise: the real module always returns one, and
+// app code chains off it (ThemeContext does AsyncStorage.setItem(...).catch()).
+// Returning bare jest.fn() gave back undefined and threw "Cannot read properties
+// of undefined (reading 'catch')" inside the component under test.
 jest.mock('@react-native-async-storage/async-storage', () => ({
-  setItem: jest.fn(),
-  getItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
+  setItem: jest.fn(() => Promise.resolve()),
+  getItem: jest.fn(() => Promise.resolve(null)),
+  removeItem: jest.fn(() => Promise.resolve()),
+  clear: jest.fn(() => Promise.resolve()),
+  mergeItem: jest.fn(() => Promise.resolve()),
+  getAllKeys: jest.fn(() => Promise.resolve([])),
+  multiGet: jest.fn(() => Promise.resolve([])),
+  multiSet: jest.fn(() => Promise.resolve()),
+  multiRemove: jest.fn(() => Promise.resolve()),
 }));
 
 // Mock React Native modules.

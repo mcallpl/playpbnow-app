@@ -1,21 +1,30 @@
 /**
  * ThemeContext Tests
- * Tests color object memoization and theme switching
+ *
+ * Rewritten against the real provider. The previous version asserted a light
+ * default and a primary/error/warning/success palette; the app deliberately
+ * defaults to DARK, and its palette is accent/danger/textMuted. It also drove
+ * theme changes by re-rendering the provider with a different prop, which never
+ * switches anything — useState ignores a changed initial value. Switching now
+ * goes through setTheme/toggleTheme, the same path the Settings screen uses.
  */
 
 import React, { useContext } from 'react';
-import { render, screen } from '@testing-library/react-native';
-import { ThemeProvider, ThemeContext } from '../context/ThemeContext';
+import { render, screen, act } from '@testing-library/react-native';
 import { Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ThemeProvider, ThemeContext, useTheme } from '../context/ThemeContext';
+import { Colors } from '../constants/theme';
 
 const ThemeConsumer = () => {
   const theme = useContext(ThemeContext);
-
   return (
     <>
-      <Text testID="primary-color">{theme?.colors?.primary}</Text>
-      <Text testID="background-color">{theme?.colors?.background}</Text>
-      <Text testID="text-color">{theme?.colors?.text}</Text>
+      <Text testID="mode">{theme.theme}</Text>
+      <Text testID="accent-color">{theme.colors.accent}</Text>
+      <Text testID="background-color">{theme.colors.background}</Text>
+      <Text testID="text-color">{theme.colors.text}</Text>
+      <Text testID="is-dark">{String(theme.isDark)}</Text>
     </>
   );
 };
@@ -23,6 +32,7 @@ const ThemeConsumer = () => {
 describe('ThemeContext', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
   });
 
   describe('Theme Provider', () => {
@@ -33,253 +43,185 @@ describe('ThemeContext', () => {
         </ThemeProvider>
       );
 
-      expect(screen.getByTestID('primary-color')).toBeTruthy();
+      expect(screen.getByTestId('accent-color')).toBeTruthy();
     });
 
-    it('has light theme by default', () => {
+    it('defaults to dark', () => {
       render(
-        <ThemeProvider initialMode="light">
+        <ThemeProvider>
           <ThemeConsumer />
         </ThemeProvider>
       );
 
-      const primaryColor = screen.getByTestID('primary-color').props.children;
-      expect(primaryColor).toBeDefined();
+      expect(screen.getByTestId('mode').props.children).toBe('dark');
+      expect(screen.getByTestId('is-dark').props.children).toBe('true');
+      expect(screen.getByTestId('background-color').props.children).toBe(
+        Colors.dark.background
+      );
+    });
+
+    it('honours a stored preference over the dark default', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('light');
+
+      render(
+        <ThemeProvider>
+          <ThemeConsumer />
+        </ThemeProvider>
+      );
+
+      // the stored value is read in an effect, so let it settle
+      await act(async () => {});
+
+      expect(screen.getByTestId('mode').props.children).toBe('light');
+    });
+
+    it('ignores a corrupt stored preference', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('chartreuse');
+
+      render(
+        <ThemeProvider>
+          <ThemeConsumer />
+        </ThemeProvider>
+      );
+      await act(async () => {});
+
+      expect(screen.getByTestId('mode').props.children).toBe('dark');
     });
   });
 
   describe('Color object memoization', () => {
-    it('returns memoized color object', () => {
-      const renderCount = jest.fn();
+    it('keeps the colors reference stable while the theme is unchanged', () => {
+      const seen: any[] = [];
 
-      const TestComponent = () => {
-        const theme = useContext(ThemeContext);
-        renderCount();
-
-        return (
-          <Text testID="color">
-            {theme?.colors?.primary}
-          </Text>
-        );
+      const Probe = () => {
+        const { colors } = useTheme();
+        seen.push(colors);
+        return <Text testID="probe">{colors.accent}</Text>;
       };
 
       const { rerender } = render(
         <ThemeProvider>
-          <TestComponent />
+          <Probe />
         </ThemeProvider>
       );
-
-      const initialRenderCount = renderCount.mock.calls.length;
 
       rerender(
         <ThemeProvider>
-          <TestComponent />
+          <Probe />
         </ThemeProvider>
       );
 
-      // Component should not re-render unnecessarily
-      expect(renderCount.mock.calls.length).toBeLessThanOrEqual(initialRenderCount + 1);
-    });
-
-    it('prevents cascade re-renders', () => {
-      const childRenderCount = jest.fn();
-
-      const Child = () => {
-        const theme = useContext(ThemeContext);
-        childRenderCount();
-
-        return <Text>{theme?.colors?.primary}</Text>;
-      };
-
-      const Parent = () => {
-        const [count, setCount] = React.useState(0);
-
-        return (
-          <>
-            <Text onPress={() => setCount(count + 1)}>Press me</Text>
-            <ThemeProvider>
-              <Child />
-            </ThemeProvider>
-          </>
-        );
-      };
-
-      render(<Parent />);
-
-      const initialCount = childRenderCount.mock.calls.length;
-
-      // Parent re-renders
-      const pressable = screen.getByText('Press me');
-      pressable.props.onPress();
-
-      // Child should not re-render excessively
-      expect(childRenderCount.mock.calls.length).toBeLessThanOrEqual(initialCount + 1);
+      expect(seen.length).toBeGreaterThan(1);
+      // identity, not deep equality — a new object each render would re-render
+      // every consumer in the app
+      seen.forEach(c => expect(c).toBe(seen[0]));
     });
   });
 
   describe('Theme switching', () => {
-    it('switches from light to dark theme', () => {
-      const { rerender } = render(
-        <ThemeProvider initialMode="light">
-          <ThemeConsumer />
-        </ThemeProvider>
-      );
+    it('switches from dark to light via setTheme', () => {
+      let setTheme: (m: 'dark' | 'light') => void = () => {};
 
-      const lightPrimary = screen.getByTestID('primary-color').props.children;
-
-      rerender(
-        <ThemeProvider initialMode="dark">
-          <ThemeConsumer />
-        </ThemeProvider>
-      );
-
-      const darkPrimary = screen.getByTestID('primary-color').props.children;
-
-      // Colors should be different
-      expect(lightPrimary).not.toEqual(darkPrimary);
-    });
-
-    it('maintains color consistency within theme', () => {
-      render(
-        <ThemeProvider initialMode="light">
-          <ThemeConsumer />
-        </ThemeProvider>
-      );
-
-      const primaryColor = screen.getByTestID('primary-color').props.children;
-      const backgroundColor = screen.getByTestID('background-color').props.children;
-      const textColor = screen.getByTestID('text-color').props.children;
-
-      // All colors should be defined
-      expect(primaryColor).toBeDefined();
-      expect(backgroundColor).toBeDefined();
-      expect(textColor).toBeDefined();
-    });
-
-    it('applies theme consistently to all children', () => {
-      const TestComponent1 = () => {
-        const theme = useContext(ThemeContext);
-        return <Text testID="comp1-primary">{theme?.colors?.primary}</Text>;
-      };
-
-      const TestComponent2 = () => {
-        const theme = useContext(ThemeContext);
-        return <Text testID="comp2-primary">{theme?.colors?.primary}</Text>;
+      const Switcher = () => {
+        const theme = useTheme();
+        setTheme = theme.setTheme;
+        return <ThemeConsumer />;
       };
 
       render(
-        <ThemeProvider initialMode="light">
-          <TestComponent1 />
-          <TestComponent2 />
+        <ThemeProvider>
+          <Switcher />
         </ThemeProvider>
       );
 
-      const color1 = screen.getByTestID('comp1-primary').props.children;
-      const color2 = screen.getByTestID('comp2-primary').props.children;
+      expect(screen.getByTestId('background-color').props.children).toBe(
+        Colors.dark.background
+      );
 
-      expect(color1).toEqual(color2);
+      act(() => setTheme('light'));
+
+      expect(screen.getByTestId('mode').props.children).toBe('light');
+      expect(screen.getByTestId('background-color').props.children).toBe(
+        Colors.light.background
+      );
+      expect(screen.getByTestId('is-dark').props.children).toBe('false');
     });
-  });
 
-  describe('Dark mode support', () => {
-    it('provides dark mode colors', () => {
+    it('toggleTheme flips the mode and flips back', () => {
+      let toggle: () => void = () => {};
+
+      const Toggler = () => {
+        const theme = useTheme();
+        toggle = theme.toggleTheme;
+        return <ThemeConsumer />;
+      };
+
       render(
-        <ThemeProvider initialMode="dark">
-          <ThemeConsumer />
+        <ThemeProvider>
+          <Toggler />
         </ThemeProvider>
       );
 
-      const backgroundColor = screen.getByTestID('background-color').props.children;
+      act(() => toggle());
+      expect(screen.getByTestId('mode').props.children).toBe('light');
 
-      // Dark mode background should be dark
-      expect(backgroundColor).toBeDefined();
+      act(() => toggle());
+      expect(screen.getByTestId('mode').props.children).toBe('dark');
     });
 
-    it('switches dark mode at runtime', () => {
-      const { rerender } = render(
-        <ThemeProvider initialMode="light">
-          <ThemeConsumer />
-        </ThemeProvider>
-      );
+    it('persists the chosen theme', () => {
+      let setTheme: (m: 'dark' | 'light') => void = () => {};
 
-      const lightBackground = screen.getByTestID('background-color').props.children;
-
-      rerender(
-        <ThemeProvider initialMode="dark">
-          <ThemeConsumer />
-        </ThemeProvider>
-      );
-
-      const darkBackground = screen.getByTestID('background-color').props.children;
-
-      expect(lightBackground).not.toEqual(darkBackground);
-    });
-  });
-
-  describe('Color palette', () => {
-    it('exports complete color palette', () => {
-      let themeColors: any;
-
-      const TestComponent = () => {
-        const theme = useContext(ThemeContext);
-        themeColors = theme?.colors;
+      const Switcher = () => {
+        setTheme = useTheme().setTheme;
         return null;
       };
 
       render(
         <ThemeProvider>
-          <TestComponent />
+          <Switcher />
         </ThemeProvider>
       );
 
-      // Verify essential colors exist
-      const requiredColors = [
-        'primary',
-        'secondary',
-        'background',
-        'surface',
-        'text',
-        'textSecondary',
-        'error',
-        'warning',
-        'success',
-        'border'
-      ];
+      act(() => setTheme('light'));
 
-      requiredColors.forEach(color => {
-        expect(themeColors[color]).toBeDefined();
-      });
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('theme_preference', 'light');
+    });
+
+    it('applies the same theme to every child', () => {
+      const One = () => <Text testID="one">{useTheme().colors.accent}</Text>;
+      const Two = () => <Text testID="two">{useTheme().colors.accent}</Text>;
+
+      render(
+        <ThemeProvider>
+          <One />
+          <Two />
+        </ThemeProvider>
+      );
+
+      expect(screen.getByTestId('one').props.children).toEqual(
+        screen.getByTestId('two').props.children
+      );
     });
   });
 
-  describe('Performance', () => {
-    it('does not cause excessive re-renders on theme switch', () => {
-      const renderCount = jest.fn();
+  describe('Color palette', () => {
+    // the names the app actually uses — accent (not primary), danger (not
+    // error), textMuted/textSoft (not textSecondary)
+    const required = [
+      'bg', 'background', 'surface', 'card', 'accent', 'accentText',
+      'secondary', 'text', 'textMuted', 'textSoft', 'danger', 'border',
+      'inputBg', 'inputText', 'tint',
+    ];
 
-      const TestComponent = () => {
-        const theme = useContext(ThemeContext);
-        renderCount();
+    it.each(['dark', 'light'] as const)('%s exposes the full palette', mode => {
+      const palette = Colors[mode] as Record<string, unknown>;
+      required.forEach(key => expect(palette[key]).toBeDefined());
+    });
 
-        return <Text>{theme?.colors?.primary}</Text>;
-      };
-
-      const { rerender } = render(
-        <ThemeProvider initialMode="light">
-          <TestComponent />
-        </ThemeProvider>
-      );
-
-      const initialCount = renderCount.mock.calls.length;
-
-      // Switch theme
-      rerender(
-        <ThemeProvider initialMode="dark">
-          <TestComponent />
-        </ThemeProvider>
-      );
-
-      // Should render once more for the theme change
-      expect(renderCount.mock.calls.length).toBe(initialCount + 1);
+    it('dark and light actually differ', () => {
+      expect(Colors.dark.background).not.toEqual(Colors.light.background);
+      expect(Colors.dark.text).not.toEqual(Colors.light.text);
     });
   });
 });

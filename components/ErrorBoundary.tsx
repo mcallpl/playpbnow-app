@@ -11,6 +11,11 @@ interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
   onReset?: () => void;
+  /**
+   * Notified whenever the boundary catches. This is the hook a crash reporter
+   * would attach to — the boundary itself stays reporting-agnostic.
+   */
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface ErrorBoundaryState {
@@ -50,8 +55,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       errorInfo,
     });
 
-    // You could also log to an error reporting service here
-    // e.g., Sentry.captureException(error, { contexts: { react: errorInfo } });
+    // Hand off to whatever the app wants to do with it (crash reporting, a
+    // toast, a counter). Guarded: a throwing reporter must not take down the
+    // boundary that is already handling a crash.
+    if (this.props.onError) {
+      try {
+        this.props.onError(error, errorInfo);
+      } catch (reporterError) {
+        console.error('[ErrorBoundary] onError handler threw:', reporterError);
+      }
+    }
   }
 
   /**
@@ -95,7 +108,7 @@ function ErrorFallback({
   onReset: () => void;
 }) {
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView testID="error-boundary-fallback" contentContainerStyle={styles.container}>
       <View style={styles.contentContainer}>
         {/* Error Icon */}
         <View style={styles.iconContainer}>
@@ -121,7 +134,11 @@ function ErrorFallback({
         )}
 
         {/* Retry Button */}
-        <TouchableOpacity style={styles.retryButton} onPress={onReset}>
+        <TouchableOpacity
+          testID="error-boundary-retry"
+          style={styles.retryButton}
+          onPress={onReset}
+        >
           <BrandedIcon name="refresh" size={20} color="#ffffff" strokeWidth={2} />
           <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>

@@ -26,8 +26,15 @@ export const ThemeContext = createContext<ThemeContextType>({
 
 export const useTheme = () => useContext(ThemeContext);
 
-const ThemeProviderComponent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<ThemeMode>('dark');
+// initialMode only seeds the initial state; dark remains the product default and
+// a stored preference still wins over it via the effect below. It exists so a
+// test can start the provider in light without reaching into internals — runtime
+// switching goes through setTheme/toggleTheme, not through changing this prop.
+const ThemeProviderComponent: React.FC<{
+  children: React.ReactNode;
+  initialMode?: ThemeMode;
+}> = ({ children, initialMode = 'dark' }) => {
+  const [theme, setThemeState] = useState<ThemeMode>(initialMode);
 
   useEffect(() => {
     (async () => {

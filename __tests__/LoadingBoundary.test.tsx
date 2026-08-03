@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react-native';
 import { LoadingBoundary } from '../components/LoadingBoundary';
 import { Text, View } from 'react-native';
 
@@ -33,19 +33,29 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('skeleton')).toBeTruthy();
-      expect(screen.queryByTestID('content')).toBeFalsy();
+      expect(screen.getByTestId('skeleton')).toBeTruthy();
+      expect(screen.queryByTestId('content')).toBeFalsy();
     });
 
-    it('renders multiple skeleton items for arrays', () => {
+    it('renders however many skeleton rows the caller composes', () => {
+      // There is no `count` prop by design — repetition is the skeleton's job
+      // (see SkeletonList/SkeletonTable), which is what makes the boundary
+      // reusable for lists, cards and tables alike.
+      const ThreeRows = () => (
+        <>
+          {[0, 1, 2].map(i => (
+            <View key={i} testID="skeleton" />
+          ))}
+        </>
+      );
+
       render(
-        <LoadingBoundary isLoading={true} count={3} skeleton={<TestSkeleton />}>
+        <LoadingBoundary isLoading={true} skeleton={<ThreeRows />}>
           <TestContent />
         </LoadingBoundary>
       );
 
-      const skeletons = screen.getAllByTestID('skeleton');
-      expect(skeletons).toHaveLength(3);
+      expect(screen.getAllByTestId('skeleton')).toHaveLength(3);
     });
 
     it('renders default skeleton when none provided', () => {
@@ -55,7 +65,7 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('default-skeleton')).toBeTruthy();
+      expect(screen.getByTestId('default-skeleton')).toBeTruthy();
     });
   });
 
@@ -67,8 +77,8 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('content')).toBeTruthy();
-      expect(screen.queryByTestID('skeleton')).toBeFalsy();
+      expect(screen.getByTestId('content')).toBeTruthy();
+      expect(screen.queryByTestId('skeleton')).toBeFalsy();
     });
 
     it('renders children immediately when isLoading not provided', () => {
@@ -78,7 +88,7 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('default-content')).toBeTruthy();
+      expect(screen.getByTestId('default-content')).toBeTruthy();
     });
 
     it('transitions from skeleton to children', async () => {
@@ -88,8 +98,8 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('skeleton')).toBeTruthy();
-      expect(screen.queryByTestID('content')).toBeFalsy();
+      expect(screen.getByTestId('skeleton')).toBeTruthy();
+      expect(screen.queryByTestId('content')).toBeFalsy();
 
       rerender(
         <LoadingBoundary isLoading={false} skeleton={<TestSkeleton />}>
@@ -98,8 +108,8 @@ describe('LoadingBoundary', () => {
       );
 
       await waitFor(() => {
-        expect(screen.queryByTestID('skeleton')).toBeFalsy();
-        expect(screen.getByTestID('content')).toBeTruthy();
+        expect(screen.queryByTestId('skeleton')).toBeFalsy();
+        expect(screen.getByTestId('content')).toBeTruthy();
       });
     });
   });
@@ -122,8 +132,8 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('error-fallback')).toBeTruthy();
-      expect(screen.queryByTestID('content')).toBeFalsy();
+      expect(screen.getByTestId('error-fallback')).toBeTruthy();
+      expect(screen.queryByTestId('content')).toBeFalsy();
     });
 
     it('displays error message in default error UI', () => {
@@ -136,7 +146,8 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByText(/error/i)).toBeTruthy();
+      expect(screen.getByText(/unable to load/i)).toBeTruthy();
+      expect(screen.getByText('Network failed')).toBeTruthy();
     });
 
     it('calls onRetry when retry button clicked', () => {
@@ -152,8 +163,7 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      const retryButton = screen.getByTestID('loading-boundary-retry');
-      retryButton.props.onPress();
+      fireEvent.press(screen.getByTestId('loading-boundary-retry'));
 
       expect(onRetry).toHaveBeenCalled();
     });
@@ -168,7 +178,7 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByText(/error/i)).toBeTruthy();
+      expect(screen.getByText(/unable to load/i)).toBeTruthy();
 
       rerender(
         <LoadingBoundary isLoading={false} error={null}>
@@ -176,8 +186,8 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.queryByText(/error/i)).toBeFalsy();
-      expect(screen.getByTestID('content')).toBeTruthy();
+      expect(screen.queryByText(/unable to load/i)).toBeFalsy();
+      expect(screen.getByTestId('content')).toBeTruthy();
     });
   });
 
@@ -195,8 +205,7 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      const retryButton = screen.getByTestID('loading-boundary-retry');
-      retryButton.props.onPress();
+      fireEvent.press(screen.getByTestId('loading-boundary-retry'));
 
       expect(onRetry).toHaveBeenCalled();
     });
@@ -215,8 +224,7 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      const retryButton = screen.getByTestID('loading-boundary-retry');
-      retryButton.props.onPress();
+      fireEvent.press(screen.getByTestId('loading-boundary-retry'));
 
       rerender(
         <LoadingBoundary
@@ -229,7 +237,7 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('skeleton')).toBeTruthy();
+      expect(screen.getByTestId('skeleton')).toBeTruthy();
     });
   });
 
@@ -245,8 +253,8 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('skeleton')).toBeTruthy();
-      expect(screen.queryByText(/error/i)).toBeFalsy();
+      expect(screen.getByTestId('skeleton')).toBeTruthy();
+      expect(screen.queryByText(/unable to load/i)).toBeFalsy();
     });
   });
 
@@ -268,8 +276,8 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('empty-state')).toBeTruthy();
-      expect(screen.queryByTestID('content')).toBeFalsy();
+      expect(screen.getByTestId('empty-state')).toBeTruthy();
+      expect(screen.queryByTestId('content')).toBeFalsy();
     });
 
     it('renders children when isEmpty is false', () => {
@@ -282,7 +290,7 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('content')).toBeTruthy();
+      expect(screen.getByTestId('content')).toBeTruthy();
     });
   });
 
@@ -294,7 +302,7 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.getByTestID('skeleton')).toBeTruthy();
+      expect(screen.getByTestId('skeleton')).toBeTruthy();
 
       rerender(
         <LoadingBoundary isLoading={false} error={new Error('Failed')}>
@@ -302,8 +310,8 @@ describe('LoadingBoundary', () => {
         </LoadingBoundary>
       );
 
-      expect(screen.queryByTestID('skeleton')).toBeFalsy();
-      expect(screen.getByText(/error/i)).toBeTruthy();
+      expect(screen.queryByTestId('skeleton')).toBeFalsy();
+      expect(screen.getByText(/unable to load/i)).toBeTruthy();
 
       rerender(
         <LoadingBoundary isLoading={false} error={null}>
@@ -312,8 +320,8 @@ describe('LoadingBoundary', () => {
       );
 
       await waitFor(() => {
-        expect(screen.queryByText(/error/i)).toBeFalsy();
-        expect(screen.getByTestID('content')).toBeTruthy();
+        expect(screen.queryByText(/unable to load/i)).toBeFalsy();
+        expect(screen.getByTestId('content')).toBeTruthy();
       });
     });
   });

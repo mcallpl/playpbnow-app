@@ -24,7 +24,10 @@ describe('ErrorBoundary', () => {
   });
 
   afterEach(() => {
-    (console.error as jest.Mock).mockRestore();
+    // restoreAllMocks, not a direct mockRestore: one test below restores the
+    // console.error spy itself, and calling mockRestore on the real function
+    // afterwards throws "mockRestore is not a function".
+    jest.restoreAllMocks();
   });
 
   it('renders children when no error occurs', () => {
@@ -34,7 +37,7 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByTestID('child-content')).toBeTruthy();
+    expect(screen.getByTestId('child-content')).toBeTruthy();
     expect(screen.getByText('Child content')).toBeTruthy();
   });
 
@@ -45,7 +48,7 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByTestID('error-boundary-fallback')).toBeTruthy();
+    expect(screen.getByTestId('error-boundary-fallback')).toBeTruthy();
   });
 
   it('displays error message in fallback UI', () => {
@@ -88,10 +91,10 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByTestID('error-boundary-fallback')).toBeTruthy();
+    expect(screen.getByTestId('error-boundary-fallback')).toBeTruthy();
 
     // The retry button should exist
-    const retryButton = screen.getByTestID('error-boundary-retry');
+    const retryButton = screen.getByTestId('error-boundary-retry');
     expect(retryButton).toBeTruthy();
   });
 
@@ -124,14 +127,17 @@ describe('ErrorBoundary', () => {
     );
   });
 
-  it('recovers from error when child component no longer throws', () => {
+  it('stays in the error state until it is explicitly reset', () => {
+    // A boundary that cleared itself on every re-render would loop forever
+    // against a child that keeps throwing, so re-rendering alone must NOT
+    // recover. Recovery goes through the retry button.
     const { rerender } = render(
       <ErrorBoundary>
         <ErrorComponent shouldError={true} />
       </ErrorBoundary>
     );
 
-    expect(screen.getByTestID('error-boundary-fallback')).toBeTruthy();
+    expect(screen.getByTestId('error-boundary-fallback')).toBeTruthy();
 
     rerender(
       <ErrorBoundary>
@@ -139,8 +145,31 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    // Error boundary should now show the child content
-    expect(screen.queryByTestID('error-boundary-fallback')).toBeFalsy();
+    expect(screen.getByTestId('error-boundary-fallback')).toBeTruthy();
+  });
+
+  it('recovers via the retry button once the child stops throwing', () => {
+    const onReset = jest.fn();
+
+    const { rerender } = render(
+      <ErrorBoundary onReset={onReset}>
+        <ErrorComponent shouldError={true} />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByTestId('error-boundary-fallback')).toBeTruthy();
+
+    // swap in a child that no longer throws, then reset
+    rerender(
+      <ErrorBoundary onReset={onReset}>
+        <ErrorComponent shouldError={false} />
+      </ErrorBoundary>
+    );
+    fireEvent.press(screen.getByTestId('error-boundary-retry'));
+
+    expect(screen.queryByTestId('error-boundary-fallback')).toBeFalsy();
+    expect(screen.getByText('No error')).toBeTruthy();
+    expect(onReset).toHaveBeenCalled();
   });
 
   it('displays custom fallback component when provided', () => {
@@ -156,7 +185,7 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByTestID('custom-fallback')).toBeTruthy();
+    expect(screen.getByTestId('custom-fallback')).toBeTruthy();
   });
 
   it('logs errors when logErrors is true', () => {
@@ -179,23 +208,24 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByTestID('error-boundary-fallback')).toBeTruthy();
+    expect(screen.getByTestId('error-boundary-fallback')).toBeTruthy();
 
+    // recover
     rerender(
       <ErrorBoundary>
         <ErrorComponent shouldError={false} />
       </ErrorBoundary>
     );
+    fireEvent.press(screen.getByTestId('error-boundary-retry'));
+    expect(screen.queryByTestId('error-boundary-fallback')).toBeFalsy();
 
-    expect(screen.queryByTestID('error-boundary-fallback')).toBeFalsy();
-
-    // Error again
+    // and catch a second, separate error afterwards
     rerender(
       <ErrorBoundary>
         <ErrorComponent shouldError={true} />
       </ErrorBoundary>
     );
 
-    expect(screen.getByTestID('error-boundary-fallback')).toBeTruthy();
+    expect(screen.getByTestId('error-boundary-fallback')).toBeTruthy();
   });
 });

@@ -71,7 +71,7 @@ describe('Game Screen', () => {
       });
 
       // Selected player should be highlighted
-      expect(screen.getByTestID('player-selected-1')).toBeTruthy();
+      expect(screen.getByTestId('player-selected-1')).toBeTruthy();
     });
 
     it('selects loser', async () => {
@@ -85,8 +85,8 @@ describe('Game Screen', () => {
         fireEvent.press(playerTwo);  // Loser
       });
 
-      expect(screen.getByTestID('player-selected-1')).toBeTruthy();
-      expect(screen.getByTestID('player-selected-2')).toBeTruthy();
+      expect(screen.getByTestId('player-selected-1')).toBeTruthy();
+      expect(screen.getByTestId('player-selected-2')).toBeTruthy();
     });
   });
 
@@ -95,41 +95,41 @@ describe('Game Screen', () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const scoreInput = screen.getByTestID('winner-score-input');
+        const scoreInput = screen.getByTestId('winner-score-input');
         fireEvent.changeText(scoreInput, '11');
       });
 
-      expect(screen.getByTestID('winner-score-input').props.value).toBe('11');
+      expect(screen.getByTestId('winner-score-input').props.value).toBe('11');
     });
 
     it('updates loser score', async () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const scoreInput = screen.getByTestID('loser-score-input');
+        const scoreInput = screen.getByTestId('loser-score-input');
         fireEvent.changeText(scoreInput, '8');
       });
 
-      expect(screen.getByTestID('loser-score-input').props.value).toBe('8');
+      expect(screen.getByTestId('loser-score-input').props.value).toBe('8');
     });
 
     it('validates score input (numeric only)', async () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const scoreInput = screen.getByTestID('winner-score-input');
+        const scoreInput = screen.getByTestId('winner-score-input');
         fireEvent.changeText(scoreInput, 'abc');
       });
 
       // Invalid input should not be accepted
-      expect(screen.getByTestID('score-error')).toBeTruthy();
+      expect(screen.getByTestId('score-error')).toBeTruthy();
     });
 
     it('validates score range', async () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const scoreInput = screen.getByTestID('winner-score-input');
+        const scoreInput = screen.getByTestId('winner-score-input');
         fireEvent.changeText(scoreInput, '50');
       });
 
@@ -153,7 +153,7 @@ describe('Game Screen', () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const submitButton = screen.getByTestID('submit-score');
+        const submitButton = screen.getByTestId('submit-score');
         fireEvent.press(submitButton);
       });
 
@@ -177,11 +177,11 @@ describe('Game Screen', () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const submitButton = screen.getByTestID('submit-score');
+        const submitButton = screen.getByTestId('submit-score');
         fireEvent.press(submitButton);
       });
 
-      expect(screen.getByTestID('loading-spinner')).toBeTruthy();
+      expect(screen.getByTestId('loading-spinner')).toBeTruthy();
     });
 
     it('shows success message on submission', async () => {
@@ -198,7 +198,7 @@ describe('Game Screen', () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const submitButton = screen.getByTestID('submit-score');
+        const submitButton = screen.getByTestId('submit-score');
         fireEvent.press(submitButton);
       });
 
@@ -225,7 +225,7 @@ describe('Game Screen', () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const submitButton = screen.getByTestID('submit-score');
+        const submitButton = screen.getByTestId('submit-score');
         fireEvent.press(submitButton);
       });
 
@@ -256,7 +256,7 @@ describe('Game Screen', () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const submitButton = screen.getByTestID('submit-score');
+        const submitButton = screen.getByTestId('submit-score');
         fireEvent.press(submitButton);
       });
 
@@ -264,7 +264,7 @@ describe('Game Screen', () => {
         expect(screen.getByText(/error/i)).toBeTruthy();
       });
 
-      const retryButton = screen.getByTestID('retry-button');
+      const retryButton = screen.getByTestId('retry-button');
       fireEvent.press(retryButton);
 
       await waitFor(() => {
@@ -289,7 +289,7 @@ describe('Game Screen', () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const submitButton = screen.getByTestID('submit-score');
+        const submitButton = screen.getByTestId('submit-score');
         fireEvent.press(submitButton);
       });
 
@@ -304,7 +304,7 @@ describe('Game Screen', () => {
       render(<GameScreen darkMode={true} />);
 
       await waitFor(() => {
-        const screen_elem = screen.getByTestID('game-screen');
+        const screen_elem = screen.getByTestId('game-screen');
         expect(screen_elem).toBeTruthy();
       });
     });
@@ -325,13 +325,13 @@ describe('Game Screen', () => {
       render(<GameScreen />);
 
       await waitFor(() => {
-        const submitButton = screen.getByTestID('submit-score');
+        const submitButton = screen.getByTestId('submit-score');
         fireEvent.press(submitButton);
       });
 
       await waitFor(() => {
-        expect(screen.getByTestID('winner-score-input').props.value).toBe('');
-        expect(screen.getByTestID('loser-score-input').props.value).toBe('');
+        expect(screen.getByTestId('winner-score-input').props.value).toBe('');
+        expect(screen.getByTestId('loser-score-input').props.value).toBe('');
       });
     });
   });
