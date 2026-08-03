@@ -5,7 +5,9 @@
 
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
-import { SetupScreen } from '../app/(tabs)/setup';
+// The setup screen moved out of the tab group to app/setup.tsx, which
+// default-exports SetupFlow rather than a named SetupScreen.
+import SetupScreen from '../app/setup';
 import ApiClient from '../lib/api/ApiClient';
 
 jest.mock('../lib/api/ApiClient');

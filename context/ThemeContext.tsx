@@ -14,7 +14,9 @@ interface ThemeContextType {
   setTheme: (mode: ThemeMode) => void;
 }
 
-const ThemeContext = createContext<ThemeContextType>({
+// Exported so tests (and any consumer needing the raw context) can reach it;
+// useTheme remains the intended API for app code.
+export const ThemeContext = createContext<ThemeContextType>({
   theme: 'dark',
   colors: Colors.dark,
   isDark: true,

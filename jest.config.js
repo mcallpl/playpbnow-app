@@ -1,4 +1,6 @@
 module.exports = {
+  // specs for components that do not exist yet — see __tests__/pending/README.md
+  testPathIgnorePatterns: ['/node_modules/', '/__tests__/pending/'],
   // jest-expo, not 'react-native': the bare RN preset does not strip Flow types
   // out of react-native's own jest/setup.js, so every suite died at parse time
   // before a single test ran. jest-expo is the supported preset for Expo apps

@@ -40,3 +40,20 @@ beforeAll(() => {
 afterAll(() => {
   console.error = originalError;
 });
+
+// react-native-purchases reaches for a native module at import time, which takes
+// down every suite that transitively imports SubscriptionContext (Game screen,
+// Setup screen). Mock the surface the app actually uses.
+jest.mock('react-native-purchases', () => ({
+  __esModule: true,
+  default: {
+    configure: jest.fn(),
+    getOfferings: jest.fn().mockResolvedValue({ current: null, all: {} }),
+    purchasePackage: jest.fn().mockResolvedValue({ customerInfo: { entitlements: { active: {} } } }),
+    restorePurchases: jest.fn().mockResolvedValue({ entitlements: { active: {} } }),
+    getCustomerInfo: jest.fn().mockResolvedValue({ entitlements: { active: {} } }),
+    setLogLevel: jest.fn(),
+    logIn: jest.fn().mockResolvedValue({ customerInfo: { entitlements: { active: {} } } }),
+  },
+  LOG_LEVEL: { DEBUG: 'DEBUG', INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR' },
+}));
