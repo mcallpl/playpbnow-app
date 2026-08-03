@@ -216,6 +216,8 @@ describe('ApiClient', () => {
     });
 
     it('throws RateLimitError on 429 response', async () => {
+      // `as unknown as Response` because this stub only implements the handful
+      // of members the client touches, not the full Response interface.
       mockFetch.mockResolvedValue({
         ok: false,
         status: 429,
@@ -224,7 +226,7 @@ describe('ApiClient', () => {
           status: 'error',
           error: { message: 'Too many requests', code: 'RATE_LIMITED' },
         }),
-      } as Response);
+      } as unknown as Response);
 
       try {
         await ApiClient.getInstance().get('/api/test', { retryCount: 0 });
@@ -428,10 +430,18 @@ describe('ApiClient', () => {
       );
 
       const promise = ApiClient.getInstance().get('/api/test', { timeout: 1000, retryCount: 0 });
+      // swallow the eventual rejection here so it is never briefly unhandled
+      const settled = expect(promise).rejects.toThrow();
 
-      jest.advanceTimersByTime(1100);
+      // advanceTimersByTimeAsync, not advanceTimersByTime: the client awaits
+      // AsyncStorage in buildHeaders before it ever calls fetch, so at this
+      // point the abort timer does not exist yet. The sync version advanced
+      // nothing, the request never settled, and the test died on Jest's own 5s
+      // limit instead of exercising the timeout. The async form drains
+      // microtasks between timers, letting the request reach fetch first.
+      await jest.advanceTimersByTimeAsync(1100);
 
-      await expect(promise).rejects.toThrow();
+      await settled;
 
       jest.useRealTimers();
     });

@@ -61,9 +61,9 @@ describe('ErrorBoundary', () => {
     expect(screen.getByText(/something went wrong/i)).toBeTruthy();
   });
 
-  it('displays error details when available', () => {
+  it('displays the underlying error message', () => {
     render(
-      <ErrorBoundary showDetails>
+      <ErrorBoundary>
         <ErrorComponent shouldError={true} />
       </ErrorBoundary>
     );
@@ -188,11 +188,11 @@ describe('ErrorBoundary', () => {
     expect(screen.getByTestId('custom-fallback')).toBeTruthy();
   });
 
-  it('logs errors when logErrors is true', () => {
+  it('logs the error it caught', () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
     render(
-      <ErrorBoundary logErrors>
+      <ErrorBoundary>
         <ErrorComponent shouldError={true} />
       </ErrorBoundary>
     );

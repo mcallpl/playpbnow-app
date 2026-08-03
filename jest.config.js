@@ -21,12 +21,20 @@ module.exports = {
     '!**/node_modules/**',
     '!**/__tests__/**',
   ],
+  // This block was spelled `coverageThresholds` (plural) until now, so Jest
+  // ignored it and the 70% gate had never once run. Actual coverage on the day
+  // it was first enforced was ~8%, and a gate that can only ever fail is a gate
+  // everyone learns to skip.
+  //
+  // So these are set just under the current numbers and act as a ratchet: they
+  // fail if coverage drops, and get raised as suites land. 70% is still the
+  // destination, not the starting line.
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
+      branches: 6,
+      functions: 7,
+      lines: 8,
+      statements: 7,
     },
   },
 };

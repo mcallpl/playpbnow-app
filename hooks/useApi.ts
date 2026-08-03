@@ -29,8 +29,9 @@ export function useApi<T>(
   // Track mounted state to prevent state updates after unmount
   const isMountedRef = useRef(true);
 
-  // Track if we've executed already (for immediate requests)
-  const hasExecutedRef = useRef(!immediate);
+  // Identifies the request the auto-fetch effect last fired, so a changed
+  // method/path fetches again while a re-render with the same target does not.
+  const lastAutoFetchedRef = useRef<string | null>(null);
 
   /**
    * Main execute function - performs the API request
@@ -87,23 +88,44 @@ export function useApi<T>(
   }, [execute]);
 
   /**
-   * Auto-execute on mount if immediate is true
+   * Unmount tracking.
+   *
+   * This has to be its own effect with an empty dep array. It used to be the
+   * cleanup of the auto-fetch effect below, which runs on every dependency
+   * change, not just unmount — so the first time `execute` changed identity
+   * (any caller passing an inline onSuccess/onError re-creates it every render)
+   * the ref flipped to false and never came back. From that point the hook was
+   * permanently "unmounted": every state update was skipped, so data, loading
+   * and error froze and execute() threw 'Component unmounted'.
    */
   useEffect(() => {
-    if (immediate && !hasExecutedRef.current) {
-      hasExecutedRef.current = true;
-      execute().catch((err) => {
-        // Error is already handled in execute()
-        if (__DEV__) {
-          console.error(`[useApi] Initial request failed: ${path}`, err);
-        }
-      });
-    }
-
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
-  }, [immediate, execute, path]);
+  }, []);
+
+  /**
+   * Auto-execute on mount, and again whenever the target changes.
+   *
+   * Keyed on method+path rather than a fire-once boolean: the old flag was set
+   * on the first run and never cleared, so a component that changed its path
+   * (e.g. /players/1 -> /players/2) kept showing the first response forever.
+   */
+  useEffect(() => {
+    if (!immediate) return;
+
+    const target = `${method} ${path}`;
+    if (lastAutoFetchedRef.current === target) return;
+    lastAutoFetchedRef.current = target;
+
+    execute().catch((err) => {
+      // Error is already handled in execute()
+      if (__DEV__) {
+        console.error(`[useApi] Initial request failed: ${path}`, err);
+      }
+    });
+  }, [immediate, method, path, execute]);
 
   return {
     data,

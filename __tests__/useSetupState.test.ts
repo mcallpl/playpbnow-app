@@ -1,435 +1,204 @@
 /**
  * useSetupState Hook Tests
- * Tests reducer state transitions and action handling
+ *
+ * Covers the reducer behind the match-setup flow —
+ * app/setup/hooks/useSetupState.ts, the one SetupFlow actually mounts.
+ *
+ * Note there are two hooks by this name. The other, hooks/useSetupState.ts, is
+ * a params-based leftover whose function nothing calls any more; only its Player
+ * and RoundConfig types are still imported (by components/setup/*). The suite
+ * that used to live here targeted that dead one, and described a signup wizard
+ * neither of them implements — see __tests__/pending/SignupWizard.test.ts.
  */
 
-import { useReducer } from 'react';
 import { renderHook, act } from '@testing-library/react-native';
-import { useSetupState } from '../hooks/useSetupState';
+import { useSetupState } from '../app/setup/hooks/useSetupState';
+import { initialSetupState } from '../app/setup/types/setupTypes';
 
-describe('useSetupState Hook', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+const player = (id: string, first = 'Player') =>
+  ({ id, first_name: first, gender: 'male' } as any);
 
+describe('useSetupState', () => {
   describe('Initial state', () => {
-    it('has initial state with all steps', () => {
+    it('starts from initialSetupState', () => {
       const { result } = renderHook(() => useSetupState());
-
-      expect(result.current.state).toEqual({
-        currentStep: 0,
-        photo: null,
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        location: null,
-        playLevel: '',
-        gender: '',
-        daysToPlay: [],
-        isComplete: false,
-        errors: {}
-      });
+      expect(result.current.state).toEqual(initialSetupState);
     });
 
-    it('starts at step 0 (photo)', () => {
+    it('starts with an empty roster and six mixed rounds', () => {
       const { result } = renderHook(() => useSetupState());
-
-      expect(result.current.state.currentStep).toBe(0);
-    });
-
-    it('has no errors initially', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      expect(result.current.state.errors).toEqual({});
+      expect(result.current.state.players).toEqual([]);
+      expect(result.current.state.roundsConfig).toHaveLength(6);
+      expect(result.current.state.roundsConfig.every(r => r.type === 'mixed')).toBe(true);
     });
   });
 
-  describe('Navigation', () => {
-    it('moves to next step', () => {
+  describe('Group identity', () => {
+    it.each([
+      ['SET_GROUP_ID', 'groupId', '42'],
+      ['SET_GROUP_NAME', 'groupName', 'Tuesday Night'],
+      ['SET_GROUP_KEY', 'groupKey', 'abc123'],
+      ['SET_DEVICE_ID', 'deviceId', 'phone_xyz'],
+      ['SET_COURT_NAME', 'courtName', 'Court 3'],
+    ])('%s updates %s', (type, field, payload) => {
       const { result } = renderHook(() => useSetupState());
 
-      act(() => {
-        result.current.nextStep();
-      });
+      act(() => result.current.dispatch({ type, payload } as any));
 
-      expect(result.current.state.currentStep).toBe(1);
+      expect((result.current.state as any)[field]).toBe(payload);
+    });
+  });
+
+  describe('Roster', () => {
+    it('ADD_PLAYER puts the newest player first', () => {
+      const { result } = renderHook(() => useSetupState());
+
+      act(() => result.current.dispatch({ type: 'ADD_PLAYER', payload: player('1', 'Ann') }));
+      act(() => result.current.dispatch({ type: 'ADD_PLAYER', payload: player('2', 'Bob') }));
+
+      expect(result.current.state.players.map(p => p.id)).toEqual(['2', '1']);
     });
 
-    it('moves to previous step', () => {
+    it('REMOVE_PLAYER removes only the matching id', () => {
       const { result } = renderHook(() => useSetupState());
 
-      act(() => {
-        result.current.nextStep();
-        result.current.nextStep();
-      });
+      act(() =>
+        result.current.dispatch({
+          type: 'SET_PLAYERS',
+          payload: [player('1'), player('2'), player('3')],
+        })
+      );
+      act(() => result.current.dispatch({ type: 'REMOVE_PLAYER', payload: '2' }));
 
-      expect(result.current.state.currentStep).toBe(2);
-
-      act(() => {
-        result.current.previousStep();
-      });
-
-      expect(result.current.state.currentStep).toBe(1);
+      expect(result.current.state.players.map(p => p.id)).toEqual(['1', '3']);
     });
 
-    it('prevents navigation before first step', () => {
+    it('UPDATE_PLAYER replaces in place without reordering', () => {
       const { result } = renderHook(() => useSetupState());
 
-      expect(result.current.state.currentStep).toBe(0);
+      act(() =>
+        result.current.dispatch({
+          type: 'SET_PLAYERS',
+          payload: [player('1', 'Ann'), player('2', 'Bob')],
+        })
+      );
+      act(() =>
+        result.current.dispatch({ type: 'UPDATE_PLAYER', payload: player('2', 'Robert') })
+      );
 
-      act(() => {
-        result.current.previousStep();
-      });
-
-      expect(result.current.state.currentStep).toBe(0);
+      expect(result.current.state.players.map(p => p.first_name)).toEqual(['Ann', 'Robert']);
     });
 
-    it('prevents navigation after last step', () => {
+    it('SET_PLAYERS_ORDER reorders the roster', () => {
       const { result } = renderHook(() => useSetupState());
 
-      // Navigate to last step
-      for (let i = 0; i < 5; i++) {
-        act(() => {
-          result.current.nextStep();
-        });
+      act(() =>
+        result.current.dispatch({
+          type: 'SET_PLAYERS',
+          payload: [player('1'), player('2'), player('3')],
+        })
+      );
+      act(() =>
+        result.current.dispatch({
+          type: 'SET_PLAYERS_ORDER',
+          payload: [player('3'), player('1'), player('2')],
+        })
+      );
+
+      expect(result.current.state.players.map(p => p.id)).toEqual(['3', '1', '2']);
+    });
+
+    it('SET_PLAYERS_ORDER ignores a non-array payload rather than wiping the roster', () => {
+      // A wiped roster crashes every players.filter/map downstream, so the
+      // reducer deliberately no-ops instead of trusting the payload.
+      const { result } = renderHook(() => useSetupState());
+
+      act(() =>
+        result.current.dispatch({ type: 'SET_PLAYERS', payload: [player('1'), player('2')] })
+      );
+      const before = result.current.state.players;
+
+      act(() =>
+        result.current.dispatch({ type: 'SET_PLAYERS_ORDER', payload: undefined } as any)
+      );
+
+      expect(result.current.state.players).toBe(before);
+    });
+  });
+
+  describe('Rounds', () => {
+    it('ADD_ROUND appends a mixed round', () => {
+      const { result } = renderHook(() => useSetupState());
+
+      act(() => result.current.dispatch({ type: 'ADD_ROUND' } as any));
+
+      expect(result.current.state.roundsConfig).toHaveLength(7);
+      expect(result.current.state.roundsConfig[6]).toEqual({ type: 'mixed' });
+    });
+
+    it('REMOVE_ROUND drops the last round', () => {
+      const { result } = renderHook(() => useSetupState());
+
+      act(() => result.current.dispatch({ type: 'REMOVE_ROUND' } as any));
+
+      expect(result.current.state.roundsConfig).toHaveLength(5);
+    });
+
+    it('REMOVE_ROUND never goes below one round', () => {
+      const { result } = renderHook(() => useSetupState());
+
+      for (let i = 0; i < 10; i++) {
+        act(() => result.current.dispatch({ type: 'REMOVE_ROUND' } as any));
       }
 
-      const lastStep = result.current.state.currentStep;
-
-      act(() => {
-        result.current.nextStep();
-      });
-
-      expect(result.current.state.currentStep).toBe(lastStep);
+      expect(result.current.state.roundsConfig).toHaveLength(1);
     });
 
-    it('jumps to specific step', () => {
+    it('UPDATE_ROUND_TYPE changes only the round at that index', () => {
       const { result } = renderHook(() => useSetupState());
 
-      act(() => {
-        result.current.goToStep(3);
-      });
+      act(() =>
+        result.current.dispatch({
+          type: 'UPDATE_ROUND_TYPE',
+          payload: { index: 2, type: 'gender' },
+        } as any)
+      );
 
-      expect(result.current.state.currentStep).toBe(3);
+      expect(result.current.state.roundsConfig[2].type).toBe('gender');
+      expect(result.current.state.roundsConfig.filter(r => r.type === 'gender')).toHaveLength(1);
     });
   });
 
-  describe('Photo step', () => {
-    it('updates photo from image picker', () => {
+  describe('Reset and unknown actions', () => {
+    it('RESET returns everything to the initial state', () => {
       const { result } = renderHook(() => useSetupState());
 
-      const photoUri = 'file:///path/to/photo.jpg';
+      act(() => result.current.dispatch({ type: 'SET_GROUP_NAME', payload: 'Tuesday' }));
+      act(() => result.current.dispatch({ type: 'ADD_PLAYER', payload: player('1') }));
+      act(() => result.current.dispatch({ type: 'SET_LOADING', payload: true }));
 
-      act(() => {
-        result.current.setPhoto(photoUri);
-      });
+      act(() => result.current.dispatch({ type: 'RESET' } as any));
 
-      expect(result.current.state.photo).toBe(photoUri);
+      expect(result.current.state).toEqual(initialSetupState);
     });
 
-    it('clears photo', () => {
+    it('an unrecognised action leaves the state untouched', () => {
       const { result } = renderHook(() => useSetupState());
+      const before = result.current.state;
 
-      act(() => {
-        result.current.setPhoto('file:///photo.jpg');
-      });
+      act(() => result.current.dispatch({ type: 'NOT_A_REAL_ACTION' } as any));
 
-      expect(result.current.state.photo).not.toBeNull();
-
-      act(() => {
-        result.current.setPhoto(null);
-      });
-
-      expect(result.current.state.photo).toBeNull();
-    });
-  });
-
-  describe('Profile step', () => {
-    it('updates first name', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setFirstName('John');
-      });
-
-      expect(result.current.state.firstName).toBe('John');
+      expect(result.current.state).toBe(before);
     });
 
-    it('updates last name', () => {
+    it('never mutates the previous state object', () => {
       const { result } = renderHook(() => useSetupState());
+      const before = result.current.state;
 
-      act(() => {
-        result.current.setLastName('Doe');
-      });
+      act(() => result.current.dispatch({ type: 'SET_GROUP_NAME', payload: 'Tuesday' }));
 
-      expect(result.current.state.lastName).toBe('Doe');
-    });
-
-    it('updates email', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setEmail('john@example.com');
-      });
-
-      expect(result.current.state.email).toBe('john@example.com');
-    });
-
-    it('updates phone', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setPhone('5551234567');
-      });
-
-      expect(result.current.state.phone).toBe('5551234567');
-    });
-  });
-
-  describe('Location step', () => {
-    it('updates location from geolocation', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      const location = {
-        latitude: 40.7128,
-        longitude: -74.0060,
-        city: 'New York',
-        state: 'NY'
-      };
-
-      act(() => {
-        result.current.setLocation(location);
-      });
-
-      expect(result.current.state.location).toEqual(location);
-    });
-
-    it('handles location error gracefully', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setLocation(null);
-      });
-
-      expect(result.current.state.location).toBeNull();
-    });
-  });
-
-  describe('Preferences step', () => {
-    it('updates play level', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setPlayLevel('Advanced');
-      });
-
-      expect(result.current.state.playLevel).toBe('Advanced');
-    });
-
-    it('updates gender', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setGender('M');
-      });
-
-      expect(result.current.state.gender).toBe('M');
-    });
-
-    it('updates days to play (adds)', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.addDayToPlay('Monday');
-      });
-
-      expect(result.current.state.daysToPlay).toContain('Monday');
-    });
-
-    it('updates days to play (removes)', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.addDayToPlay('Monday');
-        result.current.addDayToPlay('Wednesday');
-      });
-
-      expect(result.current.state.daysToPlay).toEqual(['Monday', 'Wednesday']);
-
-      act(() => {
-        result.current.removeDayFromPlay('Monday');
-      });
-
-      expect(result.current.state.daysToPlay).toEqual(['Wednesday']);
-    });
-
-    it('prevents duplicate days', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.addDayToPlay('Monday');
-        result.current.addDayToPlay('Monday');
-      });
-
-      expect(result.current.state.daysToPlay).toEqual(['Monday']);
-    });
-  });
-
-  describe('Validation', () => {
-    it('validates required fields', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.validateStep(1);  // Profile step
-      });
-
-      // Should have errors for empty fields
-      expect(Object.keys(result.current.state.errors).length).toBeGreaterThan(0);
-    });
-
-    it('clears errors when valid', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setFirstName('John');
-        result.current.setLastName('Doe');
-        result.current.setEmail('john@example.com');
-        result.current.validateStep(1);
-      });
-
-      expect(Object.keys(result.current.state.errors).length).toBe(0);
-    });
-
-    it('validates email format', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setEmail('invalid-email');
-        result.current.validateStep(1);
-      });
-
-      expect(result.current.state.errors['email']).toBeDefined();
-    });
-
-    it('validates phone format', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setPhone('123');
-        result.current.validateStep(1);
-      });
-
-      expect(result.current.state.errors['phone']).toBeDefined();
-    });
-  });
-
-  describe('Summary review', () => {
-    it('provides summary of all data', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setFirstName('John');
-        result.current.setLastName('Doe');
-        result.current.setEmail('john@example.com');
-        result.current.setPhone('5551234567');
-        result.current.setPlayLevel('Advanced');
-        result.current.setGender('M');
-      });
-
-      const summary = result.current.getSummary();
-
-      expect(summary.firstName).toBe('John');
-      expect(summary.lastName).toBe('Doe');
-      expect(summary.email).toBe('john@example.com');
-      expect(summary.phone).toBe('5551234567');
-      expect(summary.playLevel).toBe('Advanced');
-      expect(summary.gender).toBe('M');
-    });
-  });
-
-  describe('Final submission', () => {
-    it('validates all steps before submission', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setFirstName('John');
-        result.current.setLastName('Doe');
-        result.current.setEmail('john@example.com');
-        result.current.setPhone('5551234567');
-        result.current.setPlayLevel('Advanced');
-        result.current.setGender('M');
-        result.current.addDayToPlay('Monday');
-      });
-
-      const isValid = result.current.validateAllSteps();
-
-      expect(isValid).toBe(true);
-    });
-
-    it('marks setup as complete', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      expect(result.current.state.isComplete).toBe(false);
-
-      act(() => {
-        result.current.completeSetup();
-      });
-
-      expect(result.current.state.isComplete).toBe(true);
-    });
-
-    it('returns complete state data', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setFirstName('John');
-        result.current.setLastName('Doe');
-        result.current.setEmail('john@example.com');
-        result.current.setPhone('5551234567');
-        result.current.setPlayLevel('Advanced');
-        result.current.setGender('M');
-        result.current.setLocation({
-          latitude: 40.7128,
-          longitude: -74.0060,
-          city: 'New York',
-          state: 'NY'
-        });
-      });
-
-      const data = result.current.getSubmissionData();
-
-      expect(data).toEqual({
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john@example.com',
-        phone: '5551234567',
-        playLevel: 'Advanced',
-        gender: 'M',
-        location: expect.any(Object),
-        daysToPlay: expect.any(Array)
-      });
-    });
-  });
-
-  describe('State persistence', () => {
-    it('resets state', () => {
-      const { result } = renderHook(() => useSetupState());
-
-      act(() => {
-        result.current.setFirstName('John');
-        result.current.nextStep();
-      });
-
-      expect(result.current.state.firstName).toBe('John');
-      expect(result.current.state.currentStep).toBe(1);
-
-      act(() => {
-        result.current.resetSetup();
-      });
-
-      expect(result.current.state.firstName).toBe('');
-      expect(result.current.state.currentStep).toBe(0);
+      expect(before.groupName).toBe('');
+      expect(result.current.state).not.toBe(before);
     });
   });
 });
