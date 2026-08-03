@@ -1,6 +1,5 @@
 module.exports = {
-  // specs for components that do not exist yet — see __tests__/pending/README.md
-  testPathIgnorePatterns: ['/node_modules/', '/__tests__/pending/'],
+  testPathIgnorePatterns: ['/node_modules/'],
   // jest-expo, not 'react-native': the bare RN preset does not strip Flow types
   // out of react-native's own jest/setup.js, so every suite died at parse time
   // before a single test ran. jest-expo is the supported preset for Expo apps
@@ -16,25 +15,26 @@ module.exports = {
     'lib/**/*.{ts,tsx}',
     'hooks/**/*.{ts,tsx}',
     'context/**/*.{ts,tsx}',
+    'utils/**/*.{ts,tsx}',
     'components/**/*.{ts,tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
     '!**/__tests__/**',
   ],
-  // This block was spelled `coverageThresholds` (plural) until now, so Jest
-  // ignored it and the 70% gate had never once run. Actual coverage on the day
-  // it was first enforced was ~8%, and a gate that can only ever fail is a gate
+  // This block was spelled `coverageThresholds` (plural), so Jest ignored it
+  // and the 70% gate it declared had never once run. Enforced for the first
+  // time, real coverage was ~8%; a gate that can only ever fail is a gate
   // everyone learns to skip.
   //
-  // So these are set just under the current numbers and act as a ratchet: they
-  // fail if coverage drops, and get raised as suites land. 70% is still the
+  // These sit just under the current numbers and act as a ratchet: they fail if
+  // coverage drops, and get raised as suites land. 70% is still the
   // destination, not the starting line.
   coverageThreshold: {
     global: {
-      branches: 6,
-      functions: 7,
-      lines: 8,
-      statements: 7,
+      branches: 11,
+      functions: 11,
+      lines: 12,
+      statements: 12,
     },
   },
 };

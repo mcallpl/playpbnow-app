@@ -80,7 +80,10 @@ export function calculateTeamStandings(
 }
 
 /**
- * Head-to-head comparison: returns positive if teamA beat teamB, negative if B beat A, 0 if tied/didn't play
+ * Head-to-head comparison, expressed as a sort comparator rather than a score:
+ * NEGATIVE if teamA won the meeting (so A sorts ahead), positive if B did,
+ * 0 if they split or never met. The comment here used to claim the opposite
+ * sign; the behaviour was right, the description was not.
  */
 function getHeadToHead(
     teamAKey: string,
@@ -156,10 +159,18 @@ export function generateFinals(
     const sf2s1 = parseInt(scores[`${semiStartIndex + 1}_0_t1`] || '0');
     const sf2s2 = parseInt(scores[`${semiStartIndex + 1}_0_t2`] || '0');
 
-    const sf1Winner = sf1s1 >= sf1s2 ? sf1Round.games[0].team1 : sf1Round.games[0].team2;
-    const sf1Loser = sf1s1 >= sf1s2 ? sf1Round.games[0].team2 : sf1Round.games[0].team1;
-    const sf2Winner = sf2s1 >= sf2s2 ? sf2Round.games[0].team1 : sf2Round.games[0].team2;
-    const sf2Loser = sf2s1 >= sf2s2 ? sf2Round.games[0].team2 : sf2Round.games[0].team1;
+    // Both semifinals must have produced an actual winner.
+    // This used to decide with `>=`, which quietly sent team1 through on any
+    // score it could not separate — including 0-0, i.e. a semifinal nobody had
+    // entered yet. A team could reach the gold match without playing for it.
+    // Callers already handle an empty result (game.tsx shows "Could not
+    // determine semifinal results"), so refusing is both safe and honest.
+    if (sf1s1 === sf1s2 || sf2s1 === sf2s2) return [];
+
+    const sf1Winner = sf1s1 > sf1s2 ? sf1Round.games[0].team1 : sf1Round.games[0].team2;
+    const sf1Loser = sf1s1 > sf1s2 ? sf1Round.games[0].team2 : sf1Round.games[0].team1;
+    const sf2Winner = sf2s1 > sf2s2 ? sf2Round.games[0].team1 : sf2Round.games[0].team2;
+    const sf2Loser = sf2s1 > sf2s2 ? sf2Round.games[0].team2 : sf2Round.games[0].team1;
 
     const goldMatch: RoundData = {
         id: `playoff-gold-${Date.now()}`,

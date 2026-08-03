@@ -245,14 +245,20 @@ describe('generateFinals', () => {
     expect(generateFinals(semis(), {}, 5)).toEqual([]);
   });
 
-  it('advances team1 when a semifinal has not been scored yet', () => {
-    // Documented consequence of the `>=` comparison: with no scores both
-    // matches read 0-0 and team1 advances. Callers are expected to gate this
-    // behind a completed semifinal rather than rely on the tie-break.
-    const [, gold] = generateFinals(semis(), {}, 0);
+  it('refuses to build finals from an unscored semifinal', () => {
+    // Used to compare with `>=`, so an unentered semifinal read 0-0 and sent
+    // team1 to the gold match without playing for it.
+    expect(generateFinals(semis(), {}, 0)).toEqual([]);
+  });
 
-    expect(gold.games[0].team1.map(x => x.id)).toEqual(['1', '2']);
-    expect(gold.games[0].team2.map(x => x.id)).toEqual(['3', '4']);
+  it('refuses to build finals when only one semifinal is scored', () => {
+    expect(generateFinals(semis(), score(0, 0, 11, 8), 0)).toEqual([]);
+  });
+
+  it('refuses to build finals from a tied semifinal', () => {
+    const scores = { ...score(0, 0, 9, 9), ...score(1, 0, 11, 8) };
+
+    expect(generateFinals(semis(), scores, 0)).toEqual([]);
   });
 });
 

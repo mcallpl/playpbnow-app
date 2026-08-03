@@ -9,7 +9,7 @@
  */
 
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import { useApi } from '../hooks/useApi';
+import { useApi, useApiMultiple } from '../hooks/useApi';
 import apiClient from '../lib/api/ApiClient';
 
 jest.mock('../lib/api/ApiClient', () => ({
@@ -229,6 +229,73 @@ describe('useApi Hook', () => {
       });
 
       expect(result.current.data).toBeNull();
+    });
+  });
+
+  describe('useApiMultiple', () => {
+    it('fetches every source and keys the results', async () => {
+      mockRequest.mockImplementation((_m: string, path: string) =>
+        Promise.resolve({ from: path })
+      );
+
+      const { result } = renderHook(() =>
+        useApiMultiple({
+          players: { method: 'GET', path: '/players' },
+          courts: { method: 'GET', path: '/courts' },
+        })
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.data.players).toEqual({ from: '/players' });
+      expect(result.current.data.courts).toEqual({ from: '/courts' });
+      expect(result.current.error).toEqual({});
+    });
+
+    it('keeps the sources that worked when one fails', async () => {
+      // Promise.allSettled, so one bad endpoint must not blank the others.
+      mockRequest.mockImplementation((_m: string, path: string) =>
+        path === '/courts'
+          ? Promise.reject(new Error('courts down'))
+          : Promise.resolve({ from: path })
+      );
+
+      const { result } = renderHook(() =>
+        useApiMultiple({
+          players: { method: 'GET', path: '/players' },
+          courts: { method: 'GET', path: '/courts' },
+        })
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.data.players).toEqual({ from: '/players' });
+      expect(result.current.data.courts).toBeUndefined();
+      expect(result.current.error.courts).toBeInstanceOf(Error);
+      expect(result.current.error.players).toBeUndefined();
+    });
+
+    it('refetch can target a single source', async () => {
+      mockRequest.mockImplementation((_m: string, path: string) =>
+        Promise.resolve({ from: path })
+      );
+
+      const { result } = renderHook(() =>
+        useApiMultiple({
+          players: { method: 'GET', path: '/players' },
+          courts: { method: 'GET', path: '/courts' },
+        })
+      );
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      mockRequest.mockClear();
+
+      await act(async () => {
+        await result.current.refetch(['courts']);
+      });
+
+      expect(mockRequest).toHaveBeenCalledTimes(1);
+      expect(mockRequest).toHaveBeenCalledWith('GET', '/courts', undefined, expect.anything());
     });
   });
 });

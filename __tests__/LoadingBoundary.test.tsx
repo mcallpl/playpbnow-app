@@ -5,7 +5,13 @@
 
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react-native';
-import { LoadingBoundary } from '../components/LoadingBoundary';
+import {
+  LoadingBoundary,
+  SkeletonPlaceholder,
+  SkeletonList,
+  SkeletonCard,
+  SkeletonTable,
+} from '../components/LoadingBoundary';
 import { Text, View } from 'react-native';
 
 const TestContent = ({ testID = 'content' }: { testID?: string }) => (
@@ -323,6 +329,50 @@ describe('LoadingBoundary', () => {
         expect(screen.queryByText(/unable to load/i)).toBeFalsy();
         expect(screen.getByTestId('content')).toBeTruthy();
       });
+    });
+  });
+
+  describe('Skeleton building blocks', () => {
+    it('SkeletonPlaceholder renders with the given dimensions', () => {
+      render(<SkeletonPlaceholder width={200} height={24} borderRadius={12} />);
+
+      const box = screen.getByTestId('skeleton-placeholder');
+      expect(box).toBeTruthy();
+      expect(box.props.style).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ width: 200, height: 24, borderRadius: 12 }),
+        ])
+      );
+    });
+
+    it('SkeletonList renders one placeholder per row', () => {
+      render(<SkeletonList count={4} />);
+
+      expect(screen.getAllByTestId('skeleton-placeholder')).toHaveLength(4);
+    });
+
+    it('SkeletonList defaults to five rows', () => {
+      render(<SkeletonList />);
+
+      expect(screen.getAllByTestId('skeleton-placeholder')).toHaveLength(5);
+    });
+
+    it('SkeletonCard renders a title bar and a content block', () => {
+      render(<SkeletonCard />);
+
+      expect(screen.getAllByTestId('skeleton-placeholder')).toHaveLength(2);
+    });
+
+    it('SkeletonTable renders rows x columns cells', () => {
+      render(<SkeletonTable rows={3} columns={4} />);
+
+      expect(screen.getAllByTestId('skeleton-placeholder')).toHaveLength(12);
+    });
+
+    it('SkeletonTable defaults to a 5x3 grid', () => {
+      render(<SkeletonTable />);
+
+      expect(screen.getAllByTestId('skeleton-placeholder')).toHaveLength(15);
     });
   });
 });

@@ -131,14 +131,17 @@ export function SkeletonPlaceholder({
   height = 16,
   borderRadius = 4,
   style,
+  testID = 'skeleton-placeholder',
 }: {
   width?: number | string;
   height?: number | string;
   borderRadius?: number;
   style?: any;
+  testID?: string;
 }) {
   return (
     <View
+      testID={testID}
       style={[
         styles.skeleton,
         {
