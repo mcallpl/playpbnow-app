@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth, signOut } from '../../hooks/useAuth';
 import {
   ThemeColors,
   FONT_DISPLAY_BOLD,
@@ -33,6 +33,9 @@ import { haptic } from '../../utils/haptics';
 import * as ImagePicker from 'expo-image-picker';
 
 const API_URL = 'https://playpbnow.com/api';
+// L15: absolute base for any page we hand to Linking.openURL — a relative path
+// opens nothing at all on iOS/Android.
+const WEB_BASE_URL = 'https://playpbnow.com';
 
 // ── Types ──
 
@@ -84,7 +87,25 @@ export default function AdminDashboard() {
   const { userId } = useAuth();
   const router = useRouter();
 
-  const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
+  // Logout is confirmed and routed through the shared signOut routine, so the
+  // Bearer session is revoked server-side rather than just forgotten locally.
+  const handleLogout = useCallback(() => {
+    Alert.alert('Log Out', 'Log out of PlayPBNow?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut({ navigate: false });
+          router.replace('/login');
+        },
+      },
+    ]);
+  }, [router]);
+
+  // L15: `Linking.openURL('/broadcast.html…')` is a silent no-op on native —
+  // React Native's Linking has no page to resolve a relative path against.
+  const broadcastPageUrl = (code: string) => `${WEB_BASE_URL}/broadcast.html?code=${code}`;
 
   const [activeTab, setActiveTab] = useState<DashTab>('overview');
   const [loading, setLoading] = useState(false);
@@ -806,8 +827,9 @@ export default function AdminDashboard() {
 
     const draft = await saveDraft();
     if (draft) {
-      const previewUrl = `/broadcast.html?code=${draft.code}`;
-      Linking.openURL(previewUrl);
+      Linking.openURL(broadcastPageUrl(draft.code)).catch(() => {
+        setError('Could not open the preview page.');
+      });
     }
     setPreviewing(false);
   };
@@ -1938,9 +1960,9 @@ export default function AdminDashboard() {
 
                 <View style={[s.resultsCard, { marginTop: 16 }]}>
                   <Text style={s.resultsLabel}>LANDING PAGE</Text>
-                  <TouchableOpacity onPress={() => Linking.openURL(`/broadcast.html?code=${sendResults.broadcastCode}`)}>
+                  <TouchableOpacity onPress={() => Linking.openURL(broadcastPageUrl(sendResults.broadcastCode)).catch(() => {})}>
                     <Text style={s.resultsLink} numberOfLines={2}>
-                      /broadcast.html?code={sendResults.broadcastCode}
+                      {broadcastPageUrl(sendResults.broadcastCode)}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -2170,7 +2192,7 @@ export default function AdminDashboard() {
               renderItem={({ item }) => (
                 <View style={s.historyCard}>
                   <TouchableOpacity
-                    onPress={() => Linking.openURL(`/broadcast.html?code=${item.broadcast_code}`)}
+                    onPress={() => Linking.openURL(broadcastPageUrl(item.broadcast_code)).catch(() => {})}
                     style={{ flex: 1 }}
                   >
                     <View style={s.activityRow}>
@@ -2219,7 +2241,7 @@ export default function AdminDashboard() {
                   <Text style={s.previewSmsLabel}>SMS PREVIEW</Text>
                   <View style={s.previewSmsBubble}>
                     <Text style={s.previewSmsText}>
-                      {smsText || 'SMS text'}{'\n\n'}Details: /broadcast.html?code=XXXXXXXX
+                      {smsText || 'SMS text'}{'\n\n'}Details: {WEB_BASE_URL}/broadcast.html?code=XXXXXXXX
                     </Text>
                   </View>
                   <Text style={s.previewSmsInfo}>{smsCharCount} chars + ~70 char link = ~{smsCharCount + 70} total</Text>

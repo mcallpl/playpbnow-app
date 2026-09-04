@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
@@ -40,8 +41,21 @@ import {
   FONT_BODY_REGULAR,
   SPACING,
 } from '../../constants/theme';
-import { useBeacon, Beacon, Court } from '../../hooks/useBeacon';
+import {
+  useBeacon,
+  Beacon,
+  Court,
+  parseServerDate,
+  beaconExpiryMs,
+  beaconCreatedMs,
+  beaconUid,
+  distanceMiles,
+  saveLobbySession,
+  loadLobbySession,
+  clearLobbySession,
+} from '../../hooks/useBeacon';
 import { useBeaconStatus } from '../../context/BeaconContext';
+import { signOut } from '@/hooks/useAuth';
 import { playChatPing } from '../../utils/sounds';
 import { useBeaconChat } from '../../hooks/useBeaconChat';
 import { haptic } from '../../utils/haptics';
@@ -72,10 +86,14 @@ const DURATION_OPTIONS = [
   { label: '2 hours', value: 120 },
 ];
 
-function getTimeRemaining(expiresAt: string): string {
-  const now = Date.now();
-  const expires = new Date(expiresAt).getTime();
-  const diff = expires - now;
+/**
+ * H2: NEVER `new Date('2026-09-04 18:30:00')` — that is Invalid Date on
+ * Safari/WebKit and device-local everywhere else, while the API means LA wall
+ * clock. Every date string on this screen goes through parseServerDate().
+ */
+function formatRemaining(expiresMs: number): string {
+  if (Number.isNaN(expiresMs)) return '';
+  const diff = expiresMs - Date.now();
   if (diff <= 0) return 'Expired';
   const minutes = Math.floor(diff / 60000);
   if (minutes < 60) return `${minutes}m left`;
@@ -85,8 +103,20 @@ function getTimeRemaining(expiresAt: string): string {
   return `${hours}h ${remaining}m left`;
 }
 
-function formatHistoryDate(createdAt: string): string {
-  const date = new Date(createdAt);
+function getTimeRemaining(expiresAt: string): string {
+  return formatRemaining(parseServerDate(expiresAt));
+}
+
+/** Prefers the server's ISO / countdown fields; falls back to expires_at. */
+function getBeaconTimeRemaining(beacon: Beacon): string {
+  return formatRemaining(beaconExpiryMs(beacon));
+}
+
+/** Accepts a raw string or a beacon row (which may carry `created_at_iso`). */
+function formatHistoryDate(createdAt: string | Beacon): string {
+  const ms = typeof createdAt === 'string' ? parseServerDate(createdAt) : beaconCreatedMs(createdAt);
+  if (Number.isNaN(ms)) return '';
+  const date = new Date(ms);
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
   const yesterday = new Date(now);
@@ -111,12 +141,14 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
   mapsApiKey: string;
   colors: ThemeColors;
   onTap: () => void;
-  onExtend: (id: number) => void;
-  onCancel: (id: number) => void;
+  /** M1: the type is passed so the right backend is hit without a probe. */
+  onExtend: (id: number, beaconType?: 'casual' | 'structured') => void;
+  /** M4: performs the cancel directly — this card owns the ONE confirmation. */
+  onCancel: (beacon: Beacon) => void;
   loading: boolean;
 }) {
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const timeLeft = getTimeRemaining(beacon.expires_at);
+  const timeLeft = getBeaconTimeRemaining(beacon);
   const isExpired = timeLeft === 'Expired';
   const hasCoords = beacon.court_lat != null && beacon.court_lng != null;
   const isCasual = beacon.beacon_type === 'casual';
@@ -238,7 +270,9 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={isMine ? { backgroundColor: 'rgba(204,0,0,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 } : (isCasual ? styles.mapCardBadgeCasual : styles.mapCardBadgeStructured)}>
             <Text style={isMine ? { fontFamily: FONT_BODY_BOLD, fontSize: 11, color: colors.danger } : (isCasual ? styles.mapCardBadgeCasualText : styles.mapCardBadgeStructuredText)}>
-              {isMine ? 'Your Beacon' : (isCasual ? 'More Info' : 'Spot To Fill')}
+              {/* "Come Play" parallels "Spot To Fill"; the old "More Info"
+                  read like a button, not a kind of beacon. */}
+              {isMine ? 'Your Beacon' : (isCasual ? 'Come Play' : 'Spot To Fill')}
             </Text>
           </View>
           {beacon.is_mine && beacon.chat_count > 0 && (
@@ -273,7 +307,7 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
         <View style={styles.mapCardCreatorActions}>
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => onExtend(beacon.id)}
+            onPress={() => onExtend(beacon.id, beacon.beacon_type)}
             disabled={actionLoading || isExpired}
           >
             <BrandedIcon name="sync" size={14} color={colors.accent} />
@@ -287,7 +321,7 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
                 'Are you sure you want to delete this beacon?',
                 [
                   { text: 'Never Mind', style: 'cancel' },
-                  { text: 'Delete', style: 'destructive', onPress: () => onCancel(beacon.id) },
+                  { text: 'Delete', style: 'destructive', onPress: () => onCancel(beacon) },
                 ]
               );
             }}
@@ -302,25 +336,172 @@ function BeaconMapCard({ beacon, mapsApiKey, colors, onTap, onExtend, onCancel, 
   );
 }
 
+/**
+ * M5 — Court picker.
+ *
+ * The old picker put all 1,326 courts into a nested ScrollView (every row
+ * mounted at once), showed the bare name so the six "Memorial Park" courts were
+ * indistinguishable, sorted A–Z regardless of where you are, and grabbed the
+ * keyboard with autoFocus the instant it opened. This one virtualises with a
+ * FlatList, labels rows "Name — City", sorts by distance whenever we know where
+ * the user is, searches name OR city, and leaves the keyboard alone.
+ */
+function CourtPicker({
+  courts, selectedId, onSelect, open, setOpen, searchText, setSearchText, colors, location,
+}: {
+  courts: Court[];
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  searchText: string;
+  setSearchText: (v: string) => void;
+  colors: ThemeColors;
+  location: { latitude: number; longitude: number } | null;
+}) {
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const selected = courts.find((c) => c.id === selectedId);
+  const selectedLabel = selected
+    ? (selected.city ? `${selected.name} — ${selected.city}` : selected.name)
+    : 'Select a court';
+
+  const rows = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    const filtered = q
+      ? courts.filter(
+          (c) =>
+            (c.name || '').toLowerCase().includes(q) ||
+            (c.city || '').toLowerCase().includes(q)
+        )
+      : courts.slice();
+
+    if (location) {
+      // Distance first when we can compute it; courts with no coordinates keep
+      // their alphabetical order at the end rather than disappearing.
+      const withDist = filtered.map((c) => ({
+        court: c,
+        dist:
+          c.lat != null && c.lng != null
+            ? distanceMiles(location.latitude, location.longitude, Number(c.lat), Number(c.lng))
+            : null,
+      }));
+      withDist.sort((a, b) => {
+        if (a.dist != null && b.dist != null) return a.dist - b.dist;
+        if (a.dist != null) return -1;
+        if (b.dist != null) return 1;
+        return (a.court.name || '').localeCompare(b.court.name || '');
+      });
+      return withDist;
+    }
+
+    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return filtered.map((c) => ({ court: c, dist: null as number | null }));
+  }, [courts, searchText, location]);
+
+  return (
+    <View>
+      <TouchableOpacity
+        style={[styles.dropdownTrigger, open && styles.dropdownTriggerOpen]}
+        onPress={() => setOpen(!open)}
+      >
+        <Text style={selectedId ? styles.dropdownTriggerText : styles.dropdownPlaceholder} numberOfLines={1}>
+          {selectedLabel}
+        </Text>
+        <BrandedIcon name={open ? 'minus' : 'add'} size={16} color={colors.textMuted} />
+      </TouchableOpacity>
+      {open && (
+        <View style={styles.dropdownList}>
+          <TextInput
+            style={[styles.textInput, { marginHorizontal: 8, marginTop: 8, marginBottom: 4 }]}
+            placeholder="Search by court or city..."
+            placeholderTextColor={colors.inputPlaceholder}
+            value={searchText}
+            onChangeText={setSearchText}
+            autoCorrect={false}
+            /* M5: no autoFocus — the keyboard used to cover the list itself. */
+          />
+          <FlatList
+            style={styles.dropdownScroll}
+            data={rows}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            initialNumToRender={20}
+            maxToRenderPerBatch={20}
+            windowSize={7}
+            removeClippedSubviews={Platform.OS !== 'web'}
+            keyExtractor={(item) => String(item.court.id)}
+            ListEmptyComponent={
+              <Text style={[styles.dropdownItemText, { padding: 12 }]}>No courts match that search.</Text>
+            }
+            renderItem={({ item }) => {
+              const court = item.court;
+              const isSel = selectedId === court.id;
+              return (
+                <TouchableOpacity
+                  style={[styles.dropdownItem, isSel && styles.dropdownItemSelected]}
+                  onPress={() => {
+                    onSelect(court.id);
+                    setOpen(false);
+                    setSearchText('');
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[styles.dropdownItemText, isSel && styles.dropdownItemTextSelected]}
+                      numberOfLines={1}
+                    >
+                      {court.city ? `${court.name} — ${court.city}` : court.name}
+                    </Text>
+                    {item.dist != null && (
+                      <Text style={styles.dropdownItemDistance}>{item.dist.toFixed(1)} mi away</Text>
+                    )}
+                  </View>
+                  {isSel && <BrandedIcon name="confirm" size={16} color={colors.accent} />}
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function PlayNowTab() {
   const router = useRouter();
   const { colors } = useTheme();
 
-  const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
+  // Logout must be confirmed and must go through the shared signOut routine
+  // (Bearer token revoked server-side, RevenueCat identity cleared, theme kept).
+  const handleLogout = useCallback(() => {
+    Alert.alert('Log Out', 'Log out of PlayPBNow?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut({ navigate: false });
+          router.replace('/login');
+        },
+      },
+    ]);
+  }, [router]);
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const {
     beacons, history, courts, lobby, members, confirmedCount, allConfirmed,
     replacementRequests, loading, error,
+    myLobby, lastPollOk,
     createBeacon, fetchFeed, cancelBeacon, extendBeacon,
-    createLobby, joinLobby, confirmInLobby,
-    lockLobby, startMatch, startPolling, stopPolling, reset,
+    createLobby, joinLobby, leaveLobby, confirmInLobby,
+    lockLobby, startMatch, startPolling, stopPolling, resumePolling, reset,
     requestReplacement, acceptReplacement, cancelReplacement,
     respondToBeacon, unrespondToBeacon,
     setError,
   } = useBeacon();
 
-  const { location, locationPermissionDenied, showLocationDeniedAlert, reportBeaconCounts } = useBeaconStatus();
+  const { location, locationPermissionDenied, showLocationDeniedAlert, requestLocation, reportBeaconCounts } = useBeaconStatus();
 
   const [view, setView] = useState<BeaconView>('feed');
   const viewRef = useRef<BeaconView>('feed');
@@ -347,8 +528,9 @@ export default function PlayNowTab() {
   const [courtDropdownOpen, setCourtDropdownOpen] = useState(false);
   const [courtSearchText, setCourtSearchText] = useState('');
 
-  // Chat state
-  const [expandedChatId, setExpandedChatId] = useState<number | null>(null);
+  // Chat state — M2: keyed by `${beacon_type}:${id}`, because a casual beacon
+  // and a structured beacon can both legitimately be id 42.
+  const [expandedChatId, setExpandedChatId] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const feedScrollRef = useRef<ScrollView>(null);
   const feedLoadedOnce = useRef(false);
@@ -363,6 +545,24 @@ export default function PlayNowTab() {
 
   // Phone verification state
   const [phoneVerified, setPhoneVerified] = useState(false);
+  // M11: in-tab phone capture. Telling a signed-in user to "log out and log
+  // back in" is both wrong and hostile — they add the number right here.
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
+
+  // L5: web has no native 3-button alert, so Extend gets a real chooser there.
+  const [extendBeaconId, setExtendBeaconId] = useState<number | null>(null);
+  const [extendBeaconType, setExtendBeaconType] = useState<'casual' | 'structured' | undefined>(undefined);
+
+  // C4: the focus effect must NOT depend on `location` — a late GPS fix used to
+  // re-run it, which stopped lobby polling and closed the detail modal.
+  const locationRef = useRef(location);
+  useEffect(() => { locationRef.current = location; }, [location]);
+  // M10: ask for location the first time Play Now is opened, never at launch.
+  const locationAskedRef = useRef(false);
+  // C4: a lobby the server reported is auto-resumed at most once.
+  const autoResumedLobbyRef = useRef<number | null>(null);
 
   // Load user info on mount — check server profile first
   useEffect(() => {
@@ -389,38 +589,51 @@ export default function PlayNowTab() {
       profileComplete &&
       userId
     ) {
-      setExpandedChatId(selectedBeacon.id);
+      setExpandedChatId(beaconUid(selectedBeacon));
       startChatPolling(selectedBeacon.id, userId, selectedBeacon.beacon_type === 'casual');
     }
-  }, [selectedBeacon?.id]);
+  }, [selectedBeacon?.id, selectedBeacon?.beacon_type]);
 
-  // Detect when selected beacon expires (no longer in active feed)
+  // Detect when selected beacon expires (no longer in active feed).
+  // M9: the old `beacons.length > 0` guard meant that when the LAST beacon
+  // expired — the exact case this is for — the banner never appeared.
   useEffect(() => {
-    if (selectedBeacon && beacons.length > 0) {
-      const stillActive = beacons.some((b) => b.id === selectedBeacon.id);
+    if (selectedBeacon && feedLoadedOnce.current) {
+      const uid = beaconUid(selectedBeacon);
+      const stillActive = beacons.some((b) => beaconUid(b) === uid);
       if (!stillActive && !selectedBeaconExpired) {
         setSelectedBeaconExpired(true);
       }
     }
-  }, [beacons, selectedBeacon?.id]);
+  }, [beacons, selectedBeacon?.id, selectedBeacon?.beacon_type]);
 
   // Track chat_count changes on creator's beacons — play sound on increase
-  const prevChatCountsRef = useRef<Record<number, number>>({});
+  // L1: the old `prevCount > 0` test meant the FIRST message on a beacon never
+  // pinged — the one that matters most. We now track which beacons we have
+  // already seen, so 0 -> 1 pings, while the very first feed load stays silent.
+  const prevChatCountsRef = useRef<Record<string, number>>({});
+  const seenBeaconsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const prev = prevChatCountsRef.current;
+    const seen = seenBeaconsRef.current;
     let shouldPing = false;
 
     for (const beacon of beacons) {
+      const uid = beaconUid(beacon);
       if (beacon.is_mine && beacon.chat_count > 0) {
-        const prevCount = prev[beacon.id] ?? 0;
-        if (beacon.chat_count > prevCount && prevCount > 0 && expandedChatId !== beacon.id) {
+        const prevCount = prev[uid] ?? 0;
+        if (beacon.chat_count > prevCount && seen.has(uid) && expandedChatId !== uid) {
           shouldPing = true;
         }
       }
     }
 
-    const newCounts: Record<number, number> = {};
-    for (const b of beacons) { newCounts[b.id] = b.chat_count; }
+    const newCounts: Record<string, number> = {};
+    for (const b of beacons) {
+      const uid = beaconUid(b);
+      newCounts[uid] = b.chat_count;
+      seen.add(uid);
+    }
     prevChatCountsRef.current = newCounts;
 
     if (shouldPing) playChatPing();
@@ -555,6 +768,47 @@ export default function PlayNowTab() {
     }
   };
 
+  // M11: add a phone number without leaving the tab. The old copy told a
+  // signed-in user to "log out and log back in", which is both wrong (their
+  // session is fine) and the fastest way to lose them.
+  const handleSavePhone = useCallback(async () => {
+    const digits = phoneInput.replace(/\D/g, '');
+    if (digits.length < 10) {
+      Alert.alert('Phone Number Needed', 'Enter a 10-digit US mobile number, e.g. 555 123 4567.');
+      return;
+    }
+    setSavingPhone(true);
+    try {
+      const res = await fetch(`${API_URL}/check_phone.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set', user_id: userId, phone: digits }),
+      });
+      const data = await res.json().catch(() => null);
+      if (data && data.status === 'success') {
+        const saved = String(data.phone || digits);
+        await AsyncStorage.setItem('user_phone', saved);
+        setPhoneVerified(true);
+        setShowPhoneModal(false);
+        setPhoneInput('');
+        haptic.confirm();
+        // Re-check: the profile lookup needs the phone to be on file.
+        await loadUserInfo();
+      } else {
+        Alert.alert('Could Not Save', (data && data.message) || 'That number could not be saved. Please try again.');
+      }
+    } catch {
+      Alert.alert('Could Not Save', 'Network error. Please try again.');
+    } finally {
+      setSavingPhone(false);
+    }
+  }, [phoneInput, userId]);
+
+  /** M11: the one place that opens the phone capture flow. Never suggests logout. */
+  const promptForPhone = useCallback(() => {
+    setShowPhoneModal(true);
+  }, []);
+
   // Keep viewRef in sync so useFocusEffect can read current view without depending on it
   useEffect(() => { viewRef.current = view; }, [view]);
 
@@ -567,15 +821,26 @@ export default function PlayNowTab() {
     // appears) without the length changing, and own/others would go stale.
   }, [beacons, reportBeaconCounts]);
 
-  // Helper to pass location into every fetchFeed call
+  // Helper to pass location into every fetchFeed call.
+  // C4: reads the CURRENT location from a ref, so this callback identity never
+  // changes when a GPS fix lands mid-session. The old version depended on
+  // `location`, which re-ran the focus effect below — tearing down lobby
+  // polling and closing whatever modal was open the moment the fix arrived.
   const fetchFeedWithLocation = useCallback(
-    () => fetchFeed(undefined, location?.latitude, location?.longitude),
-    [fetchFeed, location]
+    () => fetchFeed(undefined, locationRef.current?.latitude, locationRef.current?.longitude),
+    [fetchFeed]
   );
 
   // Always show the feed when the tab gains focus, and refresh beacons
   useFocusEffect(
     useCallback(() => {
+      // M10: this is the first moment the location actually means something to
+      // the user, so this is where we ask — not on the login screen at launch.
+      if (!locationAskedRef.current) {
+        locationAskedRef.current = true;
+        requestLocation().catch(() => {});
+      }
+
       // Only reset to feed from the feed view itself (tab re-focus refresh).
       // Never reset from mode_select, create, or lobby — those are active user flows.
       if (viewRef.current === 'feed') {
@@ -583,17 +848,70 @@ export default function PlayNowTab() {
       }
       fetchFeedWithLocation().finally(() => { feedLoadedOnce.current = true; });
 
+      // C4: resume an open lobby. Polling is stopped on blur, and before this
+      // the lobby id lived only in React state — so a tab switch or a restart
+      // silently abandoned the lobby while other players kept waiting.
+      let resumeCancelled = false;
+      (async () => {
+        const saved = await loadLobbySession();
+        if (resumeCancelled || !saved) return;
+        if (viewRef.current === 'lobby' || viewRef.current === 'locked') {
+          // Same session, just refocused — restart the poll we stopped on blur.
+          resumePolling();
+          return;
+        }
+        if (viewRef.current === 'feed') {
+          startPolling(saved.lobbyId);
+          setView(saved.view === 'locked' ? 'locked' : 'lobby');
+        }
+      })();
+
       const refreshInterval = setInterval(() => {
         fetchFeedWithLocation();
       }, 15000);
       return () => {
+        resumeCancelled = true;
         clearInterval(refreshInterval);
         stopPolling();
         stopChatPolling();
         setExpandedChatId(null);
       };
-    }, [fetchFeedWithLocation, stopPolling])
+    }, [fetchFeedWithLocation, stopPolling, stopChatPolling, resumePolling, startPolling, requestLocation])
   );
+
+  // C4 (second half): the server is the authority. When beacon_feed.php reports
+  // that this user is still in an open lobby, resume it even if the device
+  // storage was cleared (new install, different device, cache wipe).
+  useEffect(() => {
+    if (!myLobby) return;
+    if (view !== 'feed') return;
+    if (lobby && lobby.id === myLobby.id) return;
+    // Resume each lobby at most once, so the 15s feed refresh can never yank a
+    // user back into a lobby they have deliberately navigated away from.
+    if (autoResumedLobbyRef.current === myLobby.id) return;
+    autoResumedLobbyRef.current = myLobby.id;
+    startPolling(myLobby.id);
+    setView(myLobby.status === 'locked' ? 'locked' : 'lobby');
+    saveLobbySession({
+      lobbyId: myLobby.id,
+      beaconId: myLobby.beaconId,
+      view: myLobby.status === 'locked' ? 'locked' : 'lobby',
+    });
+  }, [myLobby?.id, myLobby?.status, view]);
+
+  // C4: keep the persisted session in step with the live lobby.
+  useEffect(() => {
+    if (!lobby) return;
+    if (lobby.status === 'gathering' || lobby.status === 'locked') {
+      saveLobbySession({
+        lobbyId: lobby.id,
+        beaconId: lobby.beacon_id ?? null,
+        view: lobby.status === 'locked' ? 'locked' : 'lobby',
+      });
+    } else {
+      clearLobbySession();
+    }
+  }, [lobby?.id, lobby?.status]);
 
   // Auto-navigate when lobby status changes to 'started'
   useEffect(() => {
@@ -615,10 +933,17 @@ export default function PlayNowTab() {
             groupName: lobby.court_name || 'Beacon Match',
             shareCode: lobby.session_code || '',
             sessionId: String(lobby.collab_session_id || ''),
-            isCollaborator: lobby.host_user_id !== userId ? 'true' : 'false',
+            // M3: host_user_id and userId are int-vs-string across the wire.
+            isCollaborator: String(lobby.host_user_id) !== String(userId) ? 'true' : 'false',
           },
         });
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => {
+        // H7: the match has left this screen. Leaving the view on 'locked'
+        // meant coming back to a dead Start button that errored on every press.
+        clearLobbySession();
+        reset();
+        setView('feed');
+      });
 
     }
   }, [lobby?.status]);
@@ -633,16 +958,10 @@ export default function PlayNowTab() {
   // --- HANDLERS ---
 
   const handleOpenCreateView = useCallback(async () => {
-    // Phone verification gate — must have verified phone from Twilio
+    // M11: phone gate. Say exactly what is missing and fix it here — never
+    // send a signed-in user back through the login screen.
     if (!phoneVerified) {
-      Alert.alert(
-        'Phone Verification Required',
-        'You must verify your phone number via SMS before creating a beacon. Please log out and log back in.',
-        [
-          { text: 'OK' },
-          { text: 'Go to Login', onPress: () => router.replace('/login') },
-        ]
-      );
+      promptForPhone();
       return;
     }
     // Profile gate — require name before creating a beacon
@@ -651,7 +970,7 @@ export default function PlayNowTab() {
       return;
     }
     setView('mode_select');
-  }, [phoneVerified, profileComplete, router]);
+  }, [phoneVerified, profileComplete, promptForPhone]);
 
   const loadCourtsForCreate = useCallback(async () => {
     setLoadingCourts(true);
@@ -683,7 +1002,11 @@ export default function PlayNowTab() {
     );
     if (!beacon) return;
 
-    const lobbyResult = await createLobby(beacon.id, createPlayerCount, {
+    // C2: the stepper asks how many players are needed BESIDES the host, but
+    // the host is auto-added as a lobby member. Sending the bare count made
+    // beacon_join_lobby.php reject the very first joiner as "full" — a default
+    // beacon of 1 could never be joined at all.
+    const lobbyResult = await createLobby(beacon.id, createPlayerCount + 1, {
       player_id: playerInfo.player_id,
       first_name: playerInfo.first_name,
       last_name: playerInfo.last_name,
@@ -694,10 +1017,12 @@ export default function PlayNowTab() {
     haptic.start();
     Alert.alert(
       'Beacon is Live!',
-      'Your beacon is now active. Nearby players will be notified and can see your beacon on the map.',
+      // M12: there is no push notification. Do not promise one.
+      'Your beacon is now active. Players who open Play Now nearby will see your beacon on the map.',
       [{ text: 'Got it!' }]
     );
     startPolling(lobbyResult.id);
+    saveLobbySession({ lobbyId: lobbyResult.id, beaconId: beacon.id, view: 'lobby' });
     setView('lobby');
 
     // Reset create form
@@ -731,7 +1056,8 @@ export default function PlayNowTab() {
     haptic.start();
     Alert.alert(
       'Beacon is Live!',
-      'Your beacon is now active. Nearby players will be notified and can see your beacon on the map.',
+      // M12: no push notifications exist — say what actually happens.
+      'Your beacon is now active. Players who open Play Now nearby will see your beacon on the map.',
       [{ text: 'Got it!' }]
     );
     setView('feed');
@@ -742,9 +1068,25 @@ export default function PlayNowTab() {
     setCreateDuration(60);
   }, [createCourtId, createMessage, createDuration, createBeacon, fetchFeedWithLocation]);
 
+  /**
+   * C1 — OWNER ONLY. Re-opening your own beacon must land you back in the
+   * lobby you already have, not mint a second one. The feed reports the open
+   * lobby as `active_lobby_id`; the server is also idempotent now and returns
+   * the existing row (`existing: true`) rather than inserting a duplicate.
+   */
   const handleOpenLobby = useCallback(
     async (beacon: Beacon) => {
-      const lobbyResult = await createLobby(beacon.id, beacon.player_count, {
+      if (beacon.active_lobby_id) {
+        haptic.tap();
+        startPolling(beacon.active_lobby_id);
+        saveLobbySession({ lobbyId: beacon.active_lobby_id, beaconId: beacon.id, view: 'lobby' });
+        setView(beacon.active_lobby_status === 'locked' ? 'locked' : 'lobby');
+        return;
+      }
+
+      // No lobby yet — the owner may create one. C2: +1 for the host's own seat.
+      const target = (beacon.active_lobby_target_players || beacon.player_count || 1) + 1;
+      const lobbyResult = await createLobby(beacon.id, target, {
         player_id: playerInfo.player_id,
         first_name: playerInfo.first_name,
         last_name: playerInfo.last_name,
@@ -754,39 +1096,41 @@ export default function PlayNowTab() {
 
       haptic.tap();
       startPolling(lobbyResult.id);
+      saveLobbySession({ lobbyId: lobbyResult.id, beaconId: beacon.id, view: 'lobby' });
       setView('lobby');
     },
     [createLobby, playerInfo, startPolling]
   );
 
+  /**
+   * C1 — RESPONDER. This used to call createLobby(), which made the responder
+   * the host of a brand-new empty lobby: the beacon owner never saw them, and
+   * the feed then picked one of the duplicate lobbies at random. A responder
+   * joins the beacon's existing lobby or gets told there isn't one.
+   */
   const handleJoinLobby = useCallback(
     async (beacon: Beacon) => {
-      // Attempt to join the lobby associated with this beacon
-      // The beacon feed may include an active_lobby_id in future.
-      // For now, we create a lobby (which the backend will handle idempotently
-      // or return existing) then join it.
-      const lobbyResult = await createLobby(beacon.id, beacon.player_count, {
+      const lobbyId = beacon.active_lobby_id;
+      if (!lobbyId) {
+        setError('This beacon has no open lobby yet.');
+        Alert.alert('No Open Lobby', 'This beacon has no open lobby yet. Try the chat to reach the host.');
+        return;
+      }
+
+      const joined = await joinLobby(lobbyId, {
         player_id: playerInfo.player_id,
         first_name: playerInfo.first_name,
         last_name: playerInfo.last_name,
         gender: playerInfo.gender,
       });
-      if (lobbyResult) {
-        // If we are not the host, join the lobby
-        if (lobbyResult.host_user_id !== userId) {
-          await joinLobby(lobbyResult.id, {
-            player_id: playerInfo.player_id,
-            first_name: playerInfo.first_name,
-            last_name: playerInfo.last_name,
-            gender: playerInfo.gender,
-          });
-        }
-        haptic.tap();
-        startPolling(lobbyResult.id);
-        setView('lobby');
-      }
+      if (!joined) return; // joinLobby already set a specific error message
+
+      haptic.tap();
+      startPolling(lobbyId);
+      saveLobbySession({ lobbyId, beaconId: beacon.id, view: 'lobby' });
+      setView('lobby');
     },
-    [createLobby, joinLobby, playerInfo, userId, startPolling]
+    [joinLobby, playerInfo, startPolling, setError]
   );
 
   const handleConfirm = useCallback(async () => {
@@ -814,43 +1158,79 @@ export default function PlayNowTab() {
     }
   }, [lobby, startMatch]);
 
+  // C3: leaving used to be purely local — the member stayed in the lobby
+  // forever from every other player's point of view, blocking Lock with
+  // "X has not confirmed". Now it tells the server first.
   const handleLeaveLobby = useCallback(() => {
-    Alert.alert('Leave Lobby', 'Are you sure you want to leave this lobby?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Leave',
-        style: 'destructive',
-        onPress: () => {
-          reset();
-          setView('feed');
-          fetchFeedWithLocation();
+    const amHost = !!lobby && String(lobby.host_user_id) === String(userId);
+    Alert.alert(
+      amHost ? 'Close Lobby' : 'Leave Lobby',
+      amHost
+        ? 'You are the host. Leaving closes this lobby and cancels the beacon for everyone.'
+        : 'Are you sure you want to leave this lobby?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: amHost ? 'Close Lobby' : 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            if (lobby) await leaveLobby(lobby.id);
+            await clearLobbySession();
+            reset();
+            setView('feed');
+            fetchFeedWithLocation();
+          },
         },
-      },
-    ]);
-  }, [reset, fetchFeedWithLocation]);
+      ]
+    );
+  }, [lobby, userId, leaveLobby, reset, fetchFeedWithLocation]);
 
   // --- RENDERERS ---
 
-  const isHost = lobby?.host_user_id === userId;
-  const myMember = members.find((m) => m.user_id === userId);
+  // M3: the API returns these as ints in some payloads and strings in others.
+  // A raw === compare silently made the host a guest (no Lock button at all).
+  const isHost = !!lobby && String(lobby.host_user_id) === String(userId);
+  const myMember = members.find((m) => String(m.user_id) === String(userId));
+  // L8: locking a "match" with only the host in it produces an empty schedule.
+  const activeMemberCount = members.filter(
+    (m) => m.status !== 'left' && m.status !== 'replaced'
+  ).length;
 
   // ========================
   // VIEW 1: Live Feed
   // ========================
 
-  const handleExtendBeacon = useCallback((beaconId: number) => {
+  // L5: on web a 3-option Alert degrades into three consecutive window.confirm
+  // popups. Native keeps the real action sheet; web gets a proper chooser.
+  const handleExtendBeacon = useCallback((beaconId: number, beaconType?: 'casual' | 'structured') => {
+    if (Platform.OS === 'web') {
+      setExtendBeaconId(beaconId);
+      setExtendBeaconType(beaconType);
+      return;
+    }
     Alert.alert('Extend Beacon', 'How much longer?', [
-      { text: '+30 min', onPress: () => { extendBeacon(beaconId, 30); haptic.confirm(); } },
-      { text: '+1 hour', onPress: () => { extendBeacon(beaconId, 60); haptic.confirm(); } },
-      { text: '+2 hours', onPress: () => { extendBeacon(beaconId, 120); haptic.confirm(); } },
+      { text: '+30 min', onPress: () => { extendBeacon(beaconId, 30, beaconType); haptic.confirm(); } },
+      { text: '+1 hour', onPress: () => { extendBeacon(beaconId, 60, beaconType); haptic.confirm(); } },
+      { text: '+2 hours', onPress: () => { extendBeacon(beaconId, 120, beaconType); haptic.confirm(); } },
       { text: 'Cancel', style: 'cancel' },
     ]);
   }, [extendBeacon]);
 
-  const handleCancelBeacon = useCallback((beaconId: number) => {
+  /**
+   * M4: performs the cancel WITHOUT asking. Every caller already runs its own
+   * confirmation, and asking twice read as "the first Delete didn't work".
+   * M1: pass the beacon type so the right backend is hit on the first try.
+   */
+  const performCancelBeacon = useCallback((beacon: Beacon) => {
+    cancelBeacon(beacon.id, beacon.beacon_type);
+    haptic.tap();
+  }, [cancelBeacon]);
+
+  // Kept for any caller that has only an id and needs the confirmation itself.
+  const handleCancelBeacon = useCallback((beaconId: number, beaconType?: 'casual' | 'structured') => {
     Alert.alert('Cancel Beacon', 'Are you sure you want to cancel this beacon?', [
       { text: 'No', style: 'cancel' },
-      { text: 'Yes, Cancel', style: 'destructive', onPress: () => { cancelBeacon(beaconId); haptic.tap(); } },
+      { text: 'Yes, Cancel', style: 'destructive', onPress: () => { cancelBeacon(beaconId, beaconType); haptic.tap(); } },
     ]);
   }, [cancelBeacon]);
 
@@ -874,6 +1254,19 @@ export default function PlayNowTab() {
             <WarningBox text={error} />
           </View>
         ) : null}
+
+        {/* M6: the feed is not radius-filtered. When we have no location we
+            cannot sort by distance either, so say what is actually happening
+            instead of leaving "nearby" to imply a filter that does not exist. */}
+        {!location && !locationPermissionDenied && (
+          <View style={styles.locationWarning}>
+            <BrandedIcon name="location" size={18} color={colors.gold} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.locationWarningTitle}>Showing all beacons</Text>
+              <Text style={styles.locationWarningText}>Enable location to sort them by distance from you.</Text>
+            </View>
+          </View>
+        )}
 
         {/* Location Warning */}
         {locationPermissionDenied && (
@@ -901,26 +1294,41 @@ export default function PlayNowTab() {
             {beacons.length > 0 ? (
               beacons.map((beacon) => (
                 <BeaconMapCard
-                  key={beacon.id}
+                  key={beaconUid(beacon)}
                   beacon={beacon}
                   mapsApiKey={mapsApiKey}
                   colors={colors}
                   onTap={() => { setSelectedBeacon(beacon); setSelectedBeaconExpired(false); }}
                   onExtend={handleExtendBeacon}
-                  onCancel={handleCancelBeacon}
+                  onCancel={performCancelBeacon}
                   loading={loading}
                 />
               ))
             ) : (
+              /* M11: state exactly what is missing and fix it right here. The
+                 old copy told a signed-in user to "log in", which was simply
+                 untrue and left them with nothing to tap. */
               <View style={styles.emptyBlock}>
                 <BrandedIcon name="location" size={56} color={colors.textMuted} />
-                <Text style={styles.emptyTitle}>No active beacons nearby</Text>
+                <Text style={styles.emptyTitle}>No active beacons right now</Text>
                 <Text style={styles.emptySubtitle}>
-                  {phoneVerified && profileComplete
-                    ? 'Start a beacon to let others know you\'re looking to play!'
-                    : 'Check back later or log in to create your own beacon.'}
+                  {!phoneVerified
+                    ? 'Add a phone number to create beacons.'
+                    : !profileComplete
+                    ? 'Add your name to create beacons.'
+                    : 'Start a beacon to let others know you\'re looking to play!'}
                 </Text>
-                {phoneVerified && profileComplete && (
+                {!phoneVerified ? (
+                  <TouchableOpacity style={styles.emptyCreateButton} onPress={promptForPhone}>
+                    <BrandedIcon name="add" size={20} color="#ffffff" />
+                    <Text style={styles.emptyCreateButtonText}>Add Phone Number</Text>
+                  </TouchableOpacity>
+                ) : !profileComplete ? (
+                  <TouchableOpacity style={styles.emptyCreateButton} onPress={() => setShowProfileModal(true)}>
+                    <BrandedIcon name="add" size={20} color="#ffffff" />
+                    <Text style={styles.emptyCreateButtonText}>Add Your Name</Text>
+                  </TouchableOpacity>
+                ) : (
                   <TouchableOpacity style={styles.emptyCreateButton} onPress={handleOpenCreateView}>
                     <BrandedIcon name="add" size={20} color="#ffffff" />
                     <Text style={styles.emptyCreateButtonText}>Create Beacon</Text>
@@ -942,15 +1350,20 @@ export default function PlayNowTab() {
 
                 {historyExpanded && history.map((item) => {
                   const isCancelled = item.status === 'cancelled';
-                  const isExpired = item.status === 'expired';
-                  const dateStr = formatHistoryDate(item.created_at);
+                  // L3: a beacon whose match actually got underway was being
+                  // labelled "Expired" — the one outcome that is a success.
+                  const wasStarted = !!item.was_started
+                    || item.lobby_status === 'started'
+                    || item.lobby_status === 'completed';
+                  const isExpired = !wasStarted && item.status === 'expired';
+                  const dateStr = formatHistoryDate(item);
                   return (
-                    <View key={`hist-${item.id}`} style={styles.historyCard}>
+                    <View key={`hist-${beaconUid(item)}`} style={styles.historyCard}>
                       <View style={styles.historyCardTop}>
                         <Text style={styles.historyCreator}>{item.creator_name}</Text>
                         <View style={[styles.historyBadge, isCancelled ? styles.historyBadgeCancelled : styles.historyBadgeCompleted]}>
                           <Text style={[styles.historyBadgeText, isCancelled ? styles.historyBadgeTextCancelled : styles.historyBadgeTextCompleted]}>
-                            {isCancelled ? 'Cancelled' : isExpired ? 'Expired' : 'Completed'}
+                            {isCancelled ? 'Cancelled' : wasStarted ? 'Started' : isExpired ? 'Expired' : 'Completed'}
                           </Text>
                         </View>
                       </View>
@@ -971,13 +1384,13 @@ export default function PlayNowTab() {
           </ScrollView>
         )}
 
-        {/* FAB — only show if user is phone-verified and profile is complete */}
-        {phoneVerified && profileComplete && (
-          <TouchableOpacity style={styles.fab} onPress={handleOpenCreateView}>
-            <BrandedIcon name="add" size={24} color="#ffffff" />
-            <Text style={styles.fabText}>Create Beacon</Text>
-          </TouchableOpacity>
-        )}
+        {/* FAB — M11: always offered. handleOpenCreateView asks for whatever is
+            actually missing (phone, then name) instead of the button vanishing
+            with no explanation of why. */}
+        <TouchableOpacity style={styles.fab} onPress={handleOpenCreateView}>
+          <BrandedIcon name="add" size={24} color="#ffffff" />
+          <Text style={styles.fabText}>Create Beacon</Text>
+        </TouchableOpacity>
 
         {/* Beacon Detail Modal */}
         {selectedBeacon && (
@@ -1022,14 +1435,14 @@ export default function PlayNowTab() {
                     {/* Time + Type */}
                     <View style={styles.detailBadgeRow}>
                       <View style={styles.timeBadge}>
-                        <BrandedIcon name="live" size={12} color={getTimeRemaining(selectedBeacon.expires_at) === 'Expired' ? colors.danger : colors.accent} />
-                        <Text style={[styles.timeText, getTimeRemaining(selectedBeacon.expires_at) === 'Expired' && { color: colors.danger }]}>
-                          {getTimeRemaining(selectedBeacon.expires_at)}
+                        <BrandedIcon name="live" size={12} color={getBeaconTimeRemaining(selectedBeacon) === 'Expired' ? colors.danger : colors.accent} />
+                        <Text style={[styles.timeText, getBeaconTimeRemaining(selectedBeacon) === 'Expired' && { color: colors.danger }]}>
+                          {getBeaconTimeRemaining(selectedBeacon)}
                         </Text>
                       </View>
                       <View style={selectedBeacon.beacon_type === 'casual' ? styles.casualBadge : styles.structuredBadge}>
                         <Text style={selectedBeacon.beacon_type === 'casual' ? styles.casualBadgeText : styles.structuredBadgeText}>
-                          {selectedBeacon.beacon_type === 'casual' ? (selectedBeacon.is_mine ? 'My Beacon' : 'More Info') : 'Spot To Fill'}
+                          {selectedBeacon.beacon_type === 'casual' ? (selectedBeacon.is_mine ? 'My Beacon' : 'Come Play') : 'Spot To Fill'}
                         </Text>
                       </View>
                     </View>
@@ -1099,7 +1512,7 @@ export default function PlayNowTab() {
                           <View style={{ flexDirection: 'row', gap: 10 }}>
                             <TouchableOpacity
                               style={[styles.secondaryButton, { flex: 1, justifyContent: 'center' }]}
-                              onPress={() => handleExtendBeacon(selectedBeacon.id)}
+                              onPress={() => handleExtendBeacon(selectedBeacon.id, selectedBeacon.beacon_type)}
                             >
                               <BrandedIcon name="sync" size={14} color={colors.text} />
                               <Text style={styles.secondaryButtonText}>Extend</Text>
@@ -1107,6 +1520,8 @@ export default function PlayNowTab() {
                             <TouchableOpacity
                               style={[styles.dangerButton, { flex: 1, justifyContent: 'center' }]}
                               onPress={() => {
+                                // M4: ONE confirmation. This used to confirm
+                                // here and then again inside handleCancelBeacon.
                                 Alert.alert(
                                   'Delete Beacon',
                                   'Are you sure you want to delete this beacon? This cannot be undone.',
@@ -1115,7 +1530,7 @@ export default function PlayNowTab() {
                                     {
                                       text: 'Delete',
                                       style: 'destructive',
-                                      onPress: () => { handleCancelBeacon(selectedBeacon.id); setSelectedBeacon(null); },
+                                      onPress: () => { performCancelBeacon(selectedBeacon); setSelectedBeacon(null); },
                                     },
                                   ]
                                 );
@@ -1130,18 +1545,24 @@ export default function PlayNowTab() {
                         <TouchableOpacity
                           style={selectedBeacon.user_responded ? styles.respondedButton : styles.onMyWayButton}
                           onPress={() => {
-                            if (!phoneVerified) {
-                              Alert.alert('Phone Verification Required', 'You must verify your phone number first.', [
-                                { text: 'OK' },
-                                { text: 'Go to Login', onPress: () => router.replace('/login') },
-                              ]);
-                              return;
-                            }
+                            // M11: fix it here, never "go log in again".
+                            if (!phoneVerified) { promptForPhone(); return; }
                             if (!profileComplete) { setShowProfileModal(true); return; }
                             if (selectedBeacon.user_responded) {
-                              unrespondToBeacon(selectedBeacon.id);
+                              // H3: withdrawing a casual response is not
+                              // supported by the shared beacon network. Say so
+                              // out loud rather than leaving the button green
+                              // and pretending the tap did something.
+                              unrespondToBeacon(selectedBeacon.id, selectedBeacon.beacon_type).then((ok) => {
+                                if (!ok) {
+                                  Alert.alert(
+                                    "Can't Undo Yet",
+                                    "Your response can't be withdrawn from here yet. Let the host know in the chat below so they don't hold a spot for you."
+                                  );
+                                }
+                              }).catch(() => {});
                             } else {
-                              respondToBeacon(selectedBeacon.id).then((success) => {
+                              respondToBeacon(selectedBeacon.id, 'on_my_way', selectedBeacon.beacon_type).then((success) => {
                                 if (success) {
                                   const name = `${playerInfo.first_name} ${playerInfo.last_name}`.trim();
                                   // Best-effort announcement — the response itself already succeeded
@@ -1166,13 +1587,7 @@ export default function PlayNowTab() {
                             <TouchableOpacity
                               style={styles.accentButtonLarge}
                               onPress={() => {
-                                if (!phoneVerified) {
-                                  Alert.alert('Phone Verification Required', 'You must verify your phone number first.', [
-                                    { text: 'OK' },
-                                    { text: 'Go to Login', onPress: () => router.replace('/login') },
-                                  ]);
-                                  return;
-                                }
+                                if (!phoneVerified) { promptForPhone(); return; }
                                 if (!profileComplete) { setShowProfileModal(true); return; }
                                 Alert.alert(
                                   'Fill This Spot',
@@ -1191,7 +1606,10 @@ export default function PlayNowTab() {
                                         if (memberId) {
                                           haptic.confirm();
                                           setSelectedBeacon(null);
-                                          startPolling(selectedBeacon.replacement_info!.lobby_id);
+                                          const lid = selectedBeacon.replacement_info!.lobby_id;
+                                          startPolling(lid);
+                                          // C4: persist so a restart resumes here.
+                                          saveLobbySession({ lobbyId: lid, beaconId: selectedBeacon.id, view: 'lobby' });
                                           setView('lobby');
                                         }
                                       },
@@ -1219,34 +1637,50 @@ export default function PlayNowTab() {
                     </View>
                     )}
 
+                    {/* M13: the casual owner could see a response COUNT but
+                        never who it was — the responder list was being dropped
+                        on the way through the feed. */}
+                    {selectedBeacon.is_mine && Array.isArray(selectedBeacon.responses) && selectedBeacon.responses.length > 0 && (
+                      <View style={styles.respondersSection}>
+                        <Text style={styles.fieldLabel}>
+                          Coming ({selectedBeacon.responses.length})
+                        </Text>
+                        {selectedBeacon.responses.map((r, i) => (
+                          <View key={`resp-${r.user_id}-${i}`} style={styles.responderRow}>
+                            <BrandedIcon name="confirm" size={14} color={colors.accent} />
+                            <Text style={styles.responderName}>
+                              {r.first_name || r.responder_name || 'Player'}
+                            </Text>
+                            <Text style={styles.responderType}>
+                              {r.response_type === 'on_my_way' ? 'On the way' : 'Interested'}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
                     {/* Chat */}
                     <TouchableOpacity
                       style={styles.chatToggleButton}
                       onPress={() => {
-                        if (!phoneVerified) {
-                          Alert.alert('Phone Verification Required', 'You must verify your phone number via SMS before using chat.', [
-                            { text: 'OK' },
-                            { text: 'Go to Login', onPress: () => router.replace('/login') },
-                          ]);
-                          return;
-                        }
+                        if (!phoneVerified) { promptForPhone(); return; }
                         if (!profileComplete) { setShowProfileModal(true); return; }
-                        if (expandedChatId === selectedBeacon.id) {
+                        if (expandedChatId === beaconUid(selectedBeacon)) {
                           setExpandedChatId(null);
                           stopChatPolling();
                         } else {
-                          setExpandedChatId(selectedBeacon.id);
+                          setExpandedChatId(beaconUid(selectedBeacon));
                           startChatPolling(selectedBeacon.id, userId, selectedBeacon.beacon_type === 'casual');
                         }
                       }}
                     >
-                      <BrandedIcon name="chat" size={16} color={expandedChatId === selectedBeacon.id ? colors.accent : colors.textMuted} />
-                      <Text style={[styles.chatToggleText, expandedChatId === selectedBeacon.id && { color: colors.accent }]}>
+                      <BrandedIcon name="chat" size={16} color={expandedChatId === beaconUid(selectedBeacon) ? colors.accent : colors.textMuted} />
+                      <Text style={[styles.chatToggleText, expandedChatId === beaconUid(selectedBeacon) && { color: colors.accent }]}>
                         Chat{selectedBeacon.chat_count > 0 ? ` (${selectedBeacon.chat_count})` : ''}
                       </Text>
                     </TouchableOpacity>
 
-                    {expandedChatId === selectedBeacon.id && (
+                    {expandedChatId === beaconUid(selectedBeacon) && (
                       <View style={styles.chatPanel}>
                         {chatLoading ? (
                           <ActivityIndicator size="small" color={colors.accent} style={{ marginVertical: 12 }} />
@@ -1261,7 +1695,12 @@ export default function PlayNowTab() {
                             }}
                           >
                             {chatMessages.map((msg) => {
-                              const isMine = msg.user_id === userId;
+                              // M3: the chat API returns user_id as an int on
+                              // one path and a string on the other; a raw ===
+                              // meant your own messages rendered as someone
+                              // else's, right-to-left, with no "(You)".
+                              const isMine = String(msg.user_id) === String(userId);
+                              const sentMs = parseServerDate(msg.created_at);
                               return (
                                 <View key={msg.id} style={[styles.chatBubble, isMine ? styles.chatBubbleMine : styles.chatBubbleOther]}>
                                   <Text style={[styles.chatSender, isMine ? styles.chatSenderMine : styles.chatSenderOther]}>
@@ -1269,7 +1708,10 @@ export default function PlayNowTab() {
                                   </Text>
                                   <Text style={[styles.chatText, isMine && styles.chatTextMine]}>{msg.message}</Text>
                                   <Text style={[styles.chatTime, isMine && styles.chatTimeMine]}>
-                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {/* H2: never new Date() a raw MySQL DATETIME. */}
+                                    {Number.isNaN(sentMs)
+                                      ? ''
+                                      : new Date(sentMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </Text>
                                 </View>
                               );
@@ -1386,7 +1828,10 @@ export default function PlayNowTab() {
           }}
         >
           <BrandedIcon name="live" size={32} color={colors.accent} />
-          <Text style={styles.modeCardTitle}>More Info</Text>
+          {/* Was "More Info", which named nothing — a person choosing a beacon
+              type could not tell what this option did. It now says what it
+              actually does, and matches the Help topic. (UAT 2026-09-04) */}
+          <Text style={styles.modeCardTitle}>{"I'm Here — Come Play!"}</Text>
           <Text style={styles.modeCardSubtitle}>
             {"I'm already at the court. Looking for people to come play!"}
           </Text>
@@ -1436,65 +1881,17 @@ export default function PlayNowTab() {
         {loadingCourts ? (
           <ActivityIndicator color={colors.accent} style={styles.fieldSpacer} />
         ) : (
-          <View>
-            <TouchableOpacity
-              style={[styles.dropdownTrigger, courtDropdownOpen && styles.dropdownTriggerOpen]}
-              onPress={() => setCourtDropdownOpen(!courtDropdownOpen)}
-            >
-              <Text style={createCourtId ? styles.dropdownTriggerText : styles.dropdownPlaceholder}>
-                {createCourtId
-                  ? createCourts.find(c => c.id === createCourtId)?.name || 'Select a court'
-                  : 'Select a court'}
-              </Text>
-              <BrandedIcon
-                name={courtDropdownOpen ? 'minus' : 'add'}
-                size={16}
-                color={colors.textMuted}
-              />
-            </TouchableOpacity>
-            {courtDropdownOpen && (
-              <View style={styles.dropdownList}>
-                <TextInput
-                  style={[styles.textInput, { marginHorizontal: 8, marginTop: 8, marginBottom: 4 }]}
-                  placeholder="Search courts..."
-                  placeholderTextColor={colors.inputPlaceholder}
-                  value={courtSearchText}
-                  onChangeText={setCourtSearchText}
-                  autoFocus
-                />
-                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled keyboardShouldPersistTaps="handled">
-                  {createCourts
-                    .filter(c => c.name.toLowerCase().includes(courtSearchText.toLowerCase()))
-                    .map((court) => (
-                    <TouchableOpacity
-                      key={court.id}
-                      style={[
-                        styles.dropdownItem,
-                        createCourtId === court.id && styles.dropdownItemSelected,
-                      ]}
-                      onPress={() => {
-                        setCreateCourtId(court.id);
-                        setCourtDropdownOpen(false);
-                        setCourtSearchText('');
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownItemText,
-                          createCourtId === court.id && styles.dropdownItemTextSelected,
-                        ]}
-                      >
-                        {court.name}
-                      </Text>
-                      {createCourtId === court.id && (
-                        <BrandedIcon name="confirm" size={16} color={colors.accent} />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
+          <CourtPicker
+            courts={createCourts}
+            selectedId={createCourtId}
+            onSelect={setCreateCourtId}
+            open={courtDropdownOpen}
+            setOpen={setCourtDropdownOpen}
+            searchText={courtSearchText}
+            setSearchText={setCourtSearchText}
+            colors={colors}
+            location={location}
+          />
         )}
 
         {/* Message */}
@@ -1573,69 +1970,24 @@ export default function PlayNowTab() {
         {loadingCourts ? (
           <ActivityIndicator color={colors.accent} style={styles.fieldSpacer} />
         ) : (
-          <View>
-            <TouchableOpacity
-              style={[styles.dropdownTrigger, courtDropdownOpen && styles.dropdownTriggerOpen]}
-              onPress={() => setCourtDropdownOpen(!courtDropdownOpen)}
-            >
-              <Text style={createCourtId ? styles.dropdownTriggerText : styles.dropdownPlaceholder}>
-                {createCourtId
-                  ? createCourts.find(c => c.id === createCourtId)?.name || 'Select a court'
-                  : 'Select a court'}
-              </Text>
-              <BrandedIcon
-                name={courtDropdownOpen ? 'minus' : 'add'}
-                size={16}
-                color={colors.textMuted}
-              />
-            </TouchableOpacity>
-            {courtDropdownOpen && (
-              <View style={styles.dropdownList}>
-                <TextInput
-                  style={[styles.textInput, { marginHorizontal: 8, marginTop: 8, marginBottom: 4 }]}
-                  placeholder="Search courts..."
-                  placeholderTextColor={colors.inputPlaceholder}
-                  value={courtSearchText}
-                  onChangeText={setCourtSearchText}
-                  autoFocus
-                />
-                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled keyboardShouldPersistTaps="handled">
-                  {createCourts
-                    .filter(c => c.name.toLowerCase().includes(courtSearchText.toLowerCase()))
-                    .map((court) => (
-                    <TouchableOpacity
-                      key={court.id}
-                      style={[
-                        styles.dropdownItem,
-                        createCourtId === court.id && styles.dropdownItemSelected,
-                      ]}
-                      onPress={() => {
-                        setCreateCourtId(court.id);
-                        setCourtDropdownOpen(false);
-                        setCourtSearchText('');
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownItemText,
-                          createCourtId === court.id && styles.dropdownItemTextSelected,
-                        ]}
-                      >
-                        {court.name}
-                      </Text>
-                      {createCourtId === court.id && (
-                        <BrandedIcon name="confirm" size={16} color={colors.accent} />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
+          <CourtPicker
+            courts={createCourts}
+            selectedId={createCourtId}
+            onSelect={setCreateCourtId}
+            open={courtDropdownOpen}
+            setOpen={setCourtDropdownOpen}
+            searchText={courtSearchText}
+            setSearchText={setCourtSearchText}
+            colors={colors}
+            location={location}
+          />
         )}
 
-        {/* Spots To Fill */}
-        <Text style={styles.fieldLabel}>Spots To Fill</Text>
+        {/* C2: this number is players needed BESIDES the host. The lobby target
+            sent to the server is this + 1 (see handleGoLive) — the host already
+            occupies a seat, so sending the bare number made a "1 spot" beacon
+            impossible to join. */}
+        <Text style={styles.fieldLabel}>Players needed (besides you)</Text>
         <View style={styles.stepperRow}>
           <TouchableOpacity
             style={styles.stepperButton}
@@ -1755,9 +2107,21 @@ export default function PlayNowTab() {
   // VIEW 3: Lobby
   // ========================
   const renderLobby = () => {
-    const syncStatus: 'connected' | 'syncing' | 'disconnected' = lobby
-      ? 'connected'
-      : 'syncing';
+    // L2: this used to read "Connected" whenever a lobby object existed, even
+    // after every poll had been failing for ten minutes. Report the real thing.
+    const syncStatus: 'connected' | 'syncing' | 'disconnected' =
+      lastPollOk === false ? 'disconnected' : lobby && lastPollOk ? 'connected' : 'syncing';
+
+    // M7: the beacon can expire while the lobby is still open. Show the
+    // countdown here so the host can extend before it lapses.
+    const beaconMs = lobby
+      ? beaconExpiryMs({
+          expires_at: lobby.beacon_expires_at,
+          expires_at_iso: lobby.beacon_expires_at_iso,
+          expires_in_sec: lobby.beacon_expires_in_sec,
+        })
+      : NaN;
+    const beaconLeft = Number.isNaN(beaconMs) ? '' : formatRemaining(beaconMs);
 
     return (
       <ScrollView style={styles.flex} alwaysBounceHorizontal={false} contentContainerStyle={styles.lobbyContent}>
@@ -1774,10 +2138,26 @@ export default function PlayNowTab() {
 
         {/* Status */}
         <StatusBox
-          label={syncStatus === 'connected' ? 'Connected' : 'Syncing...'}
+          label={syncStatus === 'connected' ? 'Connected' : syncStatus === 'disconnected' ? 'Reconnecting...' : 'Syncing...'}
           status={syncStatus}
           detail={lobby ? `${confirmedCount}/${lobby.target_players} confirmed` : undefined}
         />
+
+        {/* M7: beacon countdown + Extend, so a lobby can't quietly outlive its
+            own beacon while everyone sits there waiting. */}
+        {lobby && beaconLeft ? (
+          <View style={styles.lobbyBeaconRow}>
+            <BrandedIcon name="live" size={14} color={beaconLeft === 'Expired' ? colors.danger : colors.accent} />
+            <Text style={[styles.lobbyBeaconText, beaconLeft === 'Expired' && { color: colors.danger }]}>
+              {beaconLeft === 'Expired' ? 'Beacon expired' : `Beacon ${beaconLeft}`}
+            </Text>
+            {isHost && lobby.beacon_id ? (
+              <TouchableOpacity onPress={() => handleExtendBeacon(lobby.beacon_id, 'structured')} hitSlop={8}>
+                <Text style={styles.lobbyBeaconExtend}>Extend</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Members */}
         <View style={styles.membersSection}>
@@ -1854,7 +2234,8 @@ export default function PlayNowTab() {
           </View>
         ) : null}
 
-        {isHost && lobby?.status === 'gathering' && allConfirmed && (
+        {/* L8: locking with only the host present builds an empty schedule. */}
+        {isHost && lobby?.status === 'gathering' && allConfirmed && activeMemberCount >= 2 && (
           <TouchableOpacity
             style={[styles.accentButtonLarge, loading && styles.buttonDisabled]}
             onPress={handleLockMatch}
@@ -1873,6 +2254,10 @@ export default function PlayNowTab() {
 
         {isHost && lobby?.status === 'gathering' && !allConfirmed && (
           <InfoBox text="Waiting for all players to confirm before you can lock the match." />
+        )}
+
+        {isHost && lobby?.status === 'gathering' && allConfirmed && activeMemberCount < 2 && (
+          <InfoBox text="You need at least one other player in the lobby before you can lock a match." />
         )}
 
         {!isHost && myMember?.status === 'joined' && (
@@ -2037,6 +2422,43 @@ export default function PlayNowTab() {
         {!isHost && (
           <InfoBox text="Waiting for the host to start the match." />
         )}
+
+        {/* L6: once the match locked, a confirmed player had no way out at all —
+            they either ghosted or dragged everyone's evening down with them.
+            Same protected replacement flow the gathering view offers. */}
+        {!isHost && myMember?.status === 'confirmed' && (
+          <TouchableOpacity
+            style={styles.dangerButtonLarge}
+            onPress={() => {
+              Alert.alert(
+                "Can't Make It?",
+                'Your reliability will be PROTECTED if someone fills your spot. The system will broadcast your spot to verified players.',
+                [
+                  { text: 'Never Mind', style: 'cancel' },
+                  {
+                    text: 'Find Replacement',
+                    style: 'destructive',
+                    onPress: async () => {
+                      if (lobby) {
+                        const reqId = await requestReplacement(lobby.id);
+                        if (reqId) haptic.tap();
+                      }
+                    },
+                  },
+                ]
+              );
+            }}
+          >
+            <BrandedIcon name="sync" size={16} color={colors.danger} />
+            <Text style={styles.dangerButtonLargeText}>{"Can't Make It"}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Leaving must always be possible, and must reach the server (C3). */}
+        <TouchableOpacity style={styles.backButton} onPress={handleLeaveLobby}>
+          <BrandedIcon name="back" size={20} color={colors.text} />
+          <Text style={styles.backText}>{isHost ? 'Close Lobby' : 'Leave Lobby'}</Text>
+        </TouchableOpacity>
       </ScrollView>
     );
   };
@@ -2111,6 +2533,90 @@ export default function PlayNowTab() {
               style={styles.profileCancelButton}
               onPress={() => setShowProfileModal(false)}
             >
+              <Text style={styles.profileCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* M11: Add-a-phone modal. Replaces "log out and log back in" — which was
+          both false (the session is fine) and the surest way to lose the user. */}
+      <Modal
+        visible={showPhoneModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhoneModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.profileModal}>
+            <Text style={styles.profileModalTitle}>Add a Phone Number</Text>
+            <Text style={styles.profileModalSubtitle}>
+              Beacons need a phone number on file so other players can reach you about a game.
+            </Text>
+
+            <Text style={styles.profileLabel}>MOBILE NUMBER</Text>
+            <TextInput
+              style={styles.profileInput}
+              placeholder="555 123 4567"
+              placeholderTextColor={colors.textMuted}
+              value={phoneInput}
+              onChangeText={setPhoneInput}
+              keyboardType={Platform.OS === 'web' ? 'default' : 'phone-pad'}
+              autoComplete="tel"
+              maxLength={20}
+            />
+
+            <TouchableOpacity
+              style={[styles.accentButtonLarge, savingPhone && styles.buttonDisabled]}
+              onPress={handleSavePhone}
+              disabled={savingPhone}
+            >
+              {savingPhone ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.accentButtonLargeText}>Save Number</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.profileCancelButton}
+              onPress={() => setShowPhoneModal(false)}
+            >
+              <Text style={styles.profileCancelText}>Not Now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* L5: real chooser for Extend on web, where a 3-button Alert becomes
+          three consecutive confirm() popups. Native keeps its action sheet. */}
+      <Modal
+        visible={extendBeaconId !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExtendBeaconId(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.profileModal}>
+            <Text style={styles.profileModalTitle}>Extend Beacon</Text>
+            <Text style={styles.profileModalSubtitle}>How much longer will you be there?</Text>
+            {[30, 60, 120].map((mins) => (
+              <TouchableOpacity
+                key={mins}
+                style={[styles.accentButtonLarge, { marginBottom: 8 }]}
+                onPress={() => {
+                  const id = extendBeaconId;
+                  const t = extendBeaconType;
+                  setExtendBeaconId(null);
+                  if (id != null) { extendBeacon(id, mins, t); haptic.confirm(); }
+                }}
+              >
+                <Text style={styles.accentButtonLargeText}>
+                  {mins === 30 ? '+30 min' : mins === 60 ? '+1 hour' : '+2 hours'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.profileCancelButton} onPress={() => setExtendBeaconId(null)}>
               <Text style={styles.profileCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -2790,6 +3296,60 @@ const createStyles = (c: ThemeColors) =>
     dropdownItemTextSelected: {
       color: c.text,
       fontFamily: FONT_BODY_BOLD,
+    },
+    // M5: distance line under a court name when we know where the user is
+    dropdownItemDistance: {
+      fontFamily: FONT_BODY_REGULAR,
+      fontSize: 11,
+      color: c.textMuted,
+      marginTop: 2,
+    },
+
+    // --- M13: casual responder list ---
+    respondersSection: {
+      marginTop: 16,
+      gap: 6,
+    },
+    responderRow: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 8,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    responderName: {
+      flex: 1,
+      fontFamily: FONT_BODY_BOLD,
+      fontSize: 13,
+      color: c.text,
+    },
+    responderType: {
+      fontFamily: FONT_BODY_REGULAR,
+      fontSize: 11,
+      color: c.textMuted,
+    },
+
+    // --- M7: beacon countdown inside the lobby ---
+    lobbyBeaconRow: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 8,
+      marginTop: 10,
+    },
+    lobbyBeaconText: {
+      flex: 1,
+      fontFamily: FONT_BODY_MEDIUM,
+      fontSize: 12,
+      color: c.textMuted,
+    },
+    lobbyBeaconExtend: {
+      fontFamily: FONT_BODY_BOLD,
+      fontSize: 12,
+      color: c.accent,
     },
 
     // --- Stepper ---

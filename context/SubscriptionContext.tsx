@@ -154,7 +154,13 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
                     trialStarted: data.subscription.trialStarted ?? true,
                     trialDaysRemaining: data.subscription.trialDaysRemaining,
                     trialExpired: data.subscription.trialExpired,
-                    isPro: data.subscription.isPro,
+                    // The WIRE field `isPro` still means "paid or trialling" —
+                    // the build in the App Store gates its features on it, so
+                    // the server could not change its meaning. `isPaid` is the
+                    // explicit paid-only flag; in THIS client `isPro` means
+                    // paid, which is what lets the paywall offer a purchase to
+                    // someone who is still in their trial.
+                    isPro: data.subscription.isPaid ?? false,
                     // Older servers omit hasAccess; there isPro already meant
                     // "paid or trialling", so falling back to it keeps every
                     // existing gate exactly as it was.

@@ -8,7 +8,19 @@ export interface UserLocation {
   longitude: number;
 }
 
-export function useLocation() {
+export interface UseLocationOptions {
+  /**
+   * M10: the permission prompt used to fire on mount — i.e. at app launch, on
+   * the login screen, before the user had any idea why the app wanted their
+   * location. Defaults to the original behaviour so existing callers are
+   * unchanged; BeaconContext passes `false` and Play Now asks on its first
+   * focus instead (see app/(tabs)/playnow.tsx).
+   */
+  requestOnMount?: boolean;
+}
+
+export function useLocation(options?: UseLocationOptions) {
+  const requestOnMount = options?.requestOnMount !== false;
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -77,7 +89,35 @@ export function useLocation() {
       );
     }
 
+    // M10: on web there is no device Settings app — tell the truth about the
+    // browser's own permission control instead of sending people to Settings.
+    if (Platform.OS === 'web') {
+      return (
+        'To share your location in this browser:\n\n' +
+        '1. Click the lock (or location) icon in the address bar\n' +
+        '2. Set Location to "Allow" for playpbnow.com\n' +
+        '3. Reload the page'
+      );
+    }
+
     return 'Please enable Location Services in your device settings for PlayPBNow.';
+  }, []);
+
+  /** M10: "Open Settings" does nothing on web, so it is not offered there. */
+  const openSettingsButton = useCallback(() => {
+    if (Platform.OS === 'web') return [];
+    return [
+      {
+        text: 'Open Settings',
+        onPress: () => {
+          if (Platform.OS === 'ios') {
+            Linking.openURL('app-settings:');
+          } else {
+            Linking.openSettings();
+          }
+        },
+      },
+    ];
   }, []);
 
   const showLocationDeniedAlert = useCallback(() => {
@@ -88,19 +128,10 @@ export function useLocation() {
       `PlayPBNow needs your location to show nearby beacons. Without it, you won't see beacons from courts in your area.\n\n${instructions}`,
       [
         { text: 'Not Now', style: 'cancel' },
-        {
-          text: 'Open Settings',
-          onPress: () => {
-            if (Platform.OS === 'ios') {
-              Linking.openURL('app-settings:');
-            } else {
-              Linking.openSettings();
-            }
-          },
-        },
+        ...openSettingsButton(),
       ]
     );
-  }, [getDeviceInstructions]);
+  }, [getDeviceInstructions, openSettingsButton]);
 
   const requestLocation = useCallback(async (): Promise<UserLocation | null> => {
     try {
@@ -118,16 +149,7 @@ export function useLocation() {
             `Your device's Location Services are turned off. PlayPBNow needs location access to show nearby beacons.\n\n${instructions}`,
             [
               { text: 'Not Now', style: 'cancel' },
-              {
-                text: 'Open Settings',
-                onPress: () => {
-                  if (Platform.OS === 'ios') {
-                    Linking.openURL('app-settings:');
-                  } else {
-                    Linking.openSettings();
-                  }
-                },
-              },
+              ...openSettingsButton(),
             ]
           );
         }
@@ -166,12 +188,14 @@ export function useLocation() {
     } finally {
       setLoading(false);
     }
-  }, [getDeviceInstructions, showLocationDeniedAlert]);
+  }, [getDeviceInstructions, showLocationDeniedAlert, openSettingsButton]);
 
-  // Request on mount
+  // Request on mount — M10: only when the caller opted in. The default is
+  // preserved for any caller that passes no options; BeaconContext opts out so
+  // the OS prompt no longer fires on the login screen at app launch.
   useEffect(() => {
-    requestLocation();
-  }, []);
+    if (requestOnMount) requestLocation();
+  }, [requestOnMount]);
 
   return {
     location,

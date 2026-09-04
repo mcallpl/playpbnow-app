@@ -283,11 +283,11 @@ export default function LoginScreen() {
 
     const handleResetPassword = async () => {
         if (resetPassword.length < 6) {
-            Alert.alert('Error', 'Password must be at least 6 characters.');
+            Alert.alert('New Password', 'Password must be at least 6 characters.');
             return;
         }
         if (resetPassword !== resetConfirm) {
-            Alert.alert('Error', 'Passwords do not match.');
+            Alert.alert('New Password', 'Passwords do not match.');
             return;
         }
         setResetLoading(true);
@@ -297,25 +297,25 @@ export default function LoginScreen() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'reset_password',
-                    phone: resetPhone.trim(),
+                    ...resetIdentity(),
                     code: resetCode.trim(),
                     new_password: resetPassword,
                 }),
             });
             if (!res.ok) {
-                Alert.alert('Error', `Server error: ${res.status}`);
+                Alert.alert('New Password', SERVER_ERROR_MSG);
                 return;
             }
             const data = await res.json();
             if (data.status === 'success') {
-                Alert.alert('Success', 'Your password has been reset. You can now sign in.');
+                Alert.alert('Password Reset', 'Your password has been reset. You can now sign in.');
                 cancelReset();
             } else {
-                Alert.alert('Error', data.message || 'Password reset failed. Please try again.');
+                Alert.alert('New Password', data.message || "We couldn't reset your password. Please request a new code and try again.");
             }
         } catch (error) {
             // Error details logged in development mode only
-            Alert.alert('Error', 'Network error. Please try again.');
+            Alert.alert('New Password', NETWORK_ERROR_MSG);
         } finally {
             setResetLoading(false);
         }
@@ -338,7 +338,7 @@ export default function LoginScreen() {
                             style={styles.logo}
                             resizeMode="contain"
                         />
-                        <Text style={styles.subtitle}>MATCH TRACKING</Text>
+                        <Text style={styles.subtitle}>MATCHES · RANKINGS · BEACONS</Text>
                     </View>
 
                     <View style={styles.form}>
@@ -469,14 +469,18 @@ export default function LoginScreen() {
 
                             {resetStep === 'phone' && (
                                 <>
-                                    <Text style={styles.resetHint}>{"Enter your phone number and we'll text you a 6-digit reset code."}</Text>
+                                    <Text style={styles.resetHint}>{"Enter the phone number or email on your account and we'll text a 6-digit reset code to the phone on file."}</Text>
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="(949) 735-9415"
+                                        placeholder="(555) 555-1234 or name@example.com"
                                         placeholderTextColor={colors.inputPlaceholder}
-                                        keyboardType="phone-pad"
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
                                         value={resetPhone}
                                         onChangeText={setResetPhone}
+                                        onSubmitEditing={handleRequestCode}
+                                        returnKeyType="send"
                                     />
                                     <TouchableOpacity
                                         style={[styles.button, { marginTop: 16 }, resetLoading && styles.buttonDisabled]}
@@ -490,7 +494,7 @@ export default function LoginScreen() {
 
                             {resetStep === 'code' && (
                                 <>
-                                    <Text style={styles.resetHint}>Enter the 6-digit code we just texted you.</Text>
+                                    <Text style={styles.resetHint}>If that number or email is on an account, we've texted a 6-digit code to the phone on file. Enter it below.</Text>
                                     <TextInput
                                         style={[styles.input, { textAlign: 'center', fontSize: 24, letterSpacing: 8 }]}
                                         placeholder="000000"
@@ -591,8 +595,10 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         alignItems: 'center',
     },
     buttonDisabled: { opacity: 0.5 },
+    // accentText, not bg: in the light theme bg is near-white, which on the
+    // green button was about 2.5:1 (Audit E M6).
     buttonText: {
-        color: c.bg,
+        color: c.accentText,
         fontSize: 16,
         fontFamily: FONT_DISPLAY_EXTRABOLD,
         letterSpacing: 1,
@@ -603,7 +609,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         alignItems: 'center',
     },
     toggleText: {
-        color: c.accent,
+        color: c.accentStrong,
         fontSize: 14,
         fontFamily: FONT_BODY_BOLD,
     },
@@ -621,7 +627,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         lineHeight: 18,
     },
     footerLink: {
-        color: c.accent,
+        color: c.accentStrong,
         fontFamily: FONT_BODY_BOLD,
         textDecorationLine: 'underline',
     },

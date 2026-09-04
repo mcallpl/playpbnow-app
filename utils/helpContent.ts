@@ -91,7 +91,7 @@ export const HELP_TOPICS: HelpTopic[] = [
 3. Tap **CONFIRM SAVE** — results go to the **RANKINGS** tab immediately
 4. If nothing changed since the last save, the app tells you it is "Already Saved"
 
-**Note:** Your first saved match starts your 30-day Pro trial (see "What is PlayPBNow Pro?").`,
+**Note:** Your first saved match starts your 30-day Pro trial — as does creating your first shared live match (see "What is PlayPBNow Pro?").`,
   },
 
   {
@@ -104,7 +104,7 @@ export const HELP_TOPICS: HelpTopic[] = [
 **Start a shared match (the organizer)**
 1. On the schedule screen tap the **lightning bolt** at the top
 2. Choose **Create Shared Match**
-3. The **SHARE LIVE MATCH** window shows a 6-letter **Share Code**. Tap **SHARE CODE** to send it by text or any app, or **COPY** to copy it.
+3. The **SHARE LIVE MATCH** window shows a 6-letter **Share Code**. Tap the button under it — it reads **SHARE CODE** on the phone app (it opens your share sheet) and **COPY** in a web browser.
 4. A green **LIVE — Code: XXXXXX** bar appears under the controls, with a count of how many people are connected
 
 **Join a shared match (everyone else)**
@@ -351,7 +351,7 @@ There is no player rating or feedback system — chat is for coordinating the ga
 1. Open the group from the GROUPS tab
 2. Tap the **"Search or add player..."** box and type a name
 3. If the person already exists in your account they appear in a dropdown — tap them to add them to this group
-4. Otherwise set the **gender toggle** (the M / F button next to the box) and tap **+** to create them
+4. Otherwise set the **gender toggle** — the coloured button right of the box, showing the ♂ or ♀ symbol; tap it to switch — and tap **+** to create them
 5. Tap **SAVE** at the top right to keep the roster
 
 **Edit a player's details**
@@ -567,15 +567,21 @@ For a game today, post a **PLAY NOW** beacon — it has its own player list and 
 **The podium** — the top three players get the gold, silver and bronze pedestals with their W-L, Diff, DUPR (if entered) and win %. Everyone else is listed below in rank order. In a **Fixed Teams** session the podium shows teams, and tournament placements show as Gold / Silver / Bronze badges.
 
 **ALL TIME or one session**
-- Tap the **ALL TIME / SELECT SESSION ▼** bar
+- The grey bar under the sort buttons names what you are looking at — **ALL TIME ▾** to start with. Tap it to pick something else.
 - **ALL TIME** combines every saved match
-- Or pick one saved session — the standings switch to that day's games and the **GAME HISTORY** window opens
+- Or pick one saved session — the standings switch to that day's games, the **GAME HISTORY** window opens, and the bar changes to that session's name
+- Coming straight from a match you just scored, the bar reads **CURRENT SESSION**
 
 **Game history** (open it by picking a session)
 - Every game is listed with the two teams and the score, winner highlighted
 - **Pencil** — edit that game's scores, then tap the check mark to save. Rankings update.
 - **Trash** — delete one game
 - **DELETE ENTIRE MATCH** — removes the whole session (only shown for sessions you saved yourself)
+
+**The icons in the header**
+- **Home** (top left) — back to the GROUPS tab
+- **People** (top right) — head to head
+- **Log out** (far right) — signs you out; it asks you to confirm first
 
 **Head to head**
 - Tap the **people icon** (top right)
@@ -630,7 +636,7 @@ For a game today, post a **PLAY NOW** beacon — it has its own player list and 
 
 **The 30-day trial**
 - Every new account gets a **30-day Pro trial**
-- The clock starts the **first time you save a match**, not when you sign up — so set up your roster first, no rush
+- The clock starts the **first time you save a match** (or create your first shared live match), not when you sign up — so set up your roster first, no rush
 - Settings shows "Trial Ends In N days" while it runs; a banner on the GROUPS tab shows when it has ended
 - When it ends you drop back to Free; nothing is deleted, but you cannot create more than 2 groups until you upgrade
 
@@ -647,7 +653,7 @@ For a game today, post a **PLAY NOW** beacon — it has its own player list and 
 
 **From Settings**
 1. **GROUPS** tab → **gear icon** → **SETTINGS**
-2. Under **SUBSCRIPTION** tap **Upgrade to Pro**
+2. Under **SUBSCRIPTION** tap **Upgrade to Pro** — while your trial is running the same button reads **Subscribe to Pro**
 3. Choose **Annual** (marked BEST VALUE) or **Monthly** — the price for your store and country is shown on the button
 4. Confirm with Face ID / Touch ID or your Google account. Pro turns on immediately.
 
@@ -655,16 +661,15 @@ For a game today, post a **PLAY NOW** beacon — it has its own player list and 
 - Creating a third group on a Free account, or tapping the watermark badge on a report, opens the same upgrade window
 
 **On the web app**
-- Purchases are not available in the browser. Subscribe from the iPhone or Android app — the web app picks up your plan the next time you sign in.
+- Pro cannot be bought in a browser. The web app says so and points you to the phone app: subscribe on iPhone or Android, and the web app picks up your plan the next time you sign in. **Restore Purchases** is a phone-app button too — it does not appear on the web.
 
 **Already subscribed on another device?**
-- Settings → **Restore Purchases**
+- Settings → **Restore Purchases** (iPhone / Android app)
 
 **Manage or cancel**
-- Settings → **Manage Subscription** opens your App Store or Google Play subscriptions page. Cancel there at any time; Pro stays on until the end of the paid period.
+- Settings → **Manage Subscription**. On the phone this opens your App Store or Google Play subscriptions page; cancel there at any time and Pro stays on until the end of the paid period.
 
-**Promo code?**
-- The upgrade window has a **Have a promo code?** field on the web`,
+**Promo codes** are not redeemable yet. A "Have a promo code?" field is visible in the browser, but there is no web checkout behind it — it just tells you to buy Pro in the app. Ignore it for now.`,
   },
 
   // ============================================================================
@@ -675,24 +680,25 @@ For a game today, post a **PLAY NOW** beacon — it has its own player list and 
     title: 'App Navigation & Tabs',
     category: 'Getting Started',
     searchKeywords: ['navigate', 'tabs', 'menu', 'how to', 'find', 'where', 'settings', 'gear'],
-    content: `**Bottom tabs**
+    content: `**Bottom tabs**, left to right: GROUPS · PLAY NOW · RANKINGS · HELP. That is the whole app. LIVE slots in while a match is running and ADMIN only for administrator accounts.
 
 **GROUPS** — your home base
 - Your groups, NEW GROUP, ALL PLAYERS
-- Lightning bolt: join a live match by code
-- Gear: Settings
+- Lightning bolt (top right): join a live match by code
+- Gear (top right): Settings
 
 **PLAY NOW** — beacons
 - See who is at a court near you, post your own beacon, chat
+- The icon glows and shows a count when there are beacons near you, and the label turns red while one of your own is live
+
+**LIVE** — appears between PLAY NOW and RANKINGS only while a match is active (one you started, or one you joined by code). It disappears again when the match is finished.
 
 **RANKINGS** — standings and history
 - Leaderboard, podium, session picker, game history, head to head
 
-**HELP** — this tutor and the how-to videos
+**ADMIN** — a gear icon before HELP, for administrator accounts only
 
-**LIVE** — appears only while a match is active (one you started, or one you joined by code)
-
-**ADMIN** — appears only for administrator accounts
+**HELP** — the **i** icon at the far right: this tutor and the how-to videos
 
 **Screens you reach from GROUPS**
 - Tap a group → the **roster** (add players, ROTATING PARTNERS / FIXED TEAMS, CREATE MATCH)
@@ -725,7 +731,7 @@ For a game today, post a **PLAY NOW** beacon — it has its own player list and 
 - GROUPS tab → **NEW GROUP** → pick the court → name it (e.g. "Tuesday Crew")
 
 **3. Add your players**
-- Type each name in "Search or add player...", set M / F, tap **+**
+- Type each name in "Search or add player...", tap the ♂ / ♀ button to set gender, then tap **+**
 - Tap **SAVE** at the top right
 
 **4. Create the match**
@@ -762,8 +768,8 @@ Questions: mcallpl@gmail.com`,
 **SUBSCRIPTION**
 - **Current Plan** — Free, Trial or Pro
 - "Trial Ends In N days" while a trial is running
-- **Upgrade to Pro** (Free/Trial) or **Manage Subscription** (Pro)
-- **Restore Purchases** — pick up a subscription bought on another device
+- **Upgrade to Pro** (Free), **Subscribe to Pro** (while a trial runs) or **Manage Subscription** (Pro)
+- **Restore Purchases** — pick up a subscription bought on another device. This row is in the iPhone and Android app only; the web app shows a note saying Pro is bought in the app instead.
 
 **ACCOUNT**
 - **Change Password** — enter your current password, then the new one twice (6+ characters)

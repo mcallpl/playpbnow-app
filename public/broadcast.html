@@ -336,7 +336,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
 
     <!-- Hero -->
     <div class="broadcast-hero">
-      <img src="https://peoplestar.com/PlayPBNow/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" class="broadcast-logo">
+      <img src="https://playpbnow.com/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!" class="broadcast-logo">
       <div class="broadcast-brand">Play Pickleball NOW!</div>
       <div class="broadcast-badge">
         <span class="broadcast-badge-dot"></span>
@@ -402,7 +402,7 @@ h1,h2,h3,h4,h5,h6{font-family:'Outfit',sans-serif}
   }
 
   // Fetch broadcast data
-  fetch('https://peoplestar.com/PlayPBNow/api/broadcast_api.php?action=view&broadcast_code=' + encodeURIComponent(code))
+  fetch('https://playpbnow.com/api/broadcast_api.php?action=view&broadcast_code=' + encodeURIComponent(code))
     .then(function(res) { return res.json(); })
     .then(function(data) {
       if (!data || data.error || !data.subject) {

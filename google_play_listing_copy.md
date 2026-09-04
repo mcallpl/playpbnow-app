@@ -38,15 +38,15 @@ PlayPBNow takes that off your plate. It's the app for the person who actually ru
 - **The group is yours and private.** Not a public court-finder crawling with strangers. Just your people, your sessions, your history.
 - **Every result is remembered.** Win rates, head-to-head records, the rivalries that build over months — all tracked without you writing down a thing.
 - **Stop being the group secretary.** The app is the record-keeper now, so you can put your phone down and actually play.
-- **Look like the organizer who has it together.** Your group shows up, plays, and sees their stats — and you did none of the busywork.
+- **Look like the organizer who has it together.** One tap sends the whole group a clean image of the matchups — court, round, partner — and you did none of the busywork.
 
 **For the players:**
 
-Free. Forever. Join any group you're invited to, show up, and play. Watch your win rate climb and your head-to-head records grow every week. No subscription, no catch — players never pay.
+Free. Forever. Your organizer adds you to the roster — there's nothing for you to sign up for and nothing to pay. Your wins, losses and head-to-head records are tracked from the moment they save the first match. Want that record to follow you between organizers? Ask yours to share your player card: scan the code, confirm your phone number, and it's yours.
 
 **Who pays:**
 
-Only the organizer, through Organizer Pro. Start with a free trial. If it doesn't save you time every single week, don't keep it.
+The organizer, through PlayPBNow Pro. Every account starts free with up to two groups, and a 30-day Pro trial kicks in the first time you save a match — not the day you sign up, so there's no rush while you build your roster. Pro removes the two-group limit, takes the watermark off match reports, and unlocks player merging and shareable player cards. Bought in the app; the price for your country is shown on the upgrade screen.
 
 > [INSERT: first organizer testimonial — pull a real quote about time saved or scoring arguments ended]
 
@@ -54,7 +54,7 @@ Only the organizer, through Organizer Pro. Start with a free trial. If it doesn'
 
 **Start free today.** Set up your group, run your next session on PlayPBNow, and never keep score on a napkin again.
 
-`Character count: 2,041 / 4,000`
+`Character count: 2,503 / 4,000`
 
 **Rationale:** Opens with a visceral, second-person description of the organizer's weekly grind before naming the app, so the reader feels seen before they're sold. Features are all written as outcomes ("Everyone scores together, live" — not "real-time scoring engine"). The free-for-players and organizer-pays model is stated plainly to kill pricing confusion up front. Two testimonial placeholders sit high enough in the description to be read but leave the top hook clean. Room to spare under 4,000 lets Chip expand features or drop in longer quotes without a rewrite.
 
@@ -103,4 +103,4 @@ Google Play indexes the **entire description** for search ranking (unlike Apple'
 |---|---|---|---|
 | Title | PlayPBNow: Pickleball Groups | 29 | 30 |
 | Short description | Run your pickleball group. Live scoring, real stats, zero group-text chaos. | 75 | 80 |
-| Full description | (see above) | 2,041 | 4,000 |
+| Full description | (see above) | 2,503 | 4,000 |

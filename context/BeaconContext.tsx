@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useLocation, UserLocation } from '../hooks/useLocation';
+import { fetchBeaconFeeds } from '../hooks/useBeacon';
 import { playBeaconChime } from '../utils/sounds';
 
 // Absolute URL required — see hooks/useBeacon.ts (relative URLs break native fetch
-// and resolve to the wrong host on web).
+// and resolve to the wrong host on web). Kept for reference: the background
+// check now goes through fetchBeaconFeeds(), which uses this same host.
 const SHARED_BEACON_URL = 'https://playpbnow.com/shared/beacon/api';
 
 interface BeaconContextValue {
@@ -46,16 +48,22 @@ function BeaconProviderComponent({ children }: { children: React.ReactNode }) {
   const [hasOwnBeacon, setHasOwnBeacon] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const prevOtherCountRef = useRef<number>(0);
+  // H6: once the Play Now tab has reported the MERGED (casual + structured)
+  // feed, the background check below — which only ever sees the casual shared
+  // feed and applies no expiry filter — must not overwrite it. Structured
+  // beacons would otherwise be erased from the tab badge every 30 seconds.
+  const tabHasReportedRef = useRef(false);
 
   const {
     location,
     permissionDenied: locationPermissionDenied,
     requestLocation,
     showLocationDeniedAlert,
-  } = useLocation();
+  } = useLocation({ requestOnMount: false }); // M10: Play Now asks on first focus
 
   // Called by the feed whenever it fetches beacons — single source of truth
   const reportBeaconCounts = useCallback((total: number, others: number, own: boolean) => {
+    tabHasReportedRef.current = true;
     // Play chime only when OTHER players' beacons increase
     if (others > prevOtherCountRef.current && prevOtherCountRef.current >= 0) {
       playBeaconChime();
@@ -77,24 +85,26 @@ function BeaconProviderComponent({ children }: { children: React.ReactNode }) {
         const userId = await AsyncStorage.getItem('user_id');
         if (!userId) return;
 
-        const body: Record<string, any> = { user_id: parseInt(userId) || 0 };
-        if (location?.latitude && location?.longitude) {
-          body.lat = location.latitude;
-          body.lng = location.longitude;
-        }
-
-        const res = await fetch(`${SHARED_BEACON_URL}/feed.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+        // H6: the SAME merged fetch the Play Now tab uses (shared casual feed +
+        // PlayPBNow structured feed, expired rows filtered out), so the badge
+        // and the feed can never disagree. The old casual-only POST counted
+        // expired beacons and never saw a structured one.
+        const merged = await fetchBeaconFeeds({
+          userId,
+          lat: location?.latitude,
+          lng: location?.longitude,
+          includeHistory: false,
         });
-        const data = await res.json();
 
-        if (!cancelled && data.status === 'success') {
-          const beacons = Array.isArray(data.beacons) ? data.beacons : [];
-          const uid = parseInt(userId);
-          const others = beacons.filter((b: any) => !b.is_mine && b.user_id !== uid).length;
-          const own = beacons.some((b: any) => b.is_mine || b.user_id === uid);
+        if (!cancelled && merged.ok) {
+          // H6: never clobber a live report from the Play Now tab.
+          if (tabHasReportedRef.current) {
+            setInitialCheckDone(true);
+            return;
+          }
+          const beacons = merged.beacons;
+          const others = beacons.filter((b) => !b.is_mine && String(b.user_id) !== String(userId)).length;
+          const own = beacons.some((b) => b.is_mine || String(b.user_id) === String(userId));
           // Only update if Play Now tab hasn't already reported (avoid overwriting)
           if (prevOtherCountRef.current === 0 && others > 0) {
             prevOtherCountRef.current = others;

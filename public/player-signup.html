@@ -953,6 +953,61 @@ async function loadPlayerCount() {
 }
 
 // Invite Response (if ?code=XXX in URL)
+// Current invite state for the RSVP view (spots, my answer) so the buttons
+// can be relabelled honestly ("Join Waitlist" when full) and the page can
+// say "Change your answer" instead of pretending it's a blank slate.
+window._inviteState = { spotsLeft: 0, maxSpots: 0, waitlisted: 0, yourStatus: null, yourPosition: null };
+
+function hideInviteHeader() {
+  const h = document.getElementById('invite-heading');
+  const s = document.getElementById('invite-subheading');
+  if (h) h.style.display = 'none';
+  if (s) s.style.display = 'none';
+}
+
+// Relabel the RSVP buttons from the current state (audit C2 / M4).
+function renderResponseButtons() {
+  const st = window._inviteState;
+  const confirmBtn = document.getElementById('btn-confirm');
+  const interestedBtn = document.getElementById('btn-interested');
+  const declineBtn = document.getElementById('btn-decline');
+  const yourEl = document.getElementById('invite-your-status');
+  if (!confirmBtn) return;
+
+  const full = Number(st.spotsLeft) <= 0;
+  const mine = st.yourStatus;
+
+  // "I'm In!" becomes "Join Waitlist" once the match is full — the server
+  // wait-lists in that case, so the button must say so up front.
+  if (mine === 'confirmed') {
+    confirmBtn.textContent = "I'm In ✓";
+  } else if (mine === 'waitlisted') {
+    confirmBtn.textContent = full ? 'On Waitlist ✓' : 'Take the Spot!';
+  } else {
+    confirmBtn.textContent = full ? 'Join Waitlist' : "I'm In!";
+  }
+  interestedBtn.textContent = mine === 'interested' ? 'Interested ✓' : 'Interested';
+  declineBtn.textContent = mine === 'declined' ? "Can't Make It ✓" : "Can't Make It";
+
+  [confirmBtn, interestedBtn, declineBtn].forEach(b => { b.style.outline = 'none'; b.style.boxShadow = 'none'; });
+  const active = mine === 'confirmed' ? confirmBtn : mine === 'waitlisted' ? confirmBtn : mine === 'interested' ? interestedBtn : mine === 'declined' ? declineBtn : null;
+  if (active) active.style.boxShadow = '0 0 0 3px rgba(255,255,255,0.35)';
+
+  if (yourEl) {
+    if (mine && mine !== 'pending' && mine !== 'not_invited') {
+      let label;
+      if (mine === 'confirmed') label = "You're confirmed for this match.";
+      else if (mine === 'waitlisted') label = "You're on the waitlist" + (st.yourPosition ? ' at position #' + st.yourPosition : '') + ". We'll text you if a spot opens up.";
+      else if (mine === 'interested') label = "You said you're interested.";
+      else label = "You said you can't make it.";
+      yourEl.innerHTML = esc(label) + '<br><span style="color:var(--muted);font-size:13px">Change your answer below any time before the match.</span>';
+      yourEl.style.display = 'block';
+    } else {
+      yourEl.style.display = 'none';
+    }
+  }
+}
+
 async function checkInviteCode() {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
@@ -970,14 +1025,16 @@ async function checkInviteCode() {
     const res = await fetch(`${API}/invite_respond.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'view', match_code: code }),
+      // player_id lets the server return this player's current answer (audit M4)
+      body: JSON.stringify({ action: 'view', match_code: code, player_id: playerId ? Number(playerId) : undefined }),
     });
     const data = await res.json();
     if (data.status === 'success') {
       const inv = data.invite;
       const date = new Date(inv.match_date + 'T' + inv.match_time);
       const dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-      const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      // Match times are Pacific (the app's home time zone); say so.
+      const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' PT';
 
       // Build Google Maps link for directions
       const mapsQuery = inv.court_address
@@ -985,47 +1042,72 @@ async function checkInviteCode() {
         : encodeURIComponent(inv.court_name);
       const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
+      const spotsLeft = Number(inv.spots_left) || 0;
+      const maxSpots = Number(inv.max_spots) || 0;
+      const waitlisted = Number(inv.waitlisted) || 0;
+      const spotsLabel = spotsLeft > 0
+        ? spotsLeft + ' of ' + maxSpots + ' available'
+        : 'FULL' + (waitlisted > 0 ? ' — ' + waitlisted + ' on waitlist' : ' — waitlist open');
+
       document.getElementById('invite-details').innerHTML = `
         <div style="text-align:center;margin-bottom:20px">
           <div style="margin-bottom:8px"><img src="pickleball.png" alt="Pickleball" style="width:44px;height:44px;object-fit:contain"></div>
-          <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.4rem;color:var(--accent)">${dateStr}</div>
-          <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:1.1rem;color:var(--text);margin-top:4px">${timeStr}</div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.4rem;color:var(--accent)">${esc(dateStr)}</div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:1.1rem;color:var(--text);margin-top:4px">${esc(timeStr)}</div>
         </div>
         <div class="invite-detail">
           <span class="label">&#127967; Court</span>
-          <span class="value">${inv.court_name || 'TBD'}</span>
+          <span class="value">${esc(inv.court_name || 'TBD')}</span>
         </div>
         ${inv.court_address ? `
         <div class="invite-detail">
           <span class="label">&#128205; Address</span>
           <span class="value">
-            <a href="${mapsUrl}" target="_blank" style="color:var(--accent);text-decoration:none">${inv.court_address} &#8599;</a>
+            <a href="${esc(mapsUrl)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">${esc(inv.court_address)} &#8599;</a>
           </span>
         </div>` : ''}
         <div class="invite-detail">
           <span class="label">&#127942; Type</span>
-          <span class="value">${inv.match_type}</span>
+          <span class="value">${esc(inv.match_type || 'Open Play')}</span>
         </div>
         <div class="invite-detail">
           <span class="label">&#128176; Cost</span>
-          <span class="value">${inv.cost}</span>
+          <span class="value">${esc(inv.cost || 'Free')}</span>
         </div>
         <div class="invite-detail">
           <span class="label">&#128101; Spots</span>
-          <span class="value" style="color:${inv.spots_left > 0 ? 'var(--accent)' : 'var(--danger)'}">${inv.spots_left > 0 ? inv.spots_left + ' of ' + inv.max_spots + ' available' : 'FULL'}</span>
+          <span class="value" style="color:${spotsLeft > 0 ? 'var(--accent)' : 'var(--danger)'}">${esc(spotsLabel)}</span>
         </div>
         ${inv.message_body ? `
         <div style="margin-top:20px;padding:16px;background:var(--input-bg);border-radius:14px;border-left:3px solid var(--accent)">
           <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;font-family:'Outfit',sans-serif;font-weight:600">Message from organizer</div>
-          <div style="color:var(--soft);font-size:0.95rem;line-height:1.7">${inv.message_body}</div>
+          <div style="color:var(--soft);font-size:0.95rem;line-height:1.7;white-space:pre-line">${esc(inv.message_body)}</div>
         </div>` : ''}
       `;
-      if (playerId) {
+
+      window._inviteState = {
+        spotsLeft, maxSpots, waitlisted,
+        yourStatus: data.your_status || null,
+        yourPosition: data.your_waitlist_position || null,
+      };
+
+      if (inv.is_past) {
+        showAlert('invite-alert', 'This match has already happened.', 'error');
+      } else if (playerId && data.your_status === 'not_invited') {
+        showAlert('invite-alert', 'This link is not for your number. Open the invite from your own text message to respond.', 'error');
+      } else if (playerId) {
         document.getElementById('response-buttons').style.display = 'flex';
         window._inviteCode = code;
         window._playerId = playerId;
+        renderResponseButtons();
+      } else {
+        // A code without a player_id: we can show the match but cannot record
+        // an answer for anyone. Explain instead of silently hiding the buttons.
+        showAlert('invite-alert', 'To RSVP, open the link from your text message — it identifies you so we can record your answer.', 'success');
       }
     } else {
+      // Invalid / cancelled code: "You're Invited!" over an error is misleading.
+      hideInviteHeader();
       showAlert('invite-alert', data.message || 'Invite not found.', 'error');
     }
   } catch (e) {
@@ -1036,6 +1118,7 @@ async function checkInviteCode() {
 async function respondToInvite(status) {
   const buttons = document.querySelectorAll('.response-btn');
   buttons.forEach(b => b.disabled = true);
+  clearAlert('invite-alert');
 
   try {
     const res = await fetch(`${API}/invite_respond.php`, {
@@ -1044,27 +1127,47 @@ async function respondToInvite(status) {
       body: JSON.stringify({
         action: 'respond',
         match_code: window._inviteCode,
-        player_id: window._playerId,
+        player_id: Number(window._playerId),
         status: status,
       }),
     });
     const data = await res.json();
     if (data.status === 'success') {
-      const icon = status === 'confirmed' ? '&#9989;' : status === 'interested' ? '&#128161;' : '&#128075;';
-      const msg = status === 'confirmed' ? "You're confirmed! See you on the court!" :
-            status === 'interested' ? "The organizer knows you're interested. They may follow up!" :
-            "No worries! We'll save your spot in the pool for next time.";
-      document.getElementById('response-buttons').innerHTML =
-        `<div style="text-align:center;padding:24px">
+      // Honest outcome (audit C2): the server may have wait-listed an "I'm In".
+      const waitlisted = !!data.waitlisted;
+      const finalStatus = waitlisted ? 'waitlisted' : status;
+      const icon = waitlisted ? '&#128203;' : status === 'confirmed' ? '&#9989;' : status === 'interested' ? '&#128161;' : '&#128075;';
+      const title = waitlisted ? "You're on the waitlist" :
+            status === 'confirmed' ? "You're In!" : status === 'interested' ? "Noted!" : "Maybe Next Time";
+      const msg = waitlisted
+            ? (data.message || "All spots are full. We'll text you if a spot opens up!")
+            : status === 'confirmed' ? "You're confirmed! See you on the court!" :
+              status === 'interested' ? "The organizer knows you're interested. They may follow up!" :
+              "No worries! We'll save your spot in the pool for next time.";
+
+      window._inviteState.yourStatus = finalStatus;
+      window._inviteState.yourPosition = data.waitlist_position || null;
+      if (typeof data.spots_left === 'number') window._inviteState.spotsLeft = data.spots_left;
+
+      const rb = document.getElementById('response-buttons');
+      rb.innerHTML =
+        `<div style="text-align:center;padding:24px;width:100%">
           <div style="font-size:48px;margin-bottom:12px">${icon}</div>
-          <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.2rem;color:var(--accent);margin-bottom:8px">
-            ${status === 'confirmed' ? "You're In!" : status === 'interested' ? "Noted!" : "Maybe Next Time"}
+          <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.2rem;color:${waitlisted ? 'var(--gold)' : 'var(--accent)'};margin-bottom:8px">
+            ${esc(title)}
           </div>
-          <div style="color:var(--muted);font-size:0.95rem;line-height:1.6">${msg}</div>
+          <div style="color:var(--muted);font-size:0.95rem;line-height:1.6">${esc(msg)}</div>
+          <button type="button" onclick="window.location.reload()" style="margin-top:18px;background:transparent;border:1px solid var(--border);color:var(--soft);padding:10px 18px;border-radius:10px;cursor:pointer;font-family:'Outfit',sans-serif;font-weight:600">Change my answer</button>
         </div>`;
+      const yourEl = document.getElementById('invite-your-status');
+      if (yourEl) yourEl.style.display = 'none';
     } else {
       showAlert('invite-alert', data.message, 'error');
-      buttons.forEach(b => b.disabled = false);
+      if (data.is_past) {
+        document.getElementById('response-buttons').style.display = 'none';
+      } else {
+        buttons.forEach(b => b.disabled = false);
+      }
     }
   } catch (e) {
     showAlert('invite-alert', 'Network error. Please try again.', 'error');
@@ -1346,8 +1449,12 @@ async function saveUpdate() {
 }
 
 function goToUpdateProfile() {
-  // Strip query params so the registration page shows (not the invite view)
-  window.location.href = 'player-signup.html#register';
+  // Strip query params so a refresh shows the registration page (not the
+  // invite view) — WITHOUT navigating (audit M7). The old location.href
+  // assignment reloaded the page, and the DOM updates below then ran on a
+  // document that was about to be replaced, landing on the blank registration
+  // form instead of the update flow.
+  try { history.replaceState(null, '', 'player-signup.html#register'); } catch (e) { /* ignore */ }
   // Show update flow
   document.getElementById('invite-view').classList.remove('active');
   document.querySelector('.hero').style.display = 'none';

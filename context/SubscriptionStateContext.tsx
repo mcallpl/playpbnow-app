@@ -26,6 +26,10 @@ export interface SubscriptionData {
      *  Feature gates use this; purchase UI uses !isPro. Optional because
      *  older API builds do not send it — consumers fall back to isPro. */
     hasAccess?: boolean;
+    /** Genuinely paying (or admin). Sent by the API from 2026-09-04; absent
+     *  on older servers, where it is treated as false so the purchase UI
+     *  stays visible rather than being hidden from someone who can buy. */
+    isPaid?: boolean;
     isAdmin: boolean;
     features: SubscriptionFeatures;
 }

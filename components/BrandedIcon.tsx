@@ -98,6 +98,9 @@ const ICON_MAP: Record<string, IconComponent> = {
   chevronRight: ChevronRightIcon,
   chevronLeft: ChevronLeftIcon,
   checkmarkCircle: ConfirmIcon,
+  // broadcast.tsx:1807/1856/2137 pass 'checkboxEmpty'; the map only had the
+  // kebab-case 'checkbox-empty', so every unchecked box rendered as nothing.
+  checkboxEmpty: CheckboxEmptyIcon,
 };
 
 interface BrandedIconProps {

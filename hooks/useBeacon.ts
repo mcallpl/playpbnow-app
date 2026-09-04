@@ -246,6 +246,13 @@ export interface LobbyPollResult {
   replacement_requests: ReplacementRequest[];
   confirmed_count: number;
   all_confirmed: boolean;
+  // Additions
+  active_member_count?: number;
+  beacon_status?: 'active' | 'expired' | 'cancelled' | null;
+  beacon_expires_at?: string | null;
+  beacon_expires_at_iso?: string | null;
+  beacon_expires_in_sec?: number | null;
+  my_status?: LobbyMember['status'] | null;
 }
 
 export interface Court {
@@ -253,6 +260,184 @@ export interface Court {
   name: string;
   city?: string;
   state?: string;
+  // M5 additions from get_courts.php
+  address?: string | null;
+  county?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+/** The caller's own open lobby, as reported by beacon_feed.php (C4 resume). */
+export interface MyLobbyInfo {
+  id: number;
+  status: 'gathering' | 'locked';
+  beaconId: number | null;
+  role: 'host' | 'member';
+}
+
+export interface MergedBeaconFeed {
+  beacons: Beacon[];
+  history: Beacon[];
+  courts: Court[];
+  myLobby: MyLobbyInfo | null;
+  /** True when at least one of the two feeds answered. */
+  ok: boolean;
+}
+
+/** Miles between two coordinates (haversine). */
+export function distanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 3958.8;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/**
+ * H6: ONE merged fetch (shared casual feed + PlayPBNow structured feed) used
+ * by both the Play Now screen and the background tab-badge check, so the two
+ * can never disagree about what is active. Expired rows are filtered here.
+ */
+export async function fetchBeaconFeeds(opts: {
+  userId: string;
+  userName?: string;
+  courtId?: number;
+  lat?: number;
+  lng?: number;
+  includeHistory?: boolean;
+}): Promise<MergedBeaconFeed> {
+  const { userId, userName, courtId, lat, lng, includeHistory = true } = opts;
+  const fetchedAt = Date.now();
+
+  const sharedBody: Record<string, any> = { user_id: parseInt(userId) || 0 };
+  if (lat !== undefined && lng !== undefined) {
+    sharedBody.lat = lat;
+    sharedBody.lng = lng;
+    // No radius filter — show all beacons to everyone for now
+  }
+
+  const localUrl = `${API_URL}/beacon_feed.php?user_id=${encodeURIComponent(userId)}${
+    includeHistory ? '&include_history=1' : ''
+  }${courtId ? `&court_id=${courtId}` : ''}${lat !== undefined ? `&lat=${lat}&lng=${lng}` : ''}`;
+
+  const [sharedRes, localRes] = await Promise.allSettled([
+    fetch(`${SHARED_BEACON_URL}/feed.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sharedBody),
+    }).then((r) => r.json()),
+    fetch(localUrl).then((r) => r.json()),
+  ]);
+
+  const sharedData: any = sharedRes.status === 'fulfilled' ? sharedRes.value : null;
+  const localData: any = localRes.status === 'fulfilled' ? localRes.value : null;
+  const ok = !!sharedData || !!localData;
+
+  const sharedBeacons: Beacon[] = ((sharedData && sharedData.beacons) || []).map((b: any) => {
+    const isMine = String(b.user_id) === String(userId);
+    // M13: pass the shared feed's responder list through instead of dropping it
+    const responses: BeaconResponse[] = Array.isArray(b.responses)
+      ? b.responses
+      : Array.isArray(b.responders)
+      ? b.responders
+      : [];
+    const row: Beacon = {
+      ...b,
+      beacon_type: 'casual' as const,
+      creator_name: isMine && userName ? userName : (b.creator_name || 'Player'),
+      reliability_pct: 100,
+      is_mine: isMine,
+      chat_count: b.message_count || 0,
+      needs_replacement: false,
+      replacement_info: null,
+      responses,
+      response_count: typeof b.response_count === 'number' ? b.response_count : responses.length,
+      user_responded: !!b.my_response,
+      active_lobby_id: null,
+      lobby_member_count: 0,
+      fetched_at: fetchedAt,
+    };
+    row.uid = beaconUid(row);
+    return row;
+  });
+
+  const localBeacons: Beacon[] = ((localData && localData.beacons) || [])
+    .filter((b: any) => b.beacon_type === 'structured')
+    .map((b: any) => {
+      const row: Beacon = { ...b, fetched_at: fetchedAt };
+      row.uid = beaconUid(row);
+      return row;
+    });
+
+  // Filter out beacons whose expires_at has passed (don't trust API status alone)
+  const now = Date.now();
+  const activeBeacons = [...sharedBeacons, ...localBeacons].filter((b) => {
+    const exp = beaconExpiryMs(b);
+    // Unparseable expiry: keep the row rather than silently hiding a live beacon
+    return Number.isNaN(exp) ? true : exp > now;
+  });
+
+  // Client-side distance when the server didn't compute one but we know both ends
+  if (lat !== undefined && lng !== undefined) {
+    for (const b of activeBeacons) {
+      if (b.distance_miles == null && b.court_lat != null && b.court_lng != null) {
+        const d = distanceMiles(lat, lng, Number(b.court_lat), Number(b.court_lng));
+        if (Number.isFinite(d)) b.distance_miles = Math.round(d * 10) / 10;
+      }
+    }
+  }
+
+  // M6: distance first (when known), then newest
+  activeBeacons.sort((a, b) => {
+    const ad = a.distance_miles != null ? Number(a.distance_miles) : null;
+    const bd = b.distance_miles != null ? Number(b.distance_miles) : null;
+    if (ad != null && bd != null && ad !== bd) return ad - bd;
+    if (ad != null && bd == null) return -1;
+    if (ad == null && bd != null) return 1;
+    return (beaconCreatedMs(b) || 0) - (beaconCreatedMs(a) || 0);
+  });
+
+  // History: only show beacons expired within the last 4 hours
+  const fourHoursAgo = now - 4 * 60 * 60 * 1000;
+  const history: Beacon[] = includeHistory
+    ? [
+        ...(((sharedData && sharedData.past_beacons) || []) as any[]).map((b: any) => ({
+          ...b,
+          beacon_type: 'casual' as const,
+          creator_name: b.creator_name || 'Player',
+          is_mine: String(b.user_id) === String(userId),
+          uid: beaconUid({ beacon_type: 'casual', id: b.id }),
+        })),
+        ...((((localData && localData.history) || []) as any[]).map((b: any) => ({
+          ...b,
+          uid: beaconUid({ beacon_type: b.beacon_type || 'structured', id: b.id }),
+        }))),
+      ].filter((b) => {
+        const t = beaconExpiryMs(b);
+        const c = beaconCreatedMs(b);
+        const ref = !Number.isNaN(t) ? t : c;
+        return Number.isNaN(ref) ? true : ref > fourHoursAgo;
+      })
+    : [];
+
+  let myLobby: MyLobbyInfo | null = null;
+  if (localData && typeof localData.my_lobby_id === 'number' && localData.my_lobby_id > 0) {
+    myLobby = {
+      id: localData.my_lobby_id,
+      status: localData.my_lobby_status === 'locked' ? 'locked' : 'gathering',
+      beaconId: typeof localData.my_lobby_beacon_id === 'number' ? localData.my_lobby_beacon_id : null,
+      role: localData.my_lobby_role === 'host' ? 'host' : 'member',
+    };
+  }
+
+  return {
+    beacons: activeBeacons,
+    history,
+    courts: (localData && localData.courts) || [],
+    myLobby,
+    ok,
+  };
 }
 
 // Helper to get user info from AsyncStorage
@@ -279,8 +464,14 @@ export function useBeacon() {
   const [replacementRequests, setReplacementRequests] = useState<ReplacementRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // C4: my open lobby per the last feed fetch (resume after restart/refocus)
+  const [myLobby, setMyLobby] = useState<MyLobbyInfo | null>(null);
+  // L2: real sync health instead of "Connected" forever
+  const [lastPollOk, setLastPollOk] = useState<boolean | null>(null);
+  const [lastPollAt, setLastPollAt] = useState<number>(0);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeLobbyIdRef = useRef<number | null>(null);
 
   const getUserId = async () => {
     return await AsyncStorage.getItem('user_id') || '';
@@ -353,91 +544,23 @@ export function useBeacon() {
     setLoading(true);
     setError(null);
     try {
-      const userId = await getUserId();
-
-      // Fetch from shared beacon API (all cross-app casual beacons)
-      const sharedBody: Record<string, any> = { user_id: parseInt(userId) || 0 };
-      if (lat !== undefined && lng !== undefined) {
-        sharedBody.lat = lat;
-        sharedBody.lng = lng;
-        // No radius filter — show all beacons to everyone for now
-      }
+      const { userId, userName } = await getUserInfo();
 
       // NOTE: update_name.php does not exist on the shared beacon API — the old
       // best-effort call here 404'd on every feed fetch, so it was removed.
-      // Own-beacon names are corrected client-side below via `userName`.
+      // Own-beacon names are corrected client-side via `userName`.
 
-      const [sharedRes, localRes] = await Promise.all([
-        fetch(`${SHARED_BEACON_URL}/feed.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(sharedBody),
-        }),
-        // Also fetch structured beacons from PlayPBNow's own backend
-        fetch(`${API_URL}/beacon_feed.php?user_id=${userId}&include_history=1${
-          courtId ? `&court_id=${courtId}` : ''
-        }${lat !== undefined ? `&lat=${lat}&lng=${lng}` : ''}`),
-      ]);
+      // H6: the same merged fetch the background badge check uses
+      const merged = await fetchBeaconFeeds({ userId, userName, courtId, lat, lng, includeHistory: true });
+      if (!merged.ok) {
+        setError('Network error');
+        return;
+      }
 
-      const sharedData = await sharedRes.json();
-      const localData = await localRes.json();
-
-      // Get the current user's name for overriding stale creator_name on own beacons
-      const { userName } = await getUserInfo();
-
-      // Merge beacons: shared casual + local structured
-      const sharedBeacons: Beacon[] = (sharedData.beacons || []).map((b: any) => {
-        const isMine = String(b.user_id) === userId;
-        return {
-          ...b,
-          beacon_type: 'casual' as const,
-          creator_name: isMine ? userName : (b.creator_name || 'Player'),
-          reliability_pct: 100,
-          is_mine: isMine,
-          chat_count: b.message_count || 0,
-          needs_replacement: false,
-          replacement_info: null,
-          responses: [],
-          user_responded: !!b.my_response,
-          active_lobby_id: null,
-          lobby_member_count: 0,
-        };
-      });
-
-      // Local structured beacons (from PlayPBNow backend)
-      const localBeacons: Beacon[] = (localData.beacons || []).filter(
-        (b: any) => b.beacon_type === 'structured'
-      );
-
-      // Filter out beacons whose expires_at has passed (don't trust API status alone)
-      const now = Date.now();
-      const activeBeacons = [...sharedBeacons, ...localBeacons].filter(
-        (b) => new Date(b.expires_at).getTime() > now
-      );
-
-      // Sort by distance if available, else by created_at
-      activeBeacons.sort((a, b) => {
-        if (a.distance_miles != null && b.distance_miles != null) {
-          return a.distance_miles - b.distance_miles;
-        }
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-
-      setBeacons(activeBeacons);
-      setCourts(localData.courts || []);
-
-      // History: only show beacons expired within the last 4 hours
-      const fourHoursAgo = now - (4 * 60 * 60 * 1000);
-      const allHistory = [
-        ...(sharedData.past_beacons || []).map((b: any) => ({
-          ...b,
-          beacon_type: 'casual' as const,
-          creator_name: b.creator_name || 'Player',
-          is_mine: String(b.user_id) === userId,
-        })),
-        ...(localData.history || []),
-      ].filter((b) => new Date(b.expires_at || b.created_at).getTime() > fourHoursAgo);
-      setHistory(allHistory);
+      setBeacons(merged.beacons);
+      setCourts(merged.courts);
+      setHistory(merged.history);
+      setMyLobby(merged.myLobby);
     } catch (e) {
       setError('Network error');
     } finally {
@@ -446,24 +569,38 @@ export function useBeacon() {
   }, []);
 
   // --- Cancel Beacon (SHARED API for casual, local for structured) ---
-  const cancelBeacon = useCallback(async (beaconId: number) => {
+  // M1: when the beacon type is known we go straight to the right backend.
+  // The original try-shared-then-local path is kept for callers that don't
+  // pass a type.
+  const cancelBeacon = useCallback(async (beaconId: number, beaconType?: 'casual' | 'structured') => {
     try {
       const userId = await getUserId();
 
-      // Try shared API first (casual beacons), then local (structured)
-      const sharedRes = await fetch(`${SHARED_BEACON_URL}/cancel.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ beacon_id: beaconId, user_id: parseInt(userId) || 0 }),
-      });
-      const sharedData = await sharedRes.json();
+      if (beaconType !== 'structured') {
+        // Try shared API first (casual beacons), then local (structured)
+        try {
+          const sharedRes = await fetch(`${SHARED_BEACON_URL}/cancel.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ beacon_id: beaconId, user_id: parseInt(userId) || 0 }),
+          });
+          const sharedData = await sharedRes.json();
 
-      if (sharedData.status === 'success') {
-        await fetchFeed();
-        return true;
+          if (sharedData.status === 'success') {
+            await fetchFeed();
+            return true;
+          }
+          if (beaconType === 'casual') {
+            setError(sharedData.message || 'Failed to cancel beacon');
+            return false;
+          }
+        } catch (e) {
+          // Shared API unreachable — a structured beacon can still be cancelled locally
+          if (beaconType === 'casual') throw e;
+        }
       }
 
-      // Fallback to local API (structured beacons)
+      // Local API (structured beacons)
       const res = await fetch(`${API_URL}/beacon_cancel.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -483,24 +620,34 @@ export function useBeacon() {
   }, [fetchFeed]);
 
   // --- Extend Beacon (SHARED API for casual, local for structured) ---
-  const extendBeacon = useCallback(async (beaconId: number, additionalMinutes: number) => {
+  const extendBeacon = useCallback(async (beaconId: number, additionalMinutes: number, beaconType?: 'casual' | 'structured') => {
     try {
       const userId = await getUserId();
 
-      // Try shared API first
-      const sharedRes = await fetch(`${SHARED_BEACON_URL}/extend.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ beacon_id: beaconId, user_id: parseInt(userId) || 0, extra_minutes: additionalMinutes }),
-      });
-      const sharedData = await sharedRes.json();
+      if (beaconType !== 'structured') {
+        // Try shared API first
+        try {
+          const sharedRes = await fetch(`${SHARED_BEACON_URL}/extend.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ beacon_id: beaconId, user_id: parseInt(userId) || 0, extra_minutes: additionalMinutes }),
+          });
+          const sharedData = await sharedRes.json();
 
-      if (sharedData.status === 'success') {
-        await fetchFeed();
-        return true;
+          if (sharedData.status === 'success') {
+            await fetchFeed();
+            return true;
+          }
+          if (beaconType === 'casual') {
+            setError(sharedData.message || 'Failed to extend beacon');
+            return false;
+          }
+        } catch (e) {
+          if (beaconType === 'casual') throw e;
+        }
       }
 
-      // Fallback to local API
+      // Local API
       const res = await fetch(`${API_URL}/beacon_extend.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -509,6 +656,16 @@ export function useBeacon() {
       const data = await res.json();
       if (data.status === 'success') {
         await fetchFeed();
+        // M7: keep the lobby countdown in step without waiting for the next poll
+        if (data.beacon && lobby && lobby.beacon_id === beaconId) {
+          setLobby((prev) => prev ? {
+            ...prev,
+            beacon_status: 'active',
+            beacon_expires_at: data.beacon.expires_at ?? prev.beacon_expires_at,
+            beacon_expires_at_iso: data.beacon.expires_at_iso ?? prev.beacon_expires_at_iso,
+            beacon_expires_in_sec: data.beacon.expires_in_sec ?? prev.beacon_expires_in_sec,
+          } : prev);
+        }
         return true;
       }
       setError(data.message || 'Failed to extend beacon');
@@ -517,7 +674,7 @@ export function useBeacon() {
       setError('Network error');
       return false;
     }
-  }, [fetchFeed]);
+  }, [fetchFeed, lobby]);
 
   // --- Create Lobby (PlayPBNow only — structured mode) ---
   const createLobby = useCallback(async (
@@ -541,8 +698,11 @@ export function useBeacon() {
       });
       const data = await res.json();
       if (data.status === 'success') {
-        setLobby(data.lobby);
-        return data.lobby;
+        // C1/M8: the server now returns the beacon's EXISTING open lobby when
+        // there is one (`existing: true`) instead of creating a duplicate.
+        const lobbyRow: Lobby = { ...data.lobby, existing: !!data.existing };
+        setLobby(lobbyRow);
+        return lobbyRow;
       }
       setError(data.message || 'Failed to create lobby');
       return null;
@@ -555,6 +715,8 @@ export function useBeacon() {
   }, []);
 
   // --- Join Lobby (PlayPBNow only) ---
+  // Returns the member row. `already_member: true` on the result means the
+  // caller was already in (the server no longer treats that as an error).
   const joinLobby = useCallback(async (
     lobbyId: number,
     playerInfo: { player_id?: number; first_name: string; last_name: string; gender: string },
@@ -573,7 +735,14 @@ export function useBeacon() {
         }),
       });
       const data = await res.json();
-      if (data.status === 'success') return data.member;
+      if (data.status === 'success') {
+        return data.member ? { ...data.member, already_member: !!data.already_member } : { already_member: !!data.already_member };
+      }
+      // Pre-fix servers answered "User already in this lobby" as an error —
+      // still treat that as a resumable membership.
+      if (typeof data.message === 'string' && /already in this lobby/i.test(data.message)) {
+        return { already_member: true };
+      }
       setError(data.message || 'Failed to join lobby');
       return null;
     } catch (e) {
@@ -581,6 +750,26 @@ export function useBeacon() {
       return null;
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  // --- Leave Lobby (PlayPBNow only) — C3 ---
+  // member -> marked 'left'; host -> lobby + beacon cancelled (server cascades).
+  const leaveLobby = useCallback(async (lobbyId: number) => {
+    try {
+      const userId = await getUserId();
+      const res = await fetch(`${API_URL}/beacon_leave_lobby.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lobby_id: lobbyId, user_id: userId }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') return data as { status: 'success'; role: 'host' | 'member'; lobby_status: string };
+      setError(data.message || 'Failed to leave lobby');
+      return null;
+    } catch {
+      setError('Network error');
+      return null;
     }
   }, []);
 
@@ -613,7 +802,17 @@ export function useBeacon() {
       });
       const data = await res.json();
       if (data.status === 'success') {
-        setLobby(prev => prev ? { ...prev, status: 'locked', schedule_json: data.schedule_json, match_quality_percent: data.match_quality_percent } : null);
+        setLobby(prev => prev ? {
+          ...prev,
+          status: 'locked',
+          schedule_json: data.schedule_json,
+          match_quality_percent: data.match_quality_percent,
+          // M7: server auto-extended the beacon on lock
+          beacon_status: 'active',
+          beacon_expires_at: data.beacon_expires_at ?? prev.beacon_expires_at,
+          beacon_expires_at_iso: data.beacon_expires_at_iso ?? prev.beacon_expires_at_iso,
+          beacon_expires_in_sec: data.beacon_expires_in_sec ?? prev.beacon_expires_in_sec,
+        } : null);
         return data;
       }
       setError(data.message || 'Failed to lock lobby');
@@ -653,27 +852,39 @@ export function useBeacon() {
   }, []);
 
   // --- Respond to casual beacon (SHARED API) ---
-  const respondToBeacon = useCallback(async (beaconId: number, responseType: string = 'on_my_way') => {
+  // M1: `beaconType` routes directly when known; untyped calls keep the
+  // original shared-then-local behaviour.
+  const respondToBeacon = useCallback(async (beaconId: number, responseType: string = 'on_my_way', beaconType?: 'casual' | 'structured') => {
     try {
       const { userId, userName } = await getUserInfo();
 
-      // Try shared API first (casual beacons)
-      const sharedRes = await fetch(`${SHARED_BEACON_URL}/respond.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          beacon_id: beaconId,
-          user_id: parseInt(userId) || 0,
-          response_type: responseType,
-          responder_name: userName,
-          responder_photo: '',
-        }),
-      });
-      const sharedData = await sharedRes.json();
+      if (beaconType !== 'structured') {
+        // Try shared API first (casual beacons)
+        try {
+          const sharedRes = await fetch(`${SHARED_BEACON_URL}/respond.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              beacon_id: beaconId,
+              user_id: parseInt(userId) || 0,
+              response_type: responseType,
+              responder_name: userName,
+              responder_photo: '',
+            }),
+          });
+          const sharedData = await sharedRes.json();
 
-      if (sharedData.status === 'success') {
-        await fetchFeed();
-        return true;
+          if (sharedData.status === 'success') {
+            await fetchFeed();
+            return true;
+          }
+          if (beaconType === 'casual') {
+            setError(sharedData.message || 'Failed to respond');
+            return false;
+          }
+        } catch (e) {
+          if (beaconType === 'casual') throw e;
+        }
       }
 
       // Fallback to local API
@@ -695,10 +906,34 @@ export function useBeacon() {
     }
   }, [fetchFeed]);
 
-  // --- Unrespond from casual beacon (PlayPBNow local only for now) ---
-  const unrespondToBeacon = useCallback(async (beaconId: number) => {
+  // --- Unrespond from casual beacon ---
+  // H3: casual responses live in the SHARED beacon DB, and the shared module
+  // has no unrespond endpoint (no repo copy exists to add one to). We try the
+  // shared path in case it ever appears, then the local one; when neither can
+  // withdraw the response we say so honestly instead of silently failing.
+  const unrespondToBeacon = useCallback(async (beaconId: number, beaconType?: 'casual' | 'structured') => {
     try {
       const userId = await getUserId();
+
+      if (beaconType !== 'structured') {
+        try {
+          const sharedRes = await fetch(`${SHARED_BEACON_URL}/unrespond.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ beacon_id: beaconId, user_id: parseInt(userId) || 0 }),
+          });
+          if (sharedRes.ok) {
+            const sharedData = await sharedRes.json().catch(() => null);
+            if (sharedData && sharedData.status === 'success') {
+              await fetchFeed();
+              return true;
+            }
+          }
+        } catch {
+          // shared unrespond unavailable — fall through
+        }
+      }
+
       const res = await fetch(`${API_URL}/beacon_unrespond.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -709,8 +944,14 @@ export function useBeacon() {
         await fetchFeed();
         return true;
       }
+      setError(
+        beaconType === 'casual'
+          ? "Can't undo yet — the shared beacon network doesn't support withdrawing a response. Let the host know in chat."
+          : (data.message || 'Failed to withdraw response')
+      );
       return false;
     } catch {
+      setError('Network error');
       return false;
     }
   }, [fetchFeed]);
@@ -754,7 +995,12 @@ export function useBeacon() {
       });
       const data = await res.json();
       if (data.status === 'success') {
-        setLobby(data.lobby);
+        // Server decodes schedule_json now; tolerate an older server that sends a string
+        const lobbyRow = { ...data.lobby };
+        if (typeof lobbyRow.schedule_json === 'string') {
+          try { lobbyRow.schedule_json = JSON.parse(lobbyRow.schedule_json); } catch { lobbyRow.schedule_json = null; }
+        }
+        setLobby(lobbyRow);
         return data.member_id as number;
       }
       setError(data.message || 'Failed to accept replacement');
@@ -798,10 +1044,19 @@ export function useBeacon() {
         setReplacementRequests(data.replacement_requests || []);
         setConfirmedCount(data.confirmed_count || 0);
         setAllConfirmed(data.all_confirmed || false);
+        setLastPollOk(true);
+        setLastPollAt(Date.now());
         return data as LobbyPollResult;
       }
+      // Server answered but the lobby is gone (deleted / unknown id): surface
+      // that as a terminal state so the screen can tear down.
+      if (data.status === 'error' && /not found/i.test(String(data.message || ''))) {
+        setLobby((prev) => prev ? { ...prev, status: 'cancelled' } : prev);
+      }
+      setLastPollOk(false);
     } catch {
-      // Silently fail on poll errors
+      // Network failure — L2: report it instead of pretending we're connected
+      setLastPollOk(false);
     }
     return null;
   }, []);
@@ -809,6 +1064,7 @@ export function useBeacon() {
   // --- Start/Stop Polling ---
   const startPolling = useCallback((lobbyId: number) => {
     stopPolling();
+    activeLobbyIdRef.current = lobbyId;
     pollLobby(lobbyId); // immediate first poll
     pollingRef.current = setInterval(() => pollLobby(lobbyId), 3000);
   }, [pollLobby]);
@@ -820,6 +1076,15 @@ export function useBeacon() {
     }
   }, []);
 
+  /** C4: restart polling for the last lobby after a blur/refocus. */
+  const resumePolling = useCallback(() => {
+    const id = activeLobbyIdRef.current;
+    if (id && !pollingRef.current) {
+      pollLobby(id);
+      pollingRef.current = setInterval(() => pollLobby(id), 3000);
+    }
+  }, [pollLobby]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => stopPolling();
@@ -828,22 +1093,26 @@ export function useBeacon() {
   // --- Reset State ---
   const reset = useCallback(() => {
     stopPolling();
+    activeLobbyIdRef.current = null;
     setLobby(null);
     setMembers([]);
     setReplacementRequests([]);
     setConfirmedCount(0);
     setAllConfirmed(false);
     setError(null);
+    setLastPollOk(null);
   }, [stopPolling]);
 
   return {
     // State
     beacons, history, courts, lobby, members, confirmedCount, allConfirmed,
     replacementRequests, loading, error,
+    myLobby, lastPollOk, lastPollAt,
+    activeLobbyId: activeLobbyIdRef.current,
     // Actions
     createBeacon, fetchFeed, cancelBeacon, extendBeacon,
-    createLobby, joinLobby, confirmInLobby,
-    lockLobby, startMatch, pollLobby, startPolling, stopPolling, reset,
+    createLobby, joinLobby, leaveLobby, confirmInLobby,
+    lockLobby, startMatch, pollLobby, startPolling, stopPolling, resumePolling, reset,
     requestReplacement, acceptReplacement, cancelReplacement,
     respondToBeacon, unrespondToBeacon,
     // Setters

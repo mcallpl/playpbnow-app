@@ -192,7 +192,7 @@
 
   function verify(){
     var otp = $('otp').value.trim();
-    if(otp.length < 4){ msg('Enter the 6-digit code.', 'err'); return; }
+    if(otp.length < 6){ msg('Enter the 6-digit code.', 'err'); return; }
     busy($('otpBtn'), true);
     fetch(API+'/claim_verify.php', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ claim_code: code, phone: phoneVal, code: otp })})

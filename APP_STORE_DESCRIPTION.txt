@@ -1,4 +1,4 @@
-PLAYPLAYBNOW - SCORE PICKLEBALL MATCHES INSTANTLY
+PLAYPBNOW - SCORE PICKLEBALL MATCHES INSTANTLY
 
 ================================================================================
 HEADLINE
@@ -62,8 +62,8 @@ CALL TO ACTION
 ================================================================================
 Download PlayPBNow now and start tracking your pickleball journey!
 
-Join thousands of pickleball players who trust PlayPBNow to manage their games
-and build their competitive networks.
+Built for the person who runs the group: set up your roster once, generate the
+matchups, score them live, and let the app keep the rankings.
 
 ================================================================================
 KEYWORDS
@@ -80,6 +80,7 @@ Terms of Service: https://playpbnow.com/terms.html
 Email: mcallpl@gmail.com
 
 Questions or feedback? We'd love to hear from you!
-Contact us through the app or visit our help page.
+Email mcallpl@gmail.com, or open the HELP tab in the app — the address is on
+every support topic there.
 
 ================================================================================
