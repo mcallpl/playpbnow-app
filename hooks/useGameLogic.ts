@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert } from '@/utils/crossAlert';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+// Canonical same-origin host: the auth interceptor in utils/apiClient.ts only
+// attaches the Bearer token to 'playpbnow.com/api' URLs (UAT H7 / E-M9).
+const API_URL = 'https://playpbnow.com/api';
 
 export interface Player {
     id: string;
@@ -73,12 +75,235 @@ export const generateFixedTeamsLocal = (teams: { player1: Player; player2: Playe
     return schedule;
 };
 
+// ── LOCAL SHUFFLE ────────────────────────────────────────────
+// Rules enforced:
+// - 2 players may NOT be on the same team more than once per match
+// - 2 males NEVER play 2 females
+// - UAT C-M2: sit-outs are balanced across rounds (lowest sit count sits
+//   first, random tiebreak) and mixed mode never benches a playable group
+//   of leftovers — they get a game via the mixer pool instead.
+// - UAT C-M3: `courts` caps games per round; games = min(floor(n/4), courts)
+//   and sitN = n - 4*games players sit that round.
+export const buildLocalSchedule = (
+    allPlayers: Player[],
+    roundConfigs: { id: string; type: string }[],
+    courts?: number
+): RoundData[] => {
+    const newSchedule: RoundData[] = [];
+    // How many rounds each player has sat out so far in THIS match
+    const sitCounts = new Map<string, number>();
+    const sitCountOf = (p: Player) => sitCounts.get(p.id) || 0;
+    const markSat = (p: Player) => sitCounts.set(p.id, sitCountOf(p) + 1);
+
+    // Pick who sits this round: fewest sit-outs first, random among ties.
+    const chooseSitters = (pool: Player[], sitN: number): { active: Player[]; sitters: Player[] } => {
+        if (sitN <= 0) return { active: [...pool], sitters: [] };
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
+        // Stable sort keeps the random order among equal counts
+        const ranked = shuffled
+            .map((p, i) => ({ p, i, c: sitCountOf(p) }))
+            .sort((a, b) => a.c - b.c || a.i - b.i)
+            .map(x => x.p);
+        const sitters = ranked.slice(0, sitN);
+        const sitIds = new Set(sitters.map(p => p.id));
+        return { active: pool.filter(p => !sitIds.has(p.id)), sitters };
+    };
+    // Track all pairs that have played together so far in THIS match
+    const partnerHistory = new Map<string, number>();
+
+    const pairKey = (p1: Player, p2: Player) =>
+        [p1.id, p2.id].sort().join('-');
+
+    const getPairCount = (p1: Player, p2: Player) =>
+        partnerHistory.get(pairKey(p1, p2)) || 0;
+
+    const addPair = (p1: Player, p2: Player) => {
+        const k = pairKey(p1, p2);
+        partnerHistory.set(k, (partnerHistory.get(k) || 0) + 1);
+    };
+
+    const isMale   = (p: Player) => !(p.gender || '').toLowerCase().startsWith('f');
+    const isFemale = (p: Player) =>  (p.gender || '').toLowerCase().startsWith('f');
+
+    // Try to build a valid 4-player game; returns null if impossible
+    const tryMakeGame = (a: Player, b: Player, c: Player, d: Player): GameData | null => {
+        // Rule: no pair may have played together before
+        if (getPairCount(a, b) >= 1 || getPairCount(c, d) >= 1) return null;
+        // Rule: 2 males NEVER play 2 females
+        if (isGenderIllegal([a, b], [c, d])) return null;
+        return {
+            id: Math.random().toString(36).substr(2, 9),
+            team1: [a, b], team2: [c, d],
+            score_team1: 0, score_team2: 0
+        };
+    };
+
+    // Shuffle pool and attempt to build all games in one pass; retry up to maxRetries
+    const processPool = (pool: Player[], maxRetries = 200) => {
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const shuffled = [...pool].sort(() => Math.random() - 0.5);
+            const games: GameData[] = [];
+            let valid = true;
+
+            for (let i = 0; i + 3 < shuffled.length; i += 4) {
+                const game = tryMakeGame(
+                    shuffled[i], shuffled[i + 1],
+                    shuffled[i + 2], shuffled[i + 3]
+                );
+                if (!game) { valid = false; break; }
+                games.push(game);
+            }
+
+            if (valid) {
+                const leftovers = shuffled.slice(Math.floor(shuffled.length / 4) * 4);
+                return { games, leftovers };
+            }
+        }
+
+        // Fallback: allow repeats but still enforce gender rule
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
+        const games: GameData[] = [];
+        for (let i = 0; i + 3 < shuffled.length; i += 4) {
+            // Still enforce gender rule even in fallback
+            let a = shuffled[i], b = shuffled[i+1], c = shuffled[i+2], d = shuffled[i+3];
+            if (isGenderIllegal([a,b],[c,d])) {
+                // try swapping b and c
+                [b, c] = [c, b];
+            }
+            games.push({
+                id: Math.random().toString(36).substr(2, 9),
+                team1: [a, b], team2: [c, d],
+                score_team1: 0, score_team2: 0
+            });
+        }
+        return { games, leftovers: shuffled.slice(Math.floor(shuffled.length / 4) * 4) };
+    };
+
+    for (const config of roundConfigs) {
+        let roundGames: GameData[] = [];
+        let roundByes: Player[] = [];
+
+        // Courts + balanced sit-outs: decide who sits BEFORE pairing so the
+        // pairing logic only ever sees a pool that is a multiple of 4.
+        const n = allPlayers.length;
+        const maxGames = Math.floor(n / 4);
+        const gamesThisRound = courts && courts > 0 ? Math.min(maxGames, Math.floor(courts)) : maxGames;
+        const sitN = n - 4 * gamesThisRound;
+        const { active: roundPlayers, sitters: plannedSitters } = chooseSitters(allPlayers, sitN);
+
+        if (config.type === 'gender') {
+            const men   = roundPlayers.filter(isMale);
+            const women = roundPlayers.filter(isFemale);
+            const others = roundPlayers.filter(p => !isMale(p) && !isFemale(p));
+
+            const mResult = processPool(men);
+            const fResult = processPool(women);
+            const oResult = processPool([...others, ...mResult.leftovers, ...fResult.leftovers]);
+
+            roundGames = [...mResult.games, ...fResult.games, ...oResult.games];
+            roundByes  = oResult.leftovers;
+
+        } else if (config.type === 'mixed') {
+            // Mixed: enforce 1M+1F per team where possible
+            const men   = roundPlayers.filter(isMale);
+            const women = roundPlayers.filter(isFemale);
+            let bestGames: GameData[] = [];
+            let bestByes: Player[] = [...roundPlayers];
+
+            for (let attempt = 0; attempt < 200; attempt++) {
+                const mCopy = [...men].sort(() => Math.random() - 0.5);
+                const wCopy = [...women].sort(() => Math.random() - 0.5);
+                const games: GameData[] = [];
+                let valid = true;
+
+                while (mCopy.length >= 2 && wCopy.length >= 2) {
+                    const m1 = mCopy.pop()!; const f1 = wCopy.pop()!;
+                    const m2 = mCopy.pop()!; const f2 = wCopy.pop()!;
+                    const game = tryMakeGame(m1, f1, m2, f2);
+                    if (!game) { valid = false; break; }
+                    games.push(game);
+                }
+
+                if (valid) {
+                    // Put any leftover M or F into additional games via processPool
+                    const leftovers = [...mCopy, ...wCopy];
+                    if (leftovers.length >= 4) {
+                        const extra = processPool(leftovers);
+                        bestGames = [...games, ...extra.games];
+                        bestByes = extra.leftovers;
+                    } else {
+                        bestGames = games;
+                        bestByes = leftovers;
+                    }
+                    break;
+                }
+
+                // Track best attempt (most games) even if not fully valid
+                if (games.length > bestGames.length) {
+                    bestGames = games;
+                    const usedIds = new Set(games.flatMap(g => [...g.team1, ...g.team2].map(p => p.id)));
+                    bestByes = roundPlayers.filter(p => !usedIds.has(p.id));
+                }
+            }
+
+            if (bestGames.length === 0) {
+                // fallback to any pool
+                const result = processPool(roundPlayers);
+                bestGames = result.games;
+                bestByes = result.leftovers;
+            }
+
+            // UAT C-M2: a "best attempt" could bench 4+ players (e.g. 4 of 8).
+            // Anyone left over in a playable group still gets a game — mixer
+            // pairing rather than a bench.
+            if (bestByes.length >= 4) {
+                const extra = processPool(bestByes);
+                bestGames = [...bestGames, ...extra.games];
+                bestByes = extra.leftovers;
+            }
+
+            roundGames = bestGames;
+            roundByes = bestByes;
+
+        } else {
+            // Mixer
+            const result = processPool(roundPlayers);
+            roundGames = result.games;
+            roundByes  = result.leftovers;
+        }
+
+        roundGames.forEach(g => {
+            addPair(g.team1[0], g.team1[1]);
+            addPair(g.team2[0], g.team2[1]);
+        });
+
+        // Planned sitters + anything the pairing could not place both count
+        // toward next round's sit-out balance.
+        roundByes = [...plannedSitters, ...roundByes];
+        roundByes.forEach(markSat);
+
+        newSchedule.push({
+            id: `round-${newSchedule.length}`,
+            type: config.type,
+            games: roundGames,
+            byes: roundByes
+        });
+    }
+
+    return newSchedule;
+};
+
+
 export const useGameLogic = (
     initialScheduleJson: string | undefined,
     playersData: Player[],
     currentRoster: Player[],
     groupName: string,
-    isFixedTeams: boolean = false
+    isFixedTeams: boolean = false,
+    // UAT C-M3: number of courts available. undefined = one court per 4
+    // players (the historical behaviour). Fewer courts = more players sit
+    // each round, balanced by buildLocalSchedule's sit-out tracking.
+    courts?: number
 ) => {
     const [schedule, setSchedule] = useState<RoundData[]>([]);
     const [loading, setLoading] = useState(false);
@@ -233,176 +458,13 @@ export const useGameLogic = (
     };
 
     // ── LOCAL SHUFFLE ────────────────────────────────────────────
-    // Rules enforced:
-    // - 2 players may NOT be on the same team more than once per match
-    // - 2 males NEVER play 2 females
+    // The scheduler itself lives at module scope (buildLocalSchedule) so it
+    // can be unit-tested; this wrapper keeps the hook's original call shape
+    // and threads the courts setting through.
     const generateLocalSchedule = (
         allPlayers: Player[],
         roundConfigs: { id: string; type: string }[]
-    ): RoundData[] => {
-        const newSchedule: RoundData[] = [];
-        // Track all pairs that have played together so far in THIS match
-        const partnerHistory = new Map<string, number>();
-
-        const pairKey = (p1: Player, p2: Player) =>
-            [p1.id, p2.id].sort().join('-');
-
-        const getPairCount = (p1: Player, p2: Player) =>
-            partnerHistory.get(pairKey(p1, p2)) || 0;
-
-        const addPair = (p1: Player, p2: Player) => {
-            const k = pairKey(p1, p2);
-            partnerHistory.set(k, (partnerHistory.get(k) || 0) + 1);
-        };
-
-        const isMale   = (p: Player) => !(p.gender || '').toLowerCase().startsWith('f');
-        const isFemale = (p: Player) =>  (p.gender || '').toLowerCase().startsWith('f');
-
-        // Try to build a valid 4-player game; returns null if impossible
-        const tryMakeGame = (a: Player, b: Player, c: Player, d: Player): GameData | null => {
-            // Rule: no pair may have played together before
-            if (getPairCount(a, b) >= 1 || getPairCount(c, d) >= 1) return null;
-            // Rule: 2 males NEVER play 2 females
-            if (isGenderIllegal([a, b], [c, d])) return null;
-            return {
-                id: Math.random().toString(36).substr(2, 9),
-                team1: [a, b], team2: [c, d],
-                score_team1: 0, score_team2: 0
-            };
-        };
-
-        // Shuffle pool and attempt to build all games in one pass; retry up to maxRetries
-        const processPool = (pool: Player[], maxRetries = 200) => {
-            for (let attempt = 0; attempt < maxRetries; attempt++) {
-                const shuffled = [...pool].sort(() => Math.random() - 0.5);
-                const games: GameData[] = [];
-                let valid = true;
-
-                for (let i = 0; i + 3 < shuffled.length; i += 4) {
-                    const game = tryMakeGame(
-                        shuffled[i], shuffled[i + 1],
-                        shuffled[i + 2], shuffled[i + 3]
-                    );
-                    if (!game) { valid = false; break; }
-                    games.push(game);
-                }
-
-                if (valid) {
-                    const leftovers = shuffled.slice(Math.floor(shuffled.length / 4) * 4);
-                    return { games, leftovers };
-                }
-            }
-
-            // Fallback: allow repeats but still enforce gender rule
-            const shuffled = [...pool].sort(() => Math.random() - 0.5);
-            const games: GameData[] = [];
-            for (let i = 0; i + 3 < shuffled.length; i += 4) {
-                // Still enforce gender rule even in fallback
-                let a = shuffled[i], b = shuffled[i+1], c = shuffled[i+2], d = shuffled[i+3];
-                if (isGenderIllegal([a,b],[c,d])) {
-                    // try swapping b and c
-                    [b, c] = [c, b];
-                }
-                games.push({
-                    id: Math.random().toString(36).substr(2, 9),
-                    team1: [a, b], team2: [c, d],
-                    score_team1: 0, score_team2: 0
-                });
-            }
-            return { games, leftovers: shuffled.slice(Math.floor(shuffled.length / 4) * 4) };
-        };
-
-        for (const config of roundConfigs) {
-            let roundGames: GameData[] = [];
-            let roundByes: Player[] = [];
-
-            if (config.type === 'gender') {
-                const men   = allPlayers.filter(isMale);
-                const women = allPlayers.filter(isFemale);
-                const others = allPlayers.filter(p => !isMale(p) && !isFemale(p));
-
-                const mResult = processPool(men);
-                const fResult = processPool(women);
-                const oResult = processPool([...others, ...mResult.leftovers, ...fResult.leftovers]);
-
-                roundGames = [...mResult.games, ...fResult.games, ...oResult.games];
-                roundByes  = oResult.leftovers;
-
-            } else if (config.type === 'mixed') {
-                // Mixed: enforce 1M+1F per team where possible
-                const men   = allPlayers.filter(isMale);
-                const women = allPlayers.filter(isFemale);
-                let bestGames: GameData[] = [];
-                let bestByes: Player[] = [...allPlayers];
-
-                for (let attempt = 0; attempt < 200; attempt++) {
-                    const mCopy = [...men].sort(() => Math.random() - 0.5);
-                    const wCopy = [...women].sort(() => Math.random() - 0.5);
-                    const games: GameData[] = [];
-                    let valid = true;
-
-                    while (mCopy.length >= 2 && wCopy.length >= 2) {
-                        const m1 = mCopy.pop()!; const f1 = wCopy.pop()!;
-                        const m2 = mCopy.pop()!; const f2 = wCopy.pop()!;
-                        const game = tryMakeGame(m1, f1, m2, f2);
-                        if (!game) { valid = false; break; }
-                        games.push(game);
-                    }
-
-                    if (valid) {
-                        // Put any leftover M or F into additional games via processPool
-                        const leftovers = [...mCopy, ...wCopy];
-                        if (leftovers.length >= 4) {
-                            const extra = processPool(leftovers);
-                            bestGames = [...games, ...extra.games];
-                            bestByes = extra.leftovers;
-                        } else {
-                            bestGames = games;
-                            bestByes = leftovers;
-                        }
-                        break;
-                    }
-
-                    // Track best attempt (most games) even if not fully valid
-                    if (games.length > bestGames.length) {
-                        bestGames = games;
-                        const usedIds = new Set(games.flatMap(g => [...g.team1, ...g.team2].map(p => p.id)));
-                        bestByes = allPlayers.filter(p => !usedIds.has(p.id));
-                    }
-                }
-
-                if (bestGames.length === 0) {
-                    // fallback to any pool
-                    const result = processPool(allPlayers);
-                    bestGames = result.games;
-                    bestByes = result.leftovers;
-                }
-
-                roundGames = bestGames;
-                roundByes = bestByes;
-
-            } else {
-                // Mixer
-                const result = processPool(allPlayers);
-                roundGames = result.games;
-                roundByes  = result.leftovers;
-            }
-
-            roundGames.forEach(g => {
-                addPair(g.team1[0], g.team1[1]);
-                addPair(g.team2[0], g.team2[1]);
-            });
-
-            newSchedule.push({
-                id: `round-${newSchedule.length}`,
-                type: config.type,
-                games: roundGames,
-                byes: roundByes
-            });
-        }
-
-        return newSchedule;
-    };
+    ): RoundData[] => buildLocalSchedule(allPlayers, roundConfigs, courts);
 
     const performShuffle = async (): Promise<boolean> => {
         // Build the most complete player list: prefer currentRoster, fall back to playersData,

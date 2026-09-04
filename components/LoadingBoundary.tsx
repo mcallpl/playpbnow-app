@@ -3,9 +3,18 @@
  * Composition-based pattern for flexible loading UIs
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { BrandedIcon } from './BrandedIcon';
+import { ThemeColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+
+// Theme-aware styles (Audit E M7). The palette used to be a hard-coded light
+// grey set, which drew a white loading panel on the dark theme's navy screen.
+function useBoundaryStyles() {
+  const { colors } = useTheme();
+  return useMemo(() => createStyles(colors), [colors]);
+}
 
 interface LoadingBoundaryProps {
   isLoading?: boolean;
@@ -69,9 +78,11 @@ export function LoadingBoundary({
  * DefaultLoadingSpinner - Default loading indicator
  */
 function DefaultLoadingSpinner() {
+  const { colors } = useTheme();
+  const styles = useBoundaryStyles();
   return (
     <View testID="default-skeleton" style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#3b82f6" />
+      <ActivityIndicator size="large" color={colors.accent} />
       <Text style={styles.loadingText}>Loading...</Text>
     </View>
   );
@@ -81,6 +92,7 @@ function DefaultLoadingSpinner() {
  * DefaultEmptyState - shown when isEmpty is set and no emptyFallback is given
  */
 function DefaultEmptyState() {
+  const styles = useBoundaryStyles();
   return (
     <View testID="default-empty" style={styles.loadingContainer}>
       <Text style={styles.loadingText}>Nothing to show yet.</Text>
@@ -92,12 +104,14 @@ function DefaultEmptyState() {
  * DefaultErrorFallback - Default error UI
  */
 function DefaultErrorFallback({ error, onRetry }: { error: Error; onRetry?: () => void }) {
+  const { colors } = useTheme();
+  const styles = useBoundaryStyles();
   const errorMessage = error.message || 'Something went wrong. Please try again.';
 
   return (
     <View style={styles.errorContainer}>
       <View style={styles.errorIconContainer}>
-        <BrandedIcon name="warning" size={48} color="#DC2626" strokeWidth={1.5} />
+        <BrandedIcon name="warning" size={48} color={colors.danger} strokeWidth={1.5} />
       </View>
 
       <Text style={styles.errorTitle}>Unable to load</Text>
@@ -114,7 +128,7 @@ function DefaultErrorFallback({ error, onRetry }: { error: Error; onRetry?: () =
             style={styles.retryButton}
             onPress={onRetry}
           >
-            <BrandedIcon name="refresh" size={18} color="#3b82f6" strokeWidth={2} />
+            <BrandedIcon name="refresh" size={18} color={colors.accentStrong} strokeWidth={2} />
             <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -139,6 +153,7 @@ export function SkeletonPlaceholder({
   style?: any;
   testID?: string;
 }) {
+  const styles = useBoundaryStyles();
   return (
     <View
       testID={testID}
@@ -167,6 +182,7 @@ export function SkeletonList({
   itemHeight?: number;
   spacing?: number;
 }) {
+  const styles = useBoundaryStyles();
   return (
     <View style={[styles.listContainer, { gap: spacing }]}>
       {Array.from({ length: count }).map((_, i) => (
@@ -192,6 +208,7 @@ export function SkeletonCard({
   contentHeight?: number;
   contentWidth?: string | number;
 }) {
+  const styles = useBoundaryStyles();
   return (
     <View style={styles.cardContainer}>
       <SkeletonPlaceholder width={titleWidth} height={titleHeight} borderRadius={4} />
@@ -213,6 +230,7 @@ export function SkeletonTable({
   columns?: number;
   cellHeight?: number;
 }) {
+  const styles = useBoundaryStyles();
   return (
     <View>
       {Array.from({ length: rows }).map((_, rowIdx) => (
@@ -228,19 +246,19 @@ export function SkeletonTable({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   // Loading state
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: c.bg,
     minHeight: 200,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6b7280',
+    color: c.textMuted,
   },
 
   // Error state
@@ -248,7 +266,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: c.bg,
     minHeight: 200,
     paddingHorizontal: 20,
   },
@@ -258,12 +276,12 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
+    color: c.text,
     marginBottom: 8,
   },
   errorMessage: {
     fontSize: 14,
-    color: '#6b7280',
+    color: c.textMuted,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
@@ -280,17 +298,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#3b82f6',
+    borderColor: c.accentStrong,
   },
   retryButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: c.accentStrong,
   },
 
   // Skeleton styles
   skeleton: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: c.surfaceLight,
     overflow: 'hidden',
   },
   listContainer: {
@@ -299,7 +317,7 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     padding: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: c.card,
     borderRadius: 8,
     marginBottom: 12,
   },
@@ -309,7 +327,7 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: c.border,
   },
   tableCell: {
     flex: 1,

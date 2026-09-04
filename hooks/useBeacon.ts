@@ -9,6 +9,122 @@ const API_URL = 'https://playpbnow.com/api';
 // the peoplestar.com/shared copy is broken (missing db_connect include).
 const SHARED_BEACON_URL = 'https://playpbnow.com/shared/beacon/api';
 
+// ---------------------------------------------------------------------------
+// H2: server dates.
+// The PHP API returns DATETIMEs as 'YYYY-MM-DD HH:MM:SS' in America/Los_Angeles
+// wall-clock time. `new Date('2026-09-04 18:30:00')` is Invalid Date on
+// Safari/WebKit, and on every other engine it is parsed in the DEVICE zone —
+// so beacons vanished on web Safari and ran early/late for travellers.
+// Every endpoint now also sends `<field>_iso` (ISO-8601 with offset) and
+// `expires_in_sec`; these helpers prefer those and fall back to treating the
+// bare string as LA time. They never return NaN for a well-formed input.
+// ---------------------------------------------------------------------------
+const MYSQL_DT_RE = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+/** Milliseconds by which America/Los_Angeles is offset from UTC at `utcMs`. */
+function laOffsetMs(utcMs: number): number {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles',
+      hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    const parts = dtf.formatToParts(new Date(utcMs));
+    const get = (t: string) => parseInt(parts.find((p) => p.type === t)?.value || '0', 10);
+    const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'));
+    return asUtc - utcMs;
+  } catch {
+    // No Intl time-zone data (very old engines): PDT Mar–Nov, PST otherwise.
+    const m = new Date(utcMs).getUTCMonth();
+    return (m >= 2 && m <= 10 ? -7 : -8) * 3600000;
+  }
+}
+
+/**
+ * Parse any date string the API can produce. ISO-8601 (with offset or Z)
+ * parses natively; a bare MySQL DATETIME is interpreted as LA wall time.
+ * Returns NaN only for garbage input.
+ */
+export function parseServerDate(value?: string | null): number {
+  if (!value) return NaN;
+  const s = String(value).trim();
+  const m = MYSQL_DT_RE.exec(s);
+  if (m) {
+    const guess = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], m[6] ? +m[6] : 0);
+    // guess is the wall-clock reading as if it were UTC; shift by LA's offset
+    // (computed at the guess — DST edge hours can be off by 1h, never invalid).
+    return guess - laOffsetMs(guess);
+  }
+  const t = new Date(s).getTime();
+  return Number.isNaN(t) ? NaN : t;
+}
+
+/** Epoch ms when a beacon expires — prefers the ISO field, then the seconds countdown. */
+export function beaconExpiryMs(b: {
+  expires_at?: string | null;
+  expires_at_iso?: string | null;
+  expires_in_sec?: number | null;
+  fetched_at?: number;
+}): number {
+  const iso = b.expires_at_iso ? parseServerDate(b.expires_at_iso) : NaN;
+  if (!Number.isNaN(iso)) return iso;
+  if (typeof b.expires_in_sec === 'number' && Number.isFinite(b.expires_in_sec)) {
+    return (b.fetched_at || Date.now()) + b.expires_in_sec * 1000;
+  }
+  return parseServerDate(b.expires_at);
+}
+
+/** Epoch ms when a beacon was created — prefers the ISO field. */
+export function beaconCreatedMs(b: { created_at?: string | null; created_at_iso?: string | null }): number {
+  const iso = b.created_at_iso ? parseServerDate(b.created_at_iso) : NaN;
+  if (!Number.isNaN(iso)) return iso;
+  return parseServerDate(b.created_at);
+}
+
+/**
+ * M2: casual (shared DB) and structured (PlayPBNow DB) beacons have
+ * independent auto-increment ids, so `id` alone collides across the two feeds.
+ * Use this for React keys and identity comparisons.
+ */
+export function beaconUid(b: { beacon_type?: string; id: number | string }): string {
+  return `${b.beacon_type || 'structured'}:${b.id}`;
+}
+
+// ---------------------------------------------------------------------------
+// C4: lobby session persistence. The lobby id used to live only in React
+// state, so a restart / tab switch / GPS fix lost the lobby. The screen saves
+// {lobbyId, beaconId, view} here on create/join/accept and resumes on focus.
+// ---------------------------------------------------------------------------
+export const BEACON_LOBBY_SESSION_KEY = 'beacon_lobby_session';
+export interface LobbySession {
+  lobbyId: number;
+  beaconId: number | null;
+  view: 'lobby' | 'locked';
+  savedAt: number;
+}
+export async function saveLobbySession(s: Omit<LobbySession, 'savedAt'>): Promise<void> {
+  try {
+    await AsyncStorage.setItem(BEACON_LOBBY_SESSION_KEY, JSON.stringify({ ...s, savedAt: Date.now() }));
+  } catch {}
+}
+export async function loadLobbySession(): Promise<LobbySession | null> {
+  try {
+    const raw = await AsyncStorage.getItem(BEACON_LOBBY_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.lobbyId !== 'number') return null;
+    // Anything older than 12h is stale by definition (beacons max out at hours).
+    if (typeof parsed.savedAt === 'number' && Date.now() - parsed.savedAt > 12 * 3600000) return null;
+    return parsed as LobbySession;
+  } catch {
+    return null;
+  }
+}
+export async function clearLobbySession(): Promise<void> {
+  try { await AsyncStorage.removeItem(BEACON_LOBBY_SESSION_KEY); } catch {}
+}
+
 export interface BeaconResponse {
   user_id: string;
   first_name: string;
@@ -56,9 +172,23 @@ export interface Beacon {
   // Structured mode fields
   active_lobby_id: number | null;
   lobby_member_count: number;
+  active_lobby_status?: 'gathering' | 'locked' | null;
+  active_lobby_target_players?: number | null;
+  i_am_in_lobby?: boolean;
   // Shared API fields
   message_count?: number;
   my_response?: string | null;
+  // H2: ISO-8601 + countdown fields (server-added; old fields still present)
+  expires_at_iso?: string | null;
+  created_at_iso?: string | null;
+  expires_in_sec?: number | null;
+  /** Client-stamped Date.now() when this row was fetched (for expires_in_sec). */
+  fetched_at?: number;
+  /** M2: `${beacon_type}:${id}` — unique across the two feeds. */
+  uid?: string;
+  // History-only (L3)
+  lobby_status?: string | null;
+  was_started?: boolean;
 }
 
 export interface LobbyMember {
@@ -85,6 +215,15 @@ export interface Lobby {
   session_code: string | null;
   collab_session_id: number | null;
   created_at: string;
+  // Additions (server-provided; optional so older payloads still type-check)
+  created_at_iso?: string | null;
+  beacon_status?: 'active' | 'expired' | 'cancelled' | null;
+  beacon_expires_at?: string | null;
+  beacon_expires_at_iso?: string | null;
+  beacon_expires_in_sec?: number | null;
+  active_member_count?: number;
+  /** True when create_lobby returned an already-open lobby (idempotent path). */
+  existing?: boolean;
 }
 
 export interface ReplacementRequest {

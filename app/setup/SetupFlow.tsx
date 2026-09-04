@@ -246,21 +246,18 @@ export default function SetupFlow() {
               </Text>
             </TouchableOpacity>
           </View>
-          {state.isFixedTeams && (
-            <Text style={styles.toggleInfo}>
-              {Math.floor(state.players.length / 2)} teams ·{' '}
-              {Math.floor(state.players.length / 2) > 1
-                ? Math.floor(state.players.length / 2) % 2 === 0
-                  ? Math.floor(state.players.length / 2) - 1
-                  : Math.floor(state.players.length / 2)
-                : 0}{' '}
-              rounds ·{' '}
-              {(Math.floor(state.players.length / 2) *
-                (Math.floor(state.players.length / 2) - 1)) /
-                2}{' '}
-              games
-            </Text>
-          )}
+          {state.isFixedTeams && (() => {
+            // UAT C-L15: "1 rounds" → proper pluralisation
+            const teams = Math.floor(state.players.length / 2);
+            const rounds = teams > 1 ? (teams % 2 === 0 ? teams - 1 : teams) : 0;
+            const games = (teams * (teams - 1)) / 2;
+            const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+            return (
+              <Text style={styles.toggleInfo}>
+                {plural(teams, 'team')} · {plural(rounds, 'round')} · {plural(games, 'game')}
+              </Text>
+            );
+          })()}
 
           {/* ACTION BUTTONS */}
           <View style={styles.actionButtons}>

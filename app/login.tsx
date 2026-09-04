@@ -33,10 +33,18 @@ import {
 
 const API_URL = 'https://playpbnow.com/api';
 
+// Friendly copy for transport-level failures (Audit A L2). Never show a raw
+// HTTP status or an exception message to the player.
+const SERVER_ERROR_MSG = "We couldn't reach PlayPBNow right now. Please try again in a moment.";
+const NETWORK_ERROR_MSG = "We couldn't reach PlayPBNow. Please check your connection and try again.";
+
+const looksLikePhone = (s: string) => /^[\d\s()+\-]+$/.test(s) && s.replace(/\D/g, '').length >= 10;
+const looksLikeEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim());
+
 export default function LoginScreen() {
     const router = useRouter();
     const { colors } = useTheme();
-    const { refreshSubscription } = useSubscription();
+    const { refreshSubscription, identifyPurchasesUser } = useSubscription();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -70,6 +78,14 @@ export default function LoginScreen() {
                 setErrorMessage('Email and password are required.');
                 return;
             }
+            if (!looksLikeEmail(email)) {
+                setErrorMessage('Please enter a valid email address (like name@example.com).');
+                return;
+            }
+            if (phone.trim() && !looksLikePhone(phone.trim())) {
+                setErrorMessage('Please enter a valid 10-digit phone number, or leave it blank.');
+                return;
+            }
             if (!firstName.trim()) {
                 setErrorMessage('Please enter your first name.');
                 return;
@@ -91,8 +107,7 @@ export default function LoginScreen() {
             if (mode === 'login') {
                 // The email field doubles as "email or phone" for login
                 const loginId = email.trim();
-                const looksLikePhone = /^[\d\s()+\-]+$/.test(loginId) && loginId.replace(/\D/g, '').length >= 10;
-                if (looksLikePhone) {
+                if (looksLikePhone(loginId)) {
                     body.phone = loginId;
                 } else {
                     body.email = loginId;
@@ -113,7 +128,7 @@ export default function LoginScreen() {
 
             if (!response.ok) {
                 setLoading(false);
-                setErrorMessage('Server error. Please try again later.');
+                setErrorMessage(SERVER_ERROR_MSG);
                 return;
             }
 
@@ -131,6 +146,11 @@ export default function LoginScreen() {
                 await AsyncStorage.multiSet(pairs);
                 setAuthToken(data.session_token); // keep the fetch interceptor's token current
 
+                // Tie RevenueCat to this users.id BEFORE any purchase can
+                // happen, so the webhook's app_user_id matches a real row
+                // (Audit A C2). No-op on web; never blocks login.
+                await identifyPurchasesUser(data.user.id.toString());
+
                 // Re-resolve the subscription for THIS account immediately —
                 // the previous user's admin/pro state must never carry over
                 // (it briefly exposed the ADMIN tab after an account switch).
@@ -145,7 +165,7 @@ export default function LoginScreen() {
         } catch (error) {
             setLoading(false);
             // Error details logged in development mode only
-            setErrorMessage('Network error. Please check your connection and try again.');
+            setErrorMessage(NETWORK_ERROR_MSG);
         }
     };
 
@@ -162,9 +182,20 @@ export default function LoginScreen() {
         }
     };
 
+    // The reset flow accepts a phone number OR the account email (the server
+    // looks up the phone on file for an email). Prefill only with something
+    // that is one of those — not with a half-typed username (Audit A L1/M1).
     const startForgotPassword = () => {
-        setResetPhone(email.trim());
+        const id = email.trim();
+        setResetPhone(looksLikePhone(id) || looksLikeEmail(id) ? id : '');
         setResetStep('phone');
+    };
+
+    // Body the reset endpoints expect: { phone } for a number, { email } for
+    // an address. Existing phone callers are unchanged.
+    const resetIdentity = () => {
+        const id = resetPhone.trim();
+        return looksLikeEmail(id) ? { email: id } : { phone: id };
     };
 
     const cancelReset = () => {
@@ -176,8 +207,13 @@ export default function LoginScreen() {
     };
 
     const handleRequestCode = async () => {
-        if (!resetPhone.trim()) {
-            Alert.alert('Error', 'Please enter your phone number.');
+        const id = resetPhone.trim();
+        if (!id) {
+            Alert.alert('Reset Password', 'Please enter the phone number or email on your account.');
+            return;
+        }
+        if (!looksLikePhone(id) && !looksLikeEmail(id)) {
+            Alert.alert('Reset Password', 'Please enter a valid phone number or email address.');
             return;
         }
         setResetLoading(true);
@@ -185,21 +221,25 @@ export default function LoginScreen() {
             const res = await fetch(`${API_URL}/forgot_password.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'request_code', phone: resetPhone.trim() }),
+                body: JSON.stringify({ action: 'request_code', ...resetIdentity() }),
             });
+            if (res.status === 429) {
+                Alert.alert('Please Wait', "You've requested a few codes recently. Please wait about 10 minutes and try again.");
+                return;
+            }
             if (!res.ok) {
-                Alert.alert('Error', `Server error: ${res.status}`);
+                Alert.alert('Reset Password', SERVER_ERROR_MSG);
                 return;
             }
             const data = await res.json();
             if (data.status === 'success') {
                 setResetStep('code');
             } else {
-                Alert.alert('Error', data.message || 'Failed to send code. Please try again.');
+                Alert.alert('Reset Password', data.message || "We couldn't send a code right now. Please try again.");
             }
         } catch (error) {
             // Error details logged in development mode only
-            Alert.alert('Error', 'Network error. Please try again.');
+            Alert.alert('Reset Password', NETWORK_ERROR_MSG);
         } finally {
             setResetLoading(false);
         }
@@ -207,7 +247,7 @@ export default function LoginScreen() {
 
     const handleVerifyCode = async () => {
         if (resetCode.trim().length !== 6) {
-            Alert.alert('Error', 'Please enter the 6-digit code.');
+            Alert.alert('Enter Code', 'Please enter the 6-digit code we texted you.');
             return;
         }
         setResetLoading(true);
@@ -215,21 +255,27 @@ export default function LoginScreen() {
             const res = await fetch(`${API_URL}/forgot_password.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'verify_code', phone: resetPhone.trim(), code: resetCode.trim() }),
+                body: JSON.stringify({ action: 'verify_code', ...resetIdentity(), code: resetCode.trim() }),
             });
+            if (res.status === 429) {
+                Alert.alert('Too Many Attempts', 'That code has been tried too many times. Please request a new one.');
+                setResetCode('');
+                setResetStep('phone');
+                return;
+            }
             if (!res.ok) {
-                Alert.alert('Error', `Server error: ${res.status}`);
+                Alert.alert('Enter Code', SERVER_ERROR_MSG);
                 return;
             }
             const data = await res.json();
             if (data.status === 'success') {
                 setResetStep('newpass');
             } else {
-                Alert.alert('Error', data.message || 'Code verification failed. Please try again.');
+                Alert.alert('Enter Code', data.message || "That code didn't match. Please check it and try again.");
             }
         } catch (error) {
             // Error details logged in development mode only
-            Alert.alert('Error', 'Network error. Please try again.');
+            Alert.alert('Enter Code', NETWORK_ERROR_MSG);
         } finally {
             setResetLoading(false);
         }

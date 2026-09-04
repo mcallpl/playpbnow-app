@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -63,16 +63,59 @@ export function PlayerInputStep({ state, dispatch }: PlayerInputStepProps) {
     [state.players, dispatch]
   );
 
+  // UAT C-L3: debounce the global search (300ms) — it fired on every keystroke
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); }, []);
+
+  // UAT C-M8: a Quick Match (groupKey quick_<ts>) has no server group, so
+  // add_player.php answers "Group not found". Those rosters are local-only.
+  const isQuickMatch = (state.groupKey || '').startsWith('quick_');
+
   const handleNameChange = (text: string) => {
     const capitalized = text
       .split(' ')
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(' ');
     dispatch({ type: 'SET_NEW_PLAYER_NAME', payload: capitalized });
-    searchGlobalPlayers(capitalized);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (capitalized.length < 2) {
+      searchGlobalPlayers(capitalized); // clears results immediately
+      return;
+    }
+    searchTimerRef.current = setTimeout(() => searchGlobalPlayers(capitalized), 300);
+  };
+
+  const finishAdd = () => {
+    dispatch({ type: 'SET_NEW_PLAYER_NAME', payload: '' });
+    dispatch({ type: 'SET_SEARCH_RESULTS', payload: [] });
+    dispatch({ type: 'SET_SHOW_SEARCH_RESULTS', payload: false });
+    dispatch({ type: 'SET_SHOW_PHONE_INPUT', payload: false });
+    dispatch({ type: 'SET_NEW_PLAYER_PHONE', payload: '' });
+    setTimeout(() => nameInputRef.current?.focus(), 100);
   };
 
   const addExistingPlayer = async (result: SearchResult) => {
+    if (isQuickMatch) {
+      // UAT C-M8: local add — this player already exists globally
+      dispatch({
+        type: 'ADD_PLAYER',
+        payload: {
+          id: result.player_key || String(result.id),
+          db_id: result.id,
+          first_name: result.first_name,
+          last_name: result.last_name,
+          gender: result.gender,
+          home_court_name: result.home_court_name,
+          wins: result.wins,
+          losses: result.losses,
+          win_pct: result.win_pct,
+          groups: result.groups,
+          is_verified: result.is_verified,
+        },
+      });
+      finishAdd();
+      return;
+    }
     try {
       const res = await fetch(`${API_URL}/add_player.php`, {
         method: 'POST',
@@ -126,6 +169,12 @@ export function PlayerInputStep({ state, dispatch }: PlayerInputStepProps) {
   ) => {
     try {
       const pk = 'pk_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+      if (isQuickMatch) {
+        // UAT C-M8
+        dispatch({ type: 'ADD_PLAYER', payload: { id: pk, first_name: name, gender, home_court_name: null } });
+        finishAdd();
+        return;
+      }
       const res = await fetch(`${API_URL}/add_player.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -175,6 +224,20 @@ export function PlayerInputStep({ state, dispatch }: PlayerInputStepProps) {
       const phone = state.newPlayerPhone.trim() || null;
       const name = state.newPlayerName.trim();
       const gender = state.newPlayerGender;
+      if (isQuickMatch) {
+        // UAT C-M8: Quick Match rosters never hit add_player.php
+        if (state.players.some((p) => p.first_name.trim().toLowerCase() === name.toLowerCase())) {
+          Alert.alert('Already Added', `"${name}" is already in this match.`);
+          return;
+        }
+        dispatch({ type: 'ADD_PLAYER', payload: { id: pk, first_name: name, gender, home_court_name: null } });
+        dispatch({ type: 'SET_NEW_PLAYER_NAME', payload: '' });
+        dispatch({ type: 'SET_SEARCH_RESULTS', payload: [] });
+        dispatch({ type: 'SET_SHOW_SEARCH_RESULTS', payload: false });
+        dispatch({ type: 'SET_SHOW_PHONE_INPUT', payload: false });
+        dispatch({ type: 'SET_NEW_PLAYER_PHONE', payload: '' });
+        return;
+      }
       const res = await fetch(`${API_URL}/add_player.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

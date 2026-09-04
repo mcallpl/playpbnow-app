@@ -39,6 +39,7 @@ import { useSubscription } from '../context/SubscriptionContext';
 import { useGroupManagement } from '../hooks/useGroupManagement';
 import { usePlayerManagement } from '../hooks/usePlayerManagement';
 import { usePlayerSelection } from '../hooks/usePlayerSelection';
+import { signOut } from '../hooks/useAuth';
 
 const API_URL = 'https://playpbnow.com/api';
 
@@ -49,7 +50,13 @@ export default function RosterScreen() {
     // Merging is a Pro action (matches the server gate). Trial + admin count.
     const canMerge = isPro || isTrial || isAdmin;
 
-    const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
+    // UAT E-M5: shared sign-out behind a confirm (was a one-tap AsyncStorage.clear)
+    const handleLogout = () => {
+        Alert.alert('Log Out', 'Log out of PlayPBNow?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Log Out', style: 'destructive', onPress: async () => { await signOut(); router.replace('/login'); } },
+        ]);
+    };
     const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
     // Hooks

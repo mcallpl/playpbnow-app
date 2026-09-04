@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter, useNavigation } from 'expo-router';
+import { useFocusEffect, useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { useSubscription } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -97,6 +97,16 @@ const CREDIT_PACKAGES: CreditPackage[] = [
 type TabView = 'invites' | 'players' | 'credits';
 type InviteModalStep = 'details' | 'select-players' | 'confirm' | 'results';
 
+// Skill levels offered on player-signup.html — the pool filter (audit M9)
+// uses the same values so play_level matches exactly.
+const LEVEL_OPTIONS = ['2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0'];
+
+// Local YYYY-MM-DD, for "is this invite still upcoming" checks (audit M6).
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export default function InvitesScreen() {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
@@ -104,11 +114,16 @@ export default function InvitesScreen() {
   const { userId } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
+  const searchParams = useLocalSearchParams<{ credits?: string }>();
 
   const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
 
   const [activeTab, setActiveTab] = useState<TabView>('invites');
   const [loading, setLoading] = useState(false);
+  // Separate flag for the My Invites list (audit M10): `loading` is the pool
+  // fetch, and sharing it made the invites pull-to-refresh spinner flicker
+  // whenever players loaded in the background.
+  const [invitesLoading, setInvitesLoading] = useState(false);
 
   // Courts
   const [allCourts, setAllCourts] = useState<CourtItem[]>([]);
@@ -138,8 +153,15 @@ export default function InvitesScreen() {
   // Players
   const [poolPlayers, setPoolPlayers] = useState<PoolPlayer[]>([]);
   const [playerSearch, setPlayerSearch] = useState('');
-  const [playerFilter, setPlayerFilter] = useState<{ level?: string; gender?: string }>({});
+  const [playerFilter, setPlayerFilter] = useState<{ level?: string; gender?: string; city?: string }>({});
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+  // Who is selected, kept by id (audit M1). Chips and the confirm list used
+  // to render from `poolPlayers.filter(selected)`, so a search or filter that
+  // dropped a selected player from the current page made them vanish from
+  // the chips while still being sent. This map survives any re-query.
+  const [selectedPlayerMap, setSelectedPlayerMap] = useState<Record<number, PoolPlayer>>({});
+  // Free-text city filter, debounced into playerFilter.city (audit M9).
+  const [cityFilterText, setCityFilterText] = useState('');
   const [playerPage, setPlayerPage] = useState(1);
   const [hasMorePlayers, setHasMorePlayers] = useState(true);
 
@@ -151,7 +173,8 @@ export default function InvitesScreen() {
   // Current invite being created
   const [createdInviteId, setCreatedInviteId] = useState<number | null>(null);
   const [sendingInvites, setSendingInvites] = useState(false);
-  const [sendResults, setSendResults] = useState<{ sentNames: string[]; failedNames: string[]; sentCount: number; failedCount: number } | null>(null);
+  const [sendResults, setSendResults] = useState<{ sentNames: string[]; failedNames: string[]; sentCount: number; failedCount: number; skippedNames?: string[]; channel?: 'sms' | 'imessage' } | null>(null);
+  const [cancellingInvite, setCancellingInvite] = useState(false);
   const [smsConsentAgreed, setSmsConsentAgreed] = useState(false);
 
   // Invite detail modal
@@ -161,14 +184,53 @@ export default function InvitesScreen() {
   const [chatText, setChatText] = useState('');
   const [chatSending, setChatSending] = useState(false);
   const chatListRef = useRef<FlatList>(null);
-  const { messages: chatMessages, isLoading: chatLoading, sendMessage: sendChatMessage, startPolling: startChatPolling, stopPolling: stopChatPolling } = useInviteChat();
+  const { messages: chatMessages, isLoading: chatLoading, sendMessage: sendChatMessage, startPolling: startChatPolling, stopPolling: stopChatPolling, sendError: chatSendError, clearSendError: clearChatSendError } = useInviteChat();
 
   const [error, setError] = useState('');
 
-  // Calculate unresponded invites count for badge
+  // Calculate unresponded invites count for badge. Only ACTIVE, UPCOMING
+  // invites count (audit M6) — a cancelled or last-month invite's pending
+  // players are not something the organizer can still act on.
   const unrespondedCount = useMemo(() => {
-    return invites.reduce((sum, inv) => sum + (inv.pending || 0), 0);
+    const today = todayISO();
+    return invites
+      .filter(inv => inv.status === 'active' && (inv.match_date || '') >= today)
+      .reduce((sum, inv) => sum + (inv.pending || 0), 0);
   }, [invites]);
+
+  // ── Return from Stripe Checkout (audit C4) ──
+  // sms_credits_api sends the browser back to /invites?credits=success|cancel.
+  // Land on the SMS Credits tab, refresh the balance, and say what happened.
+  // The webhook may still be a beat behind the redirect, so the balance is
+  // re-read again a few seconds later.
+  const creditsParamHandledRef = useRef(false);
+  useEffect(() => {
+    if (creditsParamHandledRef.current) return;
+    let flag: string | null = (typeof searchParams?.credits === 'string' ? searchParams.credits : null);
+    if (!flag && Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+      try { flag = new URLSearchParams(window.location.search).get('credits'); } catch { flag = null; }
+    }
+    if (!flag) return;
+    creditsParamHandledRef.current = true;
+    if (!isAdmin) setActiveTab('credits');
+    if (flag === 'success') {
+      loadCredits();
+      const t = setTimeout(() => loadCredits(), 4000);
+      Alert.alert('Payment received', 'Thank you! Your SMS credits are being added to your balance now.');
+      // Strip the param so a refresh does not re-announce it.
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history?.replaceState) {
+        try { window.history.replaceState(null, '', window.location.pathname); } catch { /* ignore */ }
+      }
+      return () => clearTimeout(t);
+    }
+    if (flag === 'cancel') {
+      Alert.alert('Checkout cancelled', 'No charge was made. You can buy credits any time from this tab.');
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history?.replaceState) {
+        try { window.history.replaceState(null, '', window.location.pathname); } catch { /* ignore */ }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams?.credits, userId]);
 
   // Update tab badge when unresponded count changes
   useEffect(() => {
@@ -194,6 +256,7 @@ export default function InvitesScreen() {
   );
 
   const loadInvites = async () => {
+    setInvitesLoading(true);
     try {
       const res = await fetch(`${API_URL}/invite_api.php`, {
         method: 'POST',
@@ -201,6 +264,7 @@ export default function InvitesScreen() {
         body: JSON.stringify({ action: 'list', user_id: userId }),
       });
       if (!res.ok) {
+        setInvitesLoading(false);
         return;
       }
       const data = await res.json();
@@ -210,7 +274,33 @@ export default function InvitesScreen() {
     } catch (error) {
       // Error details logged in development mode only
     }
+    setInvitesLoading(false);
   };
+
+  // Credit purchase / deduction history (LOW: the API's `history` action was
+  // never wired). Loaded whenever the SMS Credits tab is opened.
+  const loadCreditHistory = async () => {
+    try {
+      const res = await fetch(`${API_URL}/sms_credits_api.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'history', user_id: userId }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.status === 'success') {
+        setCreditHistory(Array.isArray(data.history) ? data.history : []);
+        if (typeof data.credits === 'number') setCreditBalance(data.credits);
+      }
+    } catch {
+      // non-fatal — the balance card still shows
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'credits' && userId) loadCreditHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, userId]);
 
   const loadCredits = async () => {
     try {
@@ -245,6 +335,10 @@ export default function InvitesScreen() {
           per_page: 500,
           search_name: searchTerm || undefined,
           ...playerFilter,
+          // Server-side keys (audit M9): the spread above sends `level` /
+          // `city`, which pool_players_api never read. Map them explicitly.
+          play_level: playerFilter.level || undefined,
+          cities_to_play: playerFilter.city || undefined,
         }),
       });
       if (!res.ok) {
@@ -266,12 +360,24 @@ export default function InvitesScreen() {
     setLoading(false);
   };
 
+  // Filter chips reload on the Players tab AND inside the create flow's
+  // select-players step (audit H6) — the chips there used to do nothing.
   useEffect(() => {
-    if (activeTab === 'players') {
+    if (activeTab === 'players' || (showCreateInvite && inviteStep === 'select-players')) {
       setPlayerPage(1);
       loadPlayers(1);
     }
-  }, [activeTab, playerFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, playerFilter, inviteStep]);
+
+  // Debounce the city text box into the filter (audit M9)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const city = cityFilterText.trim();
+      setPlayerFilter(f => ((f.city || '') === city ? f : { ...f, city: city || undefined }));
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [cityFilterText]);
 
   // Debounced search — works on Players tab AND in select-players invite step
   useEffect(() => {
@@ -293,12 +399,32 @@ export default function InvitesScreen() {
     loadPlayers(1);
   };
 
-  const togglePlayerSelection = (id: number) => {
+  const togglePlayerSelection = (id: number, player?: PoolPlayer) => {
     haptic.tap();
+    const adding = !selectedPlayers.includes(id);
     setSelectedPlayers(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
     );
+    // Keep the id → player map in step (audit M1)
+    setSelectedPlayerMap(prev => {
+      const next = { ...prev };
+      if (adding) {
+        const found = player || poolPlayers.find(p => p.id === id);
+        if (found) next[id] = found;
+      } else {
+        delete next[id];
+      }
+      return next;
+    });
   };
+
+  // Selected players in selection order, from the map (falls back to the
+  // current pool page for any id the map somehow lacks).
+  const selectedPlayerList = useMemo<PoolPlayer[]>(() => {
+    return selectedPlayers
+      .map(id => selectedPlayerMap[id] || poolPlayers.find(p => p.id === id))
+      .filter((p): p is PoolPlayer => !!p);
+  }, [selectedPlayers, selectedPlayerMap, poolPlayers]);
 
   const handleSendInvites = async () => {
     if (selectedPlayers.length === 0) { setError('Select at least one player'); return; }
@@ -314,31 +440,36 @@ export default function InvitesScreen() {
     setError('');
     setSendingInvites(true);
     try {
-      // Step 1: Create the invite (same for both flows)
-      const createRes = await fetch(`${API_URL}/invite_api.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'create',
-          user_id: userId,
-          court_name: courtName,
-          court_address: courtAddress,
-          match_date: matchDate,
-          match_time: matchTime,
-          max_spots: parseInt(maxSpots) || 4,
-          message_body: messagebody,
-          cost,
-          match_type: matchType,
-        }),
-      });
-      const createData = await createRes.json();
-      if (createData.status !== 'success') {
-        setError(createData.message || 'Failed to create invite');
-        setSendingInvites(false);
-        return;
+      // Step 1: Create the invite (same for both flows). Reuse the invite from
+      // a previous attempt (audit H2) — a send that failed on the network used
+      // to leave a zombie invite behind and create a second one on retry.
+      let inviteId: number | null = createdInviteId;
+      if (!inviteId) {
+        const createRes = await fetch(`${API_URL}/invite_api.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'create',
+            user_id: userId,
+            court_name: courtName,
+            court_address: courtAddress,
+            match_date: matchDate,
+            match_time: matchTime,
+            max_spots: parseInt(maxSpots) || 4,
+            message_body: messagebody,
+            cost,
+            match_type: matchType,
+          }),
+        });
+        const createData = await createRes.json();
+        if (createData.status !== 'success') {
+          setError(createData.message || 'Failed to create invite');
+          setSendingInvites(false);
+          return;
+        }
+        inviteId = createData.invite_id;
+        setCreatedInviteId(inviteId);
       }
-
-      const inviteId = createData.invite_id;
 
       // Step 2: Send invites via the appropriate channel
       const res = await fetch(`${API_URL}/invite_api.php`, {
@@ -359,17 +490,78 @@ export default function InvitesScreen() {
           failedNames: data.failed_names || [],
           sentCount: data.sent_count || 0,
           failedCount: data.failed_count || 0,
+          skippedNames: data.skipped_names || [],
+          channel: useIMessage || data.queued ? 'imessage' : 'sms',
         });
         setInviteStep('results');
         loadInvites();
         if (!useIMessage) loadCredits();
       } else {
+        // Definitive server refusal (nothing was sent): cancel the invite so
+        // it does not linger as an empty "active" card; a retry creates a
+        // fresh one. Network failures (catch below) keep createdInviteId so
+        // the retry reuses the same invite instead of minting a duplicate.
         setError(data.message || 'Failed to send invites');
+        if (inviteId) {
+          try {
+            await fetch(`${API_URL}/invite_api.php`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'cancel', user_id: userId, invite_id: inviteId }),
+            });
+          } catch { /* best effort */ }
+          setCreatedInviteId(null);
+          loadInvites();
+        }
       }
     } catch (e: any) {
-      setError(e?.message || 'Network error. Please try again.');
+      setError((e?.message ? `${e.message} — ` : '') + 'Network error. Tap Send again to retry.');
     }
     setSendingInvites(false);
+  };
+
+  // ── Cancel an invite (audit H4) ──
+  // Confirms first; the server flips status and texts confirmed + wait-listed
+  // players so nobody turns up to a match that isn't happening.
+  const handleCancelInvite = () => {
+    if (!selectedInvite || !userId) return;
+    const inv = selectedInvite;
+    const doCancel = async () => {
+      setCancellingInvite(true);
+      try {
+        const res = await fetch(`${API_URL}/invite_api.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'cancel', user_id: userId, invite_id: inv.id }),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          haptic.confirm();
+          const n = Number(data.notified_count || 0);
+          closeInviteDetail();
+          await loadInvites();
+          Alert.alert(
+            'Invite cancelled',
+            n > 0
+              ? `${n} confirmed/wait-listed player${n === 1 ? ' was' : 's were'} texted that the match is off.`
+              : 'No confirmed or wait-listed players needed to be notified.',
+          );
+        } else {
+          Alert.alert('Could not cancel', data.message || 'Please try again.');
+        }
+      } catch {
+        Alert.alert('Could not cancel', 'Network error. Please try again.');
+      }
+      setCancellingInvite(false);
+    };
+    Alert.alert(
+      'Cancel this invite?',
+      `${formatDate(inv.match_date)} at ${formatTime(inv.match_time)} — ${inv.court_name}.\n\nConfirmed and wait-listed players will be texted that the match is cancelled. This cannot be undone.`,
+      [
+        { text: 'Keep it', style: 'cancel' },
+        { text: 'Cancel invite', style: 'destructive', onPress: doCancel },
+      ],
+    );
   };
 
   const loadCourts = async () => {
@@ -464,6 +656,7 @@ export default function InvitesScreen() {
     setCost('Free');
     setMatchType('Open Play');
     setSelectedPlayers([]);
+    setSelectedPlayerMap({});
     setCreatedInviteId(null);
     setInviteStep('details');
     setError('');
@@ -509,11 +702,14 @@ export default function InvitesScreen() {
   const handleSendChat = async () => {
     if (!chatText.trim() || !selectedInvite || !userId) return;
     setChatSending(true);
+    clearChatSendError();
     const success = await sendChatMessage(selectedInvite.id, userId, chatText.trim());
     if (success) {
       setChatText('');
       setTimeout(() => chatListRef.current?.scrollToEnd({ animated: true }), 100);
     }
+    // On failure the hook's sendError is rendered under the input (audit C1)
+    // and the draft stays in the box so it can be re-sent.
     setChatSending(false);
   };
 
@@ -534,7 +730,15 @@ export default function InvitesScreen() {
       });
       const data = await res.json();
       if (data.status === 'success' && data.checkout_url) {
-        Linking.openURL(data.checkout_url);
+        // Web (audit C4): Linking.openURL after an await is a window.open
+        // outside the click gesture, which popup blockers silently drop.
+        // Navigate the current tab instead; Stripe brings the user back to
+        // /invites?credits=success|cancel, handled on mount above.
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.assign) {
+          window.location.assign(data.checkout_url);
+        } else {
+          Linking.openURL(data.checkout_url);
+        }
       } else {
         Alert.alert('Error', data.message || 'Failed to create checkout session');
       }
@@ -555,6 +759,49 @@ export default function InvitesScreen() {
     const h12 = hour % 12 || 12;
     return `${h12}:${m} ${ampm}`;
   };
+
+  // Level chips + city box (audit M9). Rendered under the gender chips on the
+  // Player Pool tab and in the create flow's select-players step; both write
+  // to the same playerFilter so the list reloads via the effect above.
+  const renderLevelCityFilters = () => (
+    <View style={{ paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <View style={styles.filterRow}>
+          <TouchableOpacity
+            style={[styles.filterChip, !playerFilter.level && styles.filterChipActive]}
+            onPress={() => setPlayerFilter(f => ({ ...f, level: undefined }))}
+          >
+            <Text style={[styles.filterChipText, !playerFilter.level && styles.filterChipTextActive]}>Any level</Text>
+          </TouchableOpacity>
+          {LEVEL_OPTIONS.map(lvl => (
+            <TouchableOpacity
+              key={lvl}
+              style={[styles.filterChip, playerFilter.level === lvl && styles.filterChipActive]}
+              onPress={() => setPlayerFilter(f => ({ ...f, level: f.level === lvl ? undefined : lvl }))}
+            >
+              <Text style={[styles.filterChipText, playerFilter.level === lvl && styles.filterChipTextActive]}>{lvl}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+      <View style={[styles.courtSearchRow, { borderBottomWidth: 1, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 10, backgroundColor: colors.inputBg }]}>
+        <BrandedIcon name="location" size={16} color={colors.textMuted} />
+        <TextInput
+          style={styles.courtSearchInput}
+          value={cityFilterText}
+          onChangeText={setCityFilterText}
+          placeholder="Filter by city (e.g. Irvine)"
+          placeholderTextColor={colors.inputPlaceholder}
+          autoCorrect={false}
+        />
+        {cityFilterText.length > 0 && (
+          <TouchableOpacity onPress={() => setCityFilterText('')}>
+            <BrandedIcon name="close" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
 
   // Premium gate (admins bypass)
   if (!isPro && !isAdmin) {
@@ -632,7 +879,7 @@ export default function InvitesScreen() {
                 <Text style={styles.emptySubtext}>Create your first match invite and start inviting players!</Text>
               </View>
             }
-            refreshControl={<RefreshControl refreshing={loading} onRefresh={loadInvites} />}
+            refreshControl={<RefreshControl refreshing={invitesLoading} onRefresh={loadInvites} />}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.inviteCard}
@@ -746,6 +993,7 @@ export default function InvitesScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          {renderLevelCityFilters()}
 
           <FlatList
             data={poolPlayers}
@@ -772,7 +1020,7 @@ export default function InvitesScreen() {
               return (
                 <TouchableOpacity
                   style={[styles.playerCard, isSelected && styles.playerCardSelected]}
-                  onPress={() => togglePlayerSelection(item.id)}
+                  onPress={() => togglePlayerSelection(item.id, item)}
                 >
                   <View style={styles.playerInfo}>
                     <View style={styles.playerNameRow}>
@@ -862,6 +1110,33 @@ export default function InvitesScreen() {
               ))}
             </>
           )}
+
+          {/* Recent activity — purchases, deductions, refunds */}
+          {creditHistory.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Recent Activity</Text>
+              <Text style={styles.sectionSubtitle}>Your last {creditHistory.length} credit transactions</Text>
+              {creditHistory.map((h: any, i: number) => {
+                const delta = Number(h.credits_changed || 0);
+                const when = h.created_at ? new Date(String(h.created_at).replace(' ', 'T')) : null;
+                return (
+                  <View key={`hist-${i}`} style={styles.responseRow}>
+                    <View style={{ flex: 1, paddingRight: 12 }}>
+                      <Text style={styles.responseName} numberOfLines={2}>{h.reason || h.change_type || 'Credit change'}</Text>
+                      {when && !isNaN(when.getTime()) && (
+                        <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted }}>
+                          {when.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={[styles.responseName, { color: delta >= 0 ? colors.accent : colors.danger }]}>
+                      {delta >= 0 ? '+' : ''}{delta}
+                    </Text>
+                  </View>
+                );
+              })}
+            </>
+          )}
         </ScrollView>
       )}
 
@@ -873,7 +1148,7 @@ export default function InvitesScreen() {
               <Text style={styles.modalTitle}>
                 {inviteStep === 'details' ? 'Match Details' :
                  inviteStep === 'select-players' ? 'Select Players' :
-                 inviteStep === 'results' ? 'Invites Sent' : 'Confirm & Send'}
+                 inviteStep === 'results' ? (sendResults?.channel === 'imessage' ? 'Queued for delivery' : 'Invites Sent') : 'Confirm & Send'}
               </Text>
               <TouchableOpacity onPress={() => { setShowCreateInvite(false); resetInviteForm(); }}>
                 <BrandedIcon name="close" size={24} color={colors.text} />
@@ -1116,12 +1391,11 @@ export default function InvitesScreen() {
                       SELECTED ({selectedPlayers.length})
                     </Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                      {poolPlayers
-                        .filter(p => selectedPlayers.includes(p.id))
+                      {selectedPlayerList
                         .map(p => (
                           <TouchableOpacity
                             key={p.id}
-                            onPress={() => togglePlayerSelection(p.id)}
+                            onPress={() => togglePlayerSelection(p.id, p)}
                             style={{
                               flexDirection: 'row',
                               alignItems: 'center',
@@ -1181,6 +1455,7 @@ export default function InvitesScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
+                {renderLevelCityFilters()}
 
                 <FlatList
                   data={poolPlayers}
@@ -1194,12 +1469,20 @@ export default function InvitesScreen() {
                     }
                   }}
                   onEndReachedThreshold={0.3}
+                  ListFooterComponent={loading ? <ActivityIndicator color={colors.accent} style={{ padding: 16 }} /> : null}
+                  ListEmptyComponent={
+                    !loading ? (
+                      <View style={styles.emptyState}>
+                        <Text style={styles.emptyText}>No players found</Text>
+                      </View>
+                    ) : null
+                  }
                   renderItem={({ item }) => {
                     const isSelected = selectedPlayers.includes(item.id);
                     return (
                       <TouchableOpacity
                         style={[styles.playerCard, isSelected && styles.playerCardSelected]}
-                        onPress={() => togglePlayerSelection(item.id)}
+                        onPress={() => togglePlayerSelection(item.id, item)}
                       >
                         <View style={styles.playerInfo}>
                           <Text style={styles.playerName}>
@@ -1242,8 +1525,7 @@ export default function InvitesScreen() {
                     {dateOptions.find(o => o.value === matchDate)?.label || matchDate} at {timeOptions.find(o => o.value === matchTime)?.label || matchTime}
                   </Text>
                   <Text style={styles.confirmLabel}>Players to Invite ({selectedPlayers.length})</Text>
-                  {poolPlayers
-                    .filter(p => selectedPlayers.includes(p.id))
+                  {selectedPlayerList
                     .map(p => (
                       <Text key={p.id} style={[styles.confirmValue, { marginTop: 2 }]}>
                         {p.first_name} {p.last_name}{p.play_level ? ` — Lvl ${p.play_level}` : ''}
@@ -1265,7 +1547,7 @@ export default function InvitesScreen() {
                 {/* Message Preview */}
                 {(() => {
                   const useIMessage = Platform.OS === 'web' && isAdmin;
-                  const samplePlayer = poolPlayers.find(p => selectedPlayers.includes(p.id));
+                  const samplePlayer = selectedPlayerList[0];
                   const sampleName = samplePlayer?.first_name || 'Player';
                   const d = matchDate ? new Date(matchDate + 'T12:00:00') : null;
                   const costDisplay = (cost && cost.toLowerCase() !== 'free') ? `Cost: ${cost}` : 'No cost to play';
@@ -1283,7 +1565,8 @@ export default function InvitesScreen() {
                   } else {
                     const shortDate = d ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : matchDate;
                     const shortTime = matchTime ? (() => { const [h, m] = matchTime.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${m}${hr >= 12 ? 'PM' : 'AM'}`; })() : matchTime;
-                    previewText = `${sampleName}, pickleball ${shortDate} ${shortTime} @ ${courtName}. RSVP: /invite.html?code=XXXXXX&player_id=...`;
+                    // Mirrors invite_api.php exactly — "PlayPBNow:" prefix and the real RSVP host.
+                    previewText = `PlayPBNow: ${sampleName}, pickleball ${shortDate} ${shortTime} @ ${courtName}. RSVP: https://playpbnow.com/invite.html?code=XXXXXX&player_id=...`;
                   }
 
                   return (
@@ -1410,13 +1693,20 @@ export default function InvitesScreen() {
                 <View style={{ alignItems: 'center', marginBottom: 24 }}>
                   <BrandedIcon name="checkmark" size={48} color={colors.accent} />
                   <Text style={[styles.premiumTitle, { marginTop: 12 }]}>
-                    {sendResults.sentCount} Invite{sendResults.sentCount !== 1 ? 's' : ''} Sent!
+                    {sendResults.channel === 'imessage'
+                      ? `${sendResults.sentCount} Invite${sendResults.sentCount !== 1 ? 's' : ''} Queued`
+                      : `${sendResults.sentCount} Invite${sendResults.sentCount !== 1 ? 's' : ''} Sent!`}
                   </Text>
+                  {sendResults.channel === 'imessage' && (
+                    <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 13, color: colors.textMuted, textAlign: 'center', marginTop: 6, maxWidth: 300 }}>
+                      Queued for delivery by the iMessage sender. They go out as the sender drains the queue — not yet delivered.
+                    </Text>
+                  )}
                 </View>
 
                 {sendResults.sentNames.length > 0 && (
                   <>
-                    <Text style={[styles.inputLabel, { marginTop: 0 }]}>SMS Sent Successfully</Text>
+                    <Text style={[styles.inputLabel, { marginTop: 0 }]}>{sendResults.channel === 'imessage' ? 'Queued for iMessage' : 'SMS Sent Successfully'}</Text>
                     {sendResults.sentNames.map((name, i) => (
                       <View key={`sent-${i}`} style={styles.responseRow}>
                         <View style={{ flex: 1 }}>
@@ -1444,7 +1734,26 @@ export default function InvitesScreen() {
                       </View>
                     ))}
                     <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, marginTop: 8 }}>
-                      Check that these players have valid mobile phone numbers.
+                      Check that these players have valid mobile phone numbers.{!isAdmin ? ' No credit was charged for failed sends.' : ''}
+                    </Text>
+                  </>
+                )}
+
+                {(sendResults.skippedNames?.length || 0) > 0 && (
+                  <>
+                    <Text style={[styles.inputLabel, { marginTop: 20 }]}>Already Invited (not re-sent)</Text>
+                    {sendResults.skippedNames!.map((name, i) => (
+                      <View key={`skip-${i}`} style={styles.responseRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.responseName}>{name}</Text>
+                        </View>
+                        <View style={styles.responseStatus}>
+                          <Text style={styles.responseStatusText}>skipped</Text>
+                        </View>
+                      </View>
+                    ))}
+                    <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, marginTop: 8 }}>
+                      These players already had an invite to this match, so they were not texted again{!isAdmin ? ' and no credit was used' : ''}.
                     </Text>
                   </>
                 )}
@@ -1565,6 +1874,31 @@ export default function InvitesScreen() {
                         </View>
                       ))
                     )}
+
+                    {/* Cancel Invite (audit H4) — active invites only */}
+                    {selectedInvite.status === 'active' && (
+                      <>
+                        <TouchableOpacity
+                          style={[styles.secondaryBtn, { marginTop: 28, borderColor: 'rgba(255,71,87,0.4)' }, cancellingInvite && { opacity: 0.5 }]}
+                          onPress={handleCancelInvite}
+                          disabled={cancellingInvite}
+                        >
+                          {cancellingInvite ? (
+                            <ActivityIndicator color={colors.danger} />
+                          ) : (
+                            <Text style={[styles.secondaryBtnText, { color: colors.danger }]}>CANCEL INVITE</Text>
+                          )}
+                        </TouchableOpacity>
+                        <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>
+                          Confirmed and wait-listed players will be texted that the match is off.
+                        </Text>
+                      </>
+                    )}
+                    {selectedInvite.status === 'cancelled' && (
+                      <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 13, color: colors.danger, textAlign: 'center', marginTop: 24 }}>
+                        This invite has been cancelled.
+                      </Text>
+                    )}
                   </ScrollView>
                 ) : (
                   /* CHAT VIEW */
@@ -1631,6 +1965,14 @@ export default function InvitesScreen() {
                           );
                         }}
                       />
+                    )}
+                    {/* Send failure (audit C1): say so, keep the draft */}
+                    {!!chatSendError && (
+                      <View style={{ paddingHorizontal: 16, paddingVertical: 6, backgroundColor: 'rgba(255,71,87,0.12)', borderTopWidth: 1, borderTopColor: 'rgba(255,71,87,0.3)' }}>
+                        <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 12, color: '#ff6b7a' }}>
+                          Not sent: {chatSendError}
+                        </Text>
+                      </View>
                     )}
                     {/* Chat input */}
                     <View style={{

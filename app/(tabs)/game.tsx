@@ -46,10 +46,25 @@ import {
     FONT_BODY_SEMIBOLD,
 } from '../../constants/theme';
 import { haptic } from '../../utils/haptics';
+import { signOut } from '../../hooks/useAuth';
 
 const API_URL = 'https://playpbnow.com/api';
 
-interface SearchResult { id: string; name: string; source: string; }
+// UAT C-H8: search_players.php returns {id, player_key, first_name, last_name,
+// gender, source, ...}. The old {id, name} shape rendered blank rows and added
+// "Unknown" players with a numeric id. `name` is kept as an optional fallback.
+interface SearchResult {
+    id: string | number;
+    player_key?: string;
+    first_name?: string;
+    last_name?: string;
+    gender?: string;
+    name?: string;
+    source: string;
+}
+const searchResultKey = (r: SearchResult): string => r.player_key || String(r.id);
+const searchResultName = (r: SearchResult): string =>
+    (r.first_name ? `${r.first_name} ${r.last_name || ''}` : (r.name || '')).trim();
 
 export default function GameScreen() {
   const params = useLocalSearchParams();
@@ -88,6 +103,8 @@ export default function GameScreen() {
   const [isTournament, setIsTournament] = useState(false);
   const [tournamentPhase, setTournamentPhase] = useState<'round-robin' | 'semifinals' | 'finals' | 'complete'>('round-robin');
   const [roundRobinCount, setRoundRobinCount] = useState(0);
+  // UAT C-M3: courts chosen in match setup (undefined = one per 4 players)
+  const [courts, setCourts] = useState<number | undefined>(undefined);
 
   useEffect(() => {
       const loadMatchData = async () => {
@@ -103,6 +120,7 @@ export default function GameScreen() {
                   if (data.roundRobinCount) { setRoundRobinCount(data.roundRobinCount); }
                   else if (data.schedule) { setRoundRobinCount(data.schedule.length); }
                   if (data.tournamentPhase) setTournamentPhase(data.tournamentPhase);
+                  if (data.courts) setCourts(Number(data.courts) || undefined);
                   // Persist for refresh survival
                   await saveActiveMatchData({
                       schedule: data.schedule,
@@ -113,6 +131,7 @@ export default function GameScreen() {
                       isFixedTeams: data.isFixedTeams,
                       isTournament: data.isTournament,
                       roundRobinCount: data.roundRobinCount || (data.schedule ? data.schedule.length : 0),
+                      courts: data.courts,
                   });
                   setNavDataLoaded(true);
                   return;
@@ -129,6 +148,7 @@ export default function GameScreen() {
               if (saved.isTournament) setIsTournament(true);
               if (saved.roundRobinCount) setRoundRobinCount(saved.roundRobinCount);
               if (saved.tournamentPhase) setTournamentPhase(saved.tournamentPhase);
+              if (saved.courts) setCourts(Number(saved.courts) || undefined);
           }
           setNavDataLoaded(true);
       };
@@ -153,7 +173,7 @@ export default function GameScreen() {
   const {
       schedule, setSchedule, loading, swapSource, setSwapSource,
       partnerCounts, handlePlayerTap, handlePlayerNameChange, performShuffle, updateGame
-  } = useGameLogic(navScheduleJson, navPlayersData, currentRoster, groupName, isFixedTeams);
+  } = useGameLogic(navScheduleJson, navPlayersData, currentRoster, groupName, isFixedTeams, courts);
 
   // Set roundRobinCount when schedule first loads (before any playoffs added)
   useEffect(() => {
@@ -165,6 +185,28 @@ export default function GameScreen() {
   }, [schedule]);
 
   const finishButtonRef = React.useRef<any & { measure: Function }>(null);
+
+  // UAT C-M1: the active match used to be persisted ONCE (on arrival), so a
+  // shuffle/swap/rename/add-player followed by a refresh restored the ORIGINAL
+  // pairings under the new scores. Re-persist whenever the schedule or roster
+  // changes, and keep the LIVE-tab snapshot (activeMatch) current too.
+  const activeMatchRef = React.useRef<any>(null);
+  useEffect(() => {
+      if (!navDataLoaded || schedule.length === 0) return;
+      saveActiveMatchData({
+          schedule,
+          players: currentRoster.length > 0 ? currentRoster : navPlayersData,
+          groupName, groupKey, courtName,
+          isFixedTeams, isTournament,
+          roundRobinCount,
+          tournamentPhase,
+          courts,
+      }).catch(() => {});
+      const am = activeMatchRef.current;
+      if (am) {
+          setActiveMatch({ ...am, schedule, players: currentRoster.length > 0 ? currentRoster : am.players });
+      }
+  }, [schedule, currentRoster]);
 
   // Collab state
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -179,16 +221,32 @@ export default function GameScreen() {
           setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
       }
   });
+  // UAT C-L5: local text for the PLAY TO field (see the input below)
+  const [wtsText, setWtsText] = useState(String(winningScore));
+  useEffect(() => { setWtsText(String(winningScore)); }, [winningScore]);
 
   const {
       syncScoreToServer, createCollabSession, joinAndSync, resumeOwnerSession, pushScheduleToServer,
       isSyncing, connectedUsers, toastMessage, dismissToast,
       matchFinishedByRemote, finishedGroupName, finishedSessionId, clearMatchFinished, sessionExpired
   } = useCollaborativeScoring({
-      sessionId, shareCode, isCollaborator, schedule, setSchedule, scores, setScores, scoresRef, inputRefs
+      sessionId, shareCode, isCollaborator, schedule, setSchedule, scores, setScores, scoresRef, inputRefs,
+      // UAT C-H5: when the host reshuffles, this device adopts the new
+      // pairings AND the server's (now empty) scores — persist that locally so
+      // a refresh doesn't resurrect the old ones from AsyncStorage.
+      onScheduleAdoptedFromHost: (serverScores) => {
+          if (!groupName) return;
+          AsyncStorage.setItem(`scores_${groupName}`, JSON.stringify(serverScores)).catch(() => {});
+      },
   });
 
-  const { setActiveMatch, clearActiveMatch } = useActiveMatch();
+  // UAT C-H6: only the host may change matchups. Collaborator edits were
+  // local-only and never pushed, so the two devices silently diverged.
+  const canEditSchedule = !isCollaborator;
+  const hostOnlyAlert = () => Alert.alert('Host Only', 'Only the match host can change matchups. Ask the host to shuffle, swap or add players.');
+
+  const { activeMatch, setActiveMatch, clearActiveMatch } = useActiveMatch();
+  useEffect(() => { activeMatchRef.current = activeMatch; }, [activeMatch]);
   const { isPro, isTrial, isFree, isAdmin, showPaywall, features } = useSubscription();
 
   const [isMatchScored, setIsMatchScored] = useState(false);
@@ -242,12 +300,18 @@ export default function GameScreen() {
 
   // UNIT B INIT: When arriving as collaborator, pull Unit A's scores
   // Depends on shareCode+sessionId params so it re-runs when joining a NEW match
+  // UAT C-M9: joinedCodeRef guards against the effect re-running for the SAME
+  // code (its deps include schedule/roster) — every re-run did a full score
+  // replace from the server and wiped whatever the user was typing.
+  const joinedCodeRef = React.useRef<string | null>(null);
   useEffect(() => {
       if (params.isCollaborator === 'true' && params.shareCode && params.sessionId) {
-          setIsCollaborator(true);
-          setIsMatchScored(true); // Immediately show scoring UI
           const code = params.shareCode as string;
           const sid = params.sessionId as string;
+          if (joinedCodeRef.current === code) return; // already joined this match
+          joinedCodeRef.current = code;
+          setIsCollaborator(true);
+          setIsMatchScored(true); // Immediately show scoring UI
           setShareCode(code);
           setSessionId(sid);
           if (params.creatorUserId) setCreatorUserId(params.creatorUserId as string);
@@ -357,7 +421,11 @@ export default function GameScreen() {
                   setSearchResults([]);
               } else {
                   const data = await res.json();
-                  if (data.status === 'success') setSearchResults(data.results);
+                  if (data.status === 'success') {
+                      // UAT C-H8: hide players already in this match
+                      const rosterIds = new Set(currentRoster.map(p => String(p.id)));
+                      setSearchResults((data.results || []).filter((r: SearchResult) => !rosterIds.has(searchResultKey(r))));
+                  }
               }
           } catch(e) { }
           finally { setIsSearching(false); }
@@ -387,7 +455,15 @@ export default function GameScreen() {
   const addNewPlayer = (existingPlayer?: SearchResult) => {
       if (!existingPlayer && !newPlayerName.trim()) return;
       let newP: Player;
-      if (existingPlayer) { newP = { id: existingPlayer.id, first_name: existingPlayer.name }; }
+      if (existingPlayer) {
+          // UAT C-H8: player_key is the id the rest of the app (and save_scores) keys on
+          newP = {
+              id: searchResultKey(existingPlayer),
+              first_name: existingPlayer.first_name || existingPlayer.name || 'Unknown',
+              last_name: existingPlayer.last_name || undefined,
+              gender: existingPlayer.gender || undefined,
+          };
+      }
       else {
           const trimmed = newPlayerName.trim();
           if (trimmed.toLowerCase() === 'unknown') { Alert.alert("Invalid Name", "You cannot name a player 'Unknown'."); return; }
@@ -408,18 +484,25 @@ export default function GameScreen() {
 
   // When the owner changes the schedule (shuffle/swap), push to server so Unit B stays synced
   const scheduleVersionRef = React.useRef(0);
+  // UAT C-H5: set by handleShuffle so the very next schedule push also wipes
+  // the server's scores for this session.
+  const pendingScoreResetRef = React.useRef(false);
   useEffect(() => {
       if (sessionId && shareCode && !isCollaborator && schedule.length > 0) {
           // Skip the initial mount (scheduleVersionRef starts at 0)
           if (scheduleVersionRef.current > 0) {
-              pushScheduleToServer(schedule);
+              const resetScores = pendingScoreResetRef.current;
+              pendingScoreResetRef.current = false;
+              pushScheduleToServer(schedule, { resetScores });
           }
           scheduleVersionRef.current++;
       }
   }, [schedule, sessionId, shareCode, isCollaborator, pushScheduleToServer]);
 
   const handleShuffle = () => {
+    if (!canEditSchedule) { hostOnlyAlert(); return; } // UAT C-H6
     const doShuffle = () => {
+        pendingScoreResetRef.current = !!(sessionId && shareCode); // UAT C-H5
         performShuffle().then((s) => { if (s) clearScores(); }).catch(() => {});
     };
     if (Platform.OS === 'web') {
@@ -616,6 +699,7 @@ export default function GameScreen() {
       setIsCollaborator(false);
       setIsMatchScored(false);
       clearActiveMatch();
+      joinedCodeRef.current = null; // UAT C-M9: a later join of any code starts clean
   };
 
   // THUNDERBOLT PRESS — show options based on scoring mode
@@ -623,21 +707,18 @@ export default function GameScreen() {
       // If already in a collab session, show share modal
       if (sessionId && shareCode) { setShareModalVisible(true); return; }
 
-      // Always offer to create OR join
-      if (Platform.OS === 'web') {
-          const choice = typeof window !== 'undefined' && window.confirm('Create a shared match?\n\nOK = Create Shared Match\nCancel = Join Existing Match');
-          if (choice) createNewCollabSession();
-          else setJoinModalVisible(true);
-      } else {
-          Alert.alert('Shared Scoring', 'What would you like to do?', [
-              { text: 'Create Shared Match', onPress: createNewCollabSession },
-              { text: 'Join Match', onPress: () => setJoinModalVisible(true) },
-              { text: 'Cancel', style: 'cancel' },
-          ]);
-      }
+      // Always offer to create OR join.
+      // UAT C-L6: on web the old two-way confirm had no real Cancel — dismissing
+      // it opened the Join modal. crossAlert's 3-button path offers each option
+      // in turn and a genuine cancel does nothing, on web AND native.
+      Alert.alert('Shared Scoring', 'What would you like to do?', [
+          { text: 'Create Shared Match', onPress: createNewCollabSession },
+          { text: 'Join Match', onPress: () => setJoinModalVisible(true) },
+          { text: 'Cancel', style: 'cancel' },
+      ]);
   };
 
-  const executeSave = async (forceUpdate: boolean = false) => {
+  const executeSave = async (forceUpdate: boolean = false, tiesConfirmed: boolean = false) => {
     const matchesToSave: any[] = [];
     schedule.forEach((round, rIdx) => {
         round.games.forEach((game, gIdx) => {
@@ -659,6 +740,22 @@ export default function GameScreen() {
         }
         else Alert.alert("No Scores", "Enter scores before finishing.");
         setSaveModalVisible(false); return;
+    }
+    // UAT C-M10: tied games are almost always a typo. Confirm before they are
+    // recorded (a tie counts as a win for nobody).
+    if (!tiesConfirmed) {
+        const tied = matchesToSave.filter(m => parseInt(m.s1, 10) === parseInt(m.s2, 10)).length;
+        if (tied > 0) {
+            Alert.alert(
+                tied === 1 ? 'Tied Game' : 'Tied Games',
+                `${tied} game${tied === 1 ? ' is' : 's are'} tied. A tie counts as a win for neither team. Save anyway?`,
+                [
+                    { text: 'Go Back', style: 'cancel' },
+                    { text: 'Save Anyway', onPress: () => executeSave(forceUpdate, true) },
+                ]
+            );
+            return;
+        }
     }
     try {
         if (!groupName) {
@@ -777,7 +874,7 @@ export default function GameScreen() {
             setSaveModalVisible(false);
             if (Platform.OS === 'web') {
                 if (typeof window !== 'undefined' && window.confirm("A match with this title and date already exists but with different scores. Would you like to update it?")) {
-                    executeSave(true);
+                    executeSave(true, true);
                 }
             } else {
                 Alert.alert(
@@ -785,7 +882,7 @@ export default function GameScreen() {
                     "A match with this title and date already exists but with different scores. Would you like to update it?",
                     [
                         { text: "No, Keep Original", style: "cancel" },
-                        { text: "Yes, Update", style: "default", onPress: () => executeSave(true) }
+                        { text: "Yes, Update", style: "default", onPress: () => executeSave(true, true) }
                     ]
                 );
             }
@@ -950,6 +1047,7 @@ export default function GameScreen() {
   }, [scores]);
 
   const handlePlayerTapGuarded = (rIdx: number, gIdx: number, tIdx: number, pIdx: number) => {
+      if (!canEditSchedule) { hostOnlyAlert(); setSwapSource(null); return; } // UAT C-H6
       if (isFixedTeams && hasAnyScores) {
           Alert.alert('Swap Locked', 'Cannot swap players after scores have been entered.');
           setSwapSource(null);
@@ -976,7 +1074,7 @@ export default function GameScreen() {
     return (
       <TouchableOpacity style={[styles.playerBox, { backgroundColor: bg, borderWidth: 1.5, borderColor: bd }, isSelected && styles.selectedBox]}
         onPress={() => { if (!isEditing) handlePlayerTapGuarded(rIdx, gIdx, tIdx, pIdx); }}
-        onLongPress={() => { setSwapSource(null); setEditingPlayer({ r: rIdx, g: gIdx, t: tIdx, p: pIdx }); }} activeOpacity={0.7}>
+        onLongPress={() => { if (!canEditSchedule) { hostOnlyAlert(); return; } setSwapSource(null); setEditingPlayer({ r: rIdx, g: gIdx, t: tIdx, p: pIdx }); }} activeOpacity={0.7}>
         {isEditing ? (
           <TextInput style={[styles.pText, { color: txt, width: '100%', textAlign: 'center', padding: 2 }]}
             value={player.first_name} onChangeText={(name) => handlePlayerNameChange(rIdx, gIdx, tIdx, pIdx, name)}
@@ -1047,16 +1145,14 @@ export default function GameScreen() {
                 {groupName ? groupName.toUpperCase() : "MATCH SETUP"}
             </Text>
             <TouchableOpacity onPress={() => {
-                const doLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
-                if (Platform.OS === 'web') {
-                    if (typeof window !== 'undefined' && window.confirm('Log out of PlayPBNow?')) doLogout();
-                } else {
-                    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Log Out', style: 'destructive', onPress: doLogout }
-                    ]);
-                }
-            }} style={{ padding: 5 }}>
+                // UAT E-M5: one shared sign-out (revokes the server session,
+                // clears the Bearer token) behind a confirm on every platform.
+                const doLogout = async () => { await signOut(); router.replace('/login'); };
+                Alert.alert('Log Out', 'Log out of PlayPBNow?', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Log Out', style: 'destructive', onPress: doLogout }
+                ]);
+            }} style={{ padding: 5 }} accessibilityLabel="Log out">
                 <BrandedIcon name="logout" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
@@ -1064,28 +1160,52 @@ export default function GameScreen() {
           <View style={styles.controlsRow}>
               <View style={styles.wtsContainer}>
                   <Text style={styles.wtsLabel}>PLAY TO:</Text>
-                  <TextInput style={styles.wtsInput} keyboardType="numeric" value={winningScore.toString()}
-                      onChangeText={setWinningScore} maxLength={2} placeholder="21" placeholderTextColor={colors.inputPlaceholder} />
+                  {/* UAT C-L5: edits are held locally and only applied once the
+                      value is complete (2 digits) or the field blurs — typing
+                      "1" on the way to "15" no longer flips PLAY TO to 1. */}
+                  <TextInput style={styles.wtsInput} keyboardType="numeric" value={wtsText}
+                      onChangeText={(t) => {
+                          const digits = t.replace(/[^0-9]/g, '');
+                          setWtsText(digits);
+                          if (digits.length >= 2) setWinningScore(digits);
+                      }}
+                      onBlur={() => {
+                          if (wtsText && parseInt(wtsText, 10) > 0) setWinningScore(wtsText);
+                          else setWtsText(winningScore.toString());
+                      }}
+                      maxLength={2} placeholder="11" placeholderTextColor={colors.inputPlaceholder}
+                      accessibilityLabel="Play to score" />
               </View>
               <View style={styles.headerRightControls}>
-                  <TouchableOpacity onPress={handleThunderboltPress} style={styles.shuffleBtn}>
-                      <BrandedIcon name="flash" size={24} color={shareCode ? colors.accent : colors.text} />
-                  </TouchableOpacity>
-                  {shareCode && connectedUsers > 0 && (
-                      <View style={styles.connectedBadge}><Text style={styles.connectedText}>{connectedUsers}</Text></View>
-                  )}
-                  <TouchableOpacity onPress={() => {
-                      if (isTournament && tournamentPhase !== 'round-robin') {
-                          Alert.alert('Playoffs Active', 'Cannot shuffle during playoffs.');
-                          return;
-                      }
-                      handleShuffle();
-                  }} style={styles.shuffleBtn} disabled={loading}>
-                      {loading ? <ActivityIndicator size="small" color={colors.text} /> : <BrandedIcon name="shuffle" size={24} color={tournamentPhase !== 'round-robin' ? colors.textMuted : colors.text} />}
-                  </TouchableOpacity>
-                  <Switch value={isMatchScored} onValueChange={setIsMatchScored}
-                    trackColor={{false: colors.textMuted, true: colors.accent}} thumbColor={colors.text}
-                    style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }} />
+                  {/* UAT UX: every header control carries a visible label */}
+                  <View style={styles.labeledControl}>
+                      <TouchableOpacity onPress={handleThunderboltPress} style={styles.shuffleBtn} accessibilityLabel="Live shared scoring">
+                          <BrandedIcon name="flash" size={24} color={shareCode ? colors.accent : colors.text} />
+                      </TouchableOpacity>
+                      <Text style={[styles.controlLabel, shareCode && { color: colors.accent }]}>LIVE</Text>
+                      {shareCode && connectedUsers > 0 && (
+                          <View style={[styles.connectedBadge, styles.connectedBadgeFloating]}><Text style={styles.connectedText}>{connectedUsers}</Text></View>
+                      )}
+                  </View>
+                  <View style={styles.labeledControl}>
+                      <TouchableOpacity onPress={() => {
+                          if (isTournament && tournamentPhase !== 'round-robin') {
+                              Alert.alert('Playoffs Active', 'Cannot shuffle during playoffs.');
+                              return;
+                          }
+                          handleShuffle();
+                      }} style={styles.shuffleBtn} disabled={loading} accessibilityLabel="Shuffle matchups">
+                          {loading ? <ActivityIndicator size="small" color={colors.text} /> : <BrandedIcon name="shuffle" size={24} color={tournamentPhase !== 'round-robin' || !canEditSchedule ? colors.textMuted : colors.text} />}
+                      </TouchableOpacity>
+                      <Text style={styles.controlLabel}>SHUFFLE</Text>
+                  </View>
+                  <View style={styles.labeledControl}>
+                      <Switch value={isMatchScored} onValueChange={setIsMatchScored}
+                        trackColor={{false: colors.textMuted, true: colors.accent}} thumbColor={colors.text}
+                        style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                        accessibilityLabel="Score this match" />
+                      <Text style={[styles.controlLabel, isMatchScored && { color: colors.accent }]}>SCORE</Text>
+                  </View>
               </View>
           </View>
           {/* Tournament toggle — visible when scoring is on */}
@@ -1115,7 +1235,7 @@ export default function GameScreen() {
         </View>
 
         <View style={styles.subHeaderAction}>
-            <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addPlayerBtn}>
+            <TouchableOpacity onPress={() => { if (!canEditSchedule) { hostOnlyAlert(); return; } setModalVisible(true); }} style={styles.addPlayerBtn}>
                 <BrandedIcon name="person-add" size={16} color={colors.text} /><Text style={styles.addPlayerText}>ADD PLAYER</Text>
             </TouchableOpacity>
         </View>
@@ -1279,9 +1399,16 @@ export default function GameScreen() {
                 {isSearching && <ActivityIndicator color={colors.accent} />}
                 {searchResults.length > 0 && (
                     <View style={styles.searchResultsContainer}><Text style={styles.searchLabel}>Found Global Players:</Text>
-                        <FlatList data={searchResults} keyExtractor={i => i.id} renderItem={({item}) => (
+                        <FlatList data={searchResults} keyExtractor={i => searchResultKey(i)} renderItem={({item}) => (
                             <TouchableOpacity style={styles.searchItem} onPress={() => addNewPlayer(item)}>
-                                <Text style={styles.searchName}>{item.name}</Text><Text style={styles.searchSource}>from {item.source}</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                    {!!item.gender && (
+                                        <BrandedIcon name={(item.gender || '').toLowerCase().startsWith('f') ? 'gender-female' : 'gender-male'} size={14}
+                                            color={(item.gender || '').toLowerCase().startsWith('f') ? '#f78ca2' : '#4facfe'} />
+                                    )}
+                                    <Text style={styles.searchName} numberOfLines={1}>{searchResultName(item) || 'Unknown'}</Text>
+                                </View>
+                                <Text style={styles.searchSource}>{item.source}</Text>
                             </TouchableOpacity>
                         )} />
                     </View>
@@ -1311,7 +1438,10 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   wtsContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   wtsLabel: { color: c.accent, fontSize: 12, fontFamily: FONT_BODY_BOLD },
   wtsInput: { backgroundColor: c.inputBg, color: c.inputText, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, minWidth: 40, textAlign: 'center', borderWidth: 1, borderColor: c.inputBorder },
-  headerRightControls: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  headerRightControls: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  labeledControl: { alignItems: 'center', justifyContent: 'flex-start', minWidth: 48 },
+  controlLabel: { color: c.textMuted, fontSize: 9, fontFamily: FONT_BODY_BOLD, letterSpacing: 1, marginTop: -4 },
+  connectedBadgeFloating: { position: 'absolute', top: 2, right: -2, marginLeft: 0 },
   shuffleBtn: { padding: 8, minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center' },
   connectedBadge: { backgroundColor: c.accent, borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginLeft: -8 },
   connectedText: { color: c.accentText, fontSize: 10, fontFamily: FONT_DISPLAY_EXTRABOLD },

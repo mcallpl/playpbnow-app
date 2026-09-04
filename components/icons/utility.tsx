@@ -299,3 +299,19 @@ export const SendIcon = ({ size, color, strokeWidth }: IconProps) => (
     <Path d="M22 2l-7 20-4-9-9-4 20-7z" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
+
+// chevron-down — used by Help category headers (collapsed state)
+export const ChevronDownIcon = ({ size, color, strokeWidth }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M6 9l6 6 6-6" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+// image — picture frame with a sun and a hill (match report / HD image)
+export const ImageIcon = ({ size, color, strokeWidth }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="3" y="4" width="18" height="16" rx="2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx="8.5" cy="9.5" r="1.5" stroke={color} strokeWidth={strokeWidth} />
+    <Path d="M21 16l-5-5-8 8" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);

@@ -77,6 +77,14 @@ function setupReducer(state: SetupState, action: SetupAction): SetupState {
       return { ...state, roundsConfig: action.payload };
     case 'SET_IS_FIXED_TEAMS':
       return { ...state, isFixedTeams: action.payload };
+    case 'SET_COURTS':
+      // UAT C-M3: null = auto; otherwise clamp to [1, floor(players/4)]
+      if (action.payload === null) return { ...state, courts: null };
+      {
+        const maxCourts = Math.max(1, Math.floor(state.players.length / 4));
+        const next = Math.min(Math.max(1, Math.floor(action.payload)), maxCourts);
+        return { ...state, courts: next };
+      }
     case 'ADD_ROUND':
       return {
         ...state,

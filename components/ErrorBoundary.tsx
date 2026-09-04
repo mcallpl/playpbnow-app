@@ -3,9 +3,21 @@
  * Displays error UI with retry button when errors occur
  */
 
-import { Component, ReactNode, ErrorInfo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
+import { Component, ReactNode, ErrorInfo, useEffect, useMemo, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Linking } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BrandedIcon } from './BrandedIcon';
+import { Colors, ThemeColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+
+// The owner's real mailbox (UAT 2026-09-04). One address everywhere.
+export const SUPPORT_EMAIL = 'mcallpl@gmail.com';
+
+// The root boundary wraps ThemeProvider (it has to — a crash inside the
+// provider must still be caught), so useTheme() there only ever sees the
+// default dark palette. Read the stored preference directly so the crash
+// screen matches the theme the user actually chose.
+const THEME_PREF_KEY = 'theme_preference';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -107,12 +119,45 @@ function ErrorFallback({
   errorInfo: ErrorInfo | null;
   onReset: () => void;
 }) {
+  const { colors: contextColors } = useTheme();
+  const [storedTheme, setStoredTheme] = useState<'dark' | 'light' | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(THEME_PREF_KEY);
+        if (!cancelled && (stored === 'light' || stored === 'dark')) {
+          setStoredTheme(stored);
+        }
+      } catch {
+        // no stored preference — the context palette is fine
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const colors = storedTheme ? Colors[storedTheme] : contextColors;
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const contactSupport = () => {
+    const subject = encodeURIComponent('PlayPBNow — something went wrong');
+    const body = encodeURIComponent(
+      `What I was doing:\n\n\n---\nError: ${error?.message || 'unknown'}\nPlatform: ${Platform.OS}`
+    );
+    Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`).catch(() => {
+      // No mail client — the address is printed on screen below.
+    });
+  };
+
   return (
     <ScrollView testID="error-boundary-fallback" contentContainerStyle={styles.container}>
       <View style={styles.contentContainer}>
         {/* Error Icon */}
         <View style={styles.iconContainer}>
-          <BrandedIcon name="warning" size={64} color="#DC2626" strokeWidth={1.5} />
+          <BrandedIcon name="warning" size={64} color={colors.danger} strokeWidth={1.5} />
         </View>
 
         {/* Error Title */}
@@ -139,23 +184,27 @@ function ErrorFallback({
           style={styles.retryButton}
           onPress={onReset}
         >
-          <BrandedIcon name="refresh" size={20} color="#ffffff" strokeWidth={2} />
+          <BrandedIcon name="refresh" size={20} color={colors.accentText} strokeWidth={2} />
           <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
 
-        {/* Support Text */}
+        {/* Support Text — tappable mailto, with the address visible in case
+            there is no mail client to hand it to. */}
         <Text style={styles.supportText}>If the problem persists, please contact support.</Text>
+        <TouchableOpacity testID="error-boundary-support" onPress={contactSupport} accessibilityRole="link">
+          <Text style={styles.supportLink}>{SUPPORT_EMAIL}</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: c.bg,
     padding: 20,
     minHeight: '100%',
   },
@@ -171,19 +220,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1f2937',
+    color: c.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   message: {
     fontSize: 16,
-    color: '#6b7280',
+    color: c.textMuted,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
   },
   stackTrace: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.border,
     borderRadius: 8,
     padding: 16,
     marginBottom: 24,
@@ -192,17 +243,17 @@ const styles = StyleSheet.create({
   stackTraceTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#991b1b',
+    color: c.danger,
     marginBottom: 8,
   },
   stackTraceText: {
     fontSize: 11,
-    color: '#7f1d1d',
+    color: c.textSoft,
     fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier New',
     lineHeight: 16,
   },
   retryButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: c.accent,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -216,11 +267,19 @@ const styles = StyleSheet.create({
   retryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: c.accentText,
   },
   supportText: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: c.textMuted,
     textAlign: 'center',
+  },
+  supportLink: {
+    fontSize: 14,
+    color: c.accentStrong,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    marginTop: 6,
+    paddingVertical: 8,
   },
 });

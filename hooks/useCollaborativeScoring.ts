@@ -40,10 +40,16 @@ interface CollabConfig {
     setScores: (scores: { [key: string]: string } | ((prev: { [key: string]: string }) => { [key: string]: string })) => void;
     scoresRef: React.MutableRefObject<{ [key: string]: string }>;
     inputRefs: React.MutableRefObject<{ [key: string]: any }>;
+    // UAT C-H5: fired on a COLLABORATOR device after it adopts a new schedule
+    // from the host. Receives the server's scores for that schedule (empty
+    // after a host shuffle) so the screen can persist/clear its local copy.
+    onScheduleAdoptedFromHost?: (serverScores: { [key: string]: string }) => void;
 }
 
 export const useCollaborativeScoring = (config: CollabConfig) => {
-    const { sessionId, shareCode, isCollaborator, schedule, setSchedule, scores, setScores, scoresRef, inputRefs } = config;
+    const { sessionId, shareCode, isCollaborator, schedule, setSchedule, scores, setScores, scoresRef, inputRefs, onScheduleAdoptedFromHost } = config;
+    const onScheduleAdoptedRef = useRef(onScheduleAdoptedFromHost);
+    useEffect(() => { onScheduleAdoptedRef.current = onScheduleAdoptedFromHost; }, [onScheduleAdoptedFromHost]);
 
     const [isSyncing, setSyncing] = useState(false);
     const [connectedUsers, setConnectedUsers] = useState(0);
@@ -249,6 +255,11 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 // The host is authoritative for matchups: adopting its own pushes
                 // back from the server caused a replace loop that stole input
                 // focus mid-typing. Collaborators adopt host shuffles/swaps.
+                // UAT C-H5: when a new schedule is adopted the server's scores
+                // for it REPLACE local ones (a host shuffle clears them server-
+                // side; the old merge kept the stale scores and self-healed
+                // them straight back onto the new pairings).
+                let scheduleAdoptedThisPoll = false;
                 if (data.schedule && setSchedule && isCollaboratorRef.current) {
                     const serverScheduleStr = JSON.stringify(data.schedule);
                     if (serverScheduleHashRef.current === '') {
@@ -272,6 +283,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                         }));
                         setSchedule(safeSchedule);
                         setToastMessage('Matchups updated by host');
+                        scheduleAdoptedThisPoll = true;
                     }
                 }
 
@@ -282,6 +294,22 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                         serverState[`${update.round_idx}_${update.game_idx}_t1`] = update.s1_str ?? '';
                         serverState[`${update.round_idx}_${update.game_idx}_t2`] = update.s2_str ?? '';
                     }
+                }
+
+                if (scheduleAdoptedThisPoll) {
+                    // Full replace with what the server holds for the NEW
+                    // schedule (nothing, after a shuffle). No merge, no
+                    // self-heal this cycle — the old scores belong to
+                    // pairings that no longer exist.
+                    const replacement: { [key: string]: string } = {};
+                    for (const [key, val] of Object.entries(serverState)) {
+                        if (val !== '') replacement[key] = val;
+                    }
+                    localUpdatesRef.current.clear();
+                    setScores(replacement);
+                    try { onScheduleAdoptedRef.current?.(replacement); } catch {}
+                    pollFailuresRef.current = 0;
+                    return;
                 }
 
                 // ── MERGE server → local (never blanks a local value) ──
@@ -520,7 +548,10 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     }, [setSchedule, setScores, pushAllScoresToServer]);
 
     // ── PUSH SCHEDULE UPDATE (Unit A after shuffle/swap) ─────────
-    const pushScheduleToServer = useCallback(async (scheduleData: any[]) => {
+    // UAT C-H5: options.resetScores=true (host shuffle) tells the server to
+    // wipe the session's scores along with the schedule, so the next poll
+    // cannot re-apply old scores to the new pairings.
+    const pushScheduleToServer = useCallback(async (scheduleData: any[], options?: { resetScores?: boolean }) => {
         const sid = sessionIdRef.current;
         const code = shareCodeRef.current;
         if (!sid || !code) return;
@@ -532,10 +563,11 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 body: JSON.stringify({
                     share_code: code,
                     session_id: sid,
-                    schedule: scheduleData
+                    schedule: scheduleData,
+                    ...(options?.resetScores ? { reset_scores: true } : {})
                 })
             });
-            console.log('📤 Pushed updated schedule to server');
+            console.log(options?.resetScores ? '📤 Pushed updated schedule to server (scores reset)' : '📤 Pushed updated schedule to server');
         } catch (err) {
             console.error('Push schedule failed:', err);
         }

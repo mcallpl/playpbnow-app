@@ -12,6 +12,7 @@ import {
   ThemeToggleIcon, PersonAddIcon, RefreshIcon, GameControllerIcon,
   DocumentIcon, LayersIcon, StatsChartIcon, HeadsetIcon, RocketIcon,
   PickleballIcon, StarIcon, ChatIcon, SendIcon,
+  ChevronDownIcon, ImageIcon,
 } from './icons';
 
 type IconComponent = React.FC<{ size: number; color: string; strokeWidth: number }>;
@@ -82,6 +83,21 @@ const ICON_MAP: Record<string, IconComponent> = {
   star: StarIcon,
   chat: ChatIcon,
   send: SendIcon,
+  // Names that call sites already used but that were never in the map, so the
+  // icon silently rendered null (help.tsx category chevrons, broadcast.tsx
+  // 'stats'/'forward'/'image', invites.tsx 'chatbubbles'). Each maps onto a
+  // glyph from the existing set; the two new SVGs live in icons/utility.tsx.
+  'chevron-down': ChevronDownIcon,
+  'checkmark-circle': ConfirmIcon,
+  stats: StatsChartIcon,
+  forward: ChevronRightIcon,
+  image: ImageIcon,
+  chatbubbles: ChatIcon,
+  // camelCase aliases so any remaining legacy call site keeps rendering
+  chevronDown: ChevronDownIcon,
+  chevronRight: ChevronRightIcon,
+  chevronLeft: ChevronLeftIcon,
+  checkmarkCircle: ConfirmIcon,
 };
 
 interface BrandedIconProps {

@@ -17,4 +17,6 @@ export {
   // name that does not exist while failing to export the one that does.
   // BrandedIcon keeps `tennisball` as a legacy alias onto the same glyph.
   PickleballIcon, StarIcon, ChatIcon, SendIcon,
+  // Added for the Help tab (chevron-down) and the report/image call sites.
+  ChevronDownIcon, ImageIcon,
 } from './utility';

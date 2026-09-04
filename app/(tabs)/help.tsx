@@ -22,6 +22,28 @@ import { useAuth } from '../../hooks/useAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
+// Same-origin API, matching every other screen (groups.tsx uses the identical
+// host for delete_account.php). The old relative '/api/auth/delete-account'
+// path never existed on the server and 404'd on both web and native.
+const API_URL = 'https://playpbnow.com/api';
+
+// Categories in the order a first-time user should read them. Anything not
+// listed here falls in after these, in file order.
+const CATEGORY_ORDER = [
+  'Getting Started',
+  'Groups',
+  'Players',
+  'Match Management',
+  'Beacons',
+  'Leaderboards',
+  'Account',
+  'Premium',
+  'Invites',
+  'Advanced',
+  'Support',
+  'Privacy & Legal',
+];
+
 // Component to render markdown **bold** text
 interface MarkdownTextProps {
   text: string;
@@ -32,7 +54,11 @@ interface MarkdownTextProps {
 
 const openUrl = (url: string) => {
   if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined') window.open(url, '_blank');
+    if (typeof window === 'undefined') return;
+    // A mailto: opened with '_blank' leaves an empty tab behind on most
+    // browsers; assigning location hands it straight to the mail client.
+    if (url.startsWith('mailto:')) window.location.href = url;
+    else window.open(url, '_blank');
   } else {
     Linking.openURL(url).catch(() => {});
   }
@@ -40,9 +66,10 @@ const openUrl = (url: string) => {
 
 const MarkdownText: React.FC<MarkdownTextProps> = ({ text, style, boldStyle, numberOfLines }) => {
   const parts: (React.ReactNode)[] = [];
-  // Match **bold** OR a bare http(s) URL so URLs render as tappable links
-  // (previously URLs like the privacy policy were shown as plain, un-tappable text).
-  const regex = /(\*\*([^*]+)\*\*)|(https?:\/\/[^\s)]+)/g;
+  // Match **bold** OR a bare http(s) URL OR an email address so both render as
+  // tappable links (previously URLs like the privacy policy were shown as
+  // plain, un-tappable text, and the support address was never tappable at all).
+  const regex = /(\*\*([^*]+)\*\*)|(https?:\/\/[^\s)]+)|([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/g;
   let lastIndex = 0;
   let match;
   let partIndex = 0;
@@ -76,6 +103,18 @@ const MarkdownText: React.FC<MarkdownTextProps> = ({ text, style, boldStyle, num
           {url}
         </Text>
       );
+    } else if (match[4]) {
+      // email → tappable mailto: link
+      const email = match[4];
+      parts.push(
+        <Text
+          key={`mail-${partIndex}`}
+          style={[style, { textDecorationLine: 'underline' }]}
+          onPress={() => openUrl(`mailto:${email}`)}
+        >
+          {email}
+        </Text>
+      );
     }
     partIndex++;
     lastIndex = regex.lastIndex;
@@ -105,7 +144,7 @@ export default function HelpScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState<HelpTopic | null>(null);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Match Management', 'Beacons']));
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Getting Started', 'Match Management', 'Beacons']));
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
@@ -120,7 +159,16 @@ export default function HelpScreen() {
       }
       grouped[topic.category].push(topic);
     });
-    return grouped;
+    // Re-key in reading order (object insertion order drives the list).
+    const rank = (cat: string) => {
+      const i = CATEGORY_ORDER.indexOf(cat);
+      return i === -1 ? CATEGORY_ORDER.length : i;
+    };
+    const ordered: { [key: string]: HelpTopic[] } = {};
+    Object.keys(grouped)
+      .sort((a, b) => rank(a) - rank(b))
+      .forEach((cat) => { ordered[cat] = grouped[cat]; });
+    return ordered;
   }, []);
 
   // Filter topics based on search
@@ -132,17 +180,33 @@ export default function HelpScreen() {
     const query = searchQuery.toLowerCase();
     const filtered: { [key: string]: HelpTopic[] } = {};
 
+    // Match strength: 0 = title, 1 = keyword, 2 = body text, 3 = no match.
+    // Title hits are what someone typing "delete" or "beacon" is after, so they
+    // sort first inside a category, and categories holding a title hit sort
+    // ahead of categories that only matched somewhere in a paragraph.
+    const strength = (topic: HelpTopic): number => {
+      if (topic.title.toLowerCase().includes(query)) return 0;
+      if (topic.searchKeywords.some((kw) => kw.includes(query))) return 1;
+      if (topic.content.toLowerCase().includes(query)) return 2;
+      return 3;
+    };
+
+    const scored: { category: string; topics: HelpTopic[]; best: number }[] = [];
     Object.entries(topicsByCategory).forEach(([category, topics]) => {
-      const matchingTopics = topics.filter((topic) =>
-        topic.title.toLowerCase().includes(query) ||
-        topic.searchKeywords.some((kw) => kw.includes(query)) ||
-        topic.content.toLowerCase().includes(query)
-      );
+      const matchingTopics = topics
+        .map((topic) => ({ topic, s: strength(topic) }))
+        .filter((x) => x.s < 3)
+        .sort((a, b) => a.s - b.s)
+        .map((x) => x.topic);
 
       if (matchingTopics.length > 0) {
-        filtered[category] = matchingTopics;
+        scored.push({ category, topics: matchingTopics, best: strength(matchingTopics[0]) });
       }
     });
+
+    scored
+      .sort((a, b) => a.best - b.best)
+      .forEach(({ category, topics }) => { filtered[category] = topics; });
 
     return filtered;
   }, [searchQuery, topicsByCategory]);
@@ -166,17 +230,20 @@ export default function HelpScreen() {
     setDeleting(true);
     setDeleteError('');
     try {
-      const res = await fetch('/api/auth/delete-account', {
+      const res = await fetch(`${API_URL}/delete_account.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          password: deletePassword,
-        }),
+        body: JSON.stringify({ user_id: userId, password: deletePassword }),
       });
       const data = await res.json();
       if (data.status === 'success') {
+        setShowDeleteModal(false);
         await AsyncStorage.clear();
+        if (Platform.OS === 'web') {
+          if (typeof window !== 'undefined') window.alert('Your account has been permanently deleted.');
+        } else {
+          Alert.alert('Account Deleted', 'Your account has been permanently deleted.');
+        }
         router.replace('/login');
       } else {
         setDeleteError(data.message || 'Failed to delete account');
@@ -238,7 +305,7 @@ export default function HelpScreen() {
                   <Text style={styles.topicCount}>{topics.length}</Text>
                 </View>
                 <BrandedIcon
-                  name={expandedCategories.has(category) ? 'checkmarkCircle' : 'chevronDown'}
+                  name={expandedCategories.has(category) ? 'checkmark-circle' : 'chevron-down'}
                   size={24}
                   color={colors.accent}
                 />
@@ -261,7 +328,7 @@ export default function HelpScreen() {
                         <MarkdownText text={topic.content.split('\n')[0]} style={styles.topicPreview} boldStyle={{ fontFamily: FONT_BODY_SEMIBOLD }} numberOfLines={1} />
                       </View>
                       <BrandedIcon
-                        name="chevronRight"
+                        name="chevron-right"
                         size={20}
                         color={colors.textMuted}
                       />
@@ -293,7 +360,7 @@ export default function HelpScreen() {
           style={styles.backButton}
           onPress={() => setSelectedTopic(null)}
         >
-          <BrandedIcon name="chevronLeft" size={24} color={colors.accent} />
+          <BrandedIcon name="chevron-left" size={24} color={colors.accent} />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.categoryBadge}>{selectedTopic.category}</Text>
@@ -315,23 +382,10 @@ export default function HelpScreen() {
         {/* Delete Account Button - shown on Privacy Policy page */}
         {selectedTopic.id === 'account-deletion' && (
           <TouchableOpacity
-            style={{
-              marginVertical: 20,
-              paddingVertical: 14,
-              paddingHorizontal: 16,
-              backgroundColor: '#fee2e2',
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: '#fecaca',
-            }}
+            style={styles.deleteBtn}
             onPress={() => setShowDeleteModal(true)}
           >
-            <Text style={{
-              fontFamily: FONT_BODY_SEMIBOLD,
-              fontSize: 14,
-              color: '#dc2626',
-              textAlign: 'center',
-            }}>
+            <Text style={styles.deleteBtnText}>
               Delete My Account
             </Text>
           </TouchableOpacity>
@@ -355,7 +409,7 @@ export default function HelpScreen() {
                     <MarkdownText text={topic.title} style={styles.relatedItemText} boldStyle={{ fontFamily: FONT_BODY_SEMIBOLD }} />
                     <MarkdownText text={topic.content.split('\n')[0]} style={styles.relatedItemPreview} boldStyle={{ fontFamily: FONT_BODY_SEMIBOLD }} numberOfLines={1} />
                   </View>
-                  <BrandedIcon name="chevronRight" size={16} color={colors.accent} />
+                  <BrandedIcon name="chevron-right" size={16} color={colors.accent} />
                 </TouchableOpacity>
               ))}
           </View>
@@ -365,7 +419,17 @@ export default function HelpScreen() {
       </ScrollView>
 
       {/* Delete Account Modal */}
-      <Modal visible={showDeleteModal} transparent animationType="fade">
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (deleting) return;
+          setShowDeleteModal(false);
+          setDeletePassword('');
+          setDeleteError('');
+        }}
+      >
         <View style={{
           flex: 1,
           backgroundColor: 'rgba(0,0,0,0.6)',
@@ -382,7 +446,7 @@ export default function HelpScreen() {
             <Text style={{
               fontSize: 20,
               fontFamily: FONT_DISPLAY_BOLD,
-              color: '#dc2626',
+              color: colors.danger,
               marginBottom: 12,
             }}>
               Delete Account?
@@ -426,7 +490,7 @@ export default function HelpScreen() {
 
             {deleteError !== '' && (
               <Text style={{
-                color: '#dc2626',
+                color: colors.danger,
                 fontSize: 13,
                 fontFamily: FONT_BODY_MEDIUM,
                 marginBottom: 12,
@@ -463,7 +527,7 @@ export default function HelpScreen() {
               <TouchableOpacity
                 style={{
                   flex: 1,
-                  backgroundColor: '#dc2626',
+                  backgroundColor: colors.danger,
                   borderRadius: 12,
                   padding: 12,
                   alignItems: 'center',
@@ -716,5 +780,24 @@ const createStyles = (c: ThemeColors) =>
     },
     bottomPadding: {
       height: 40,
+    },
+    // Danger action on the "Delete My Account" topic. Built from the theme so
+    // it reads correctly in dark mode (was a hard-coded light-red palette).
+    deleteBtn: {
+      marginTop: 20,
+      marginBottom: 4,
+      marginHorizontal: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      backgroundColor: c.surfaceLight,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.danger,
+    },
+    deleteBtnText: {
+      fontFamily: FONT_BODY_SEMIBOLD,
+      fontSize: 14,
+      color: c.danger,
+      textAlign: 'center',
     },
   });

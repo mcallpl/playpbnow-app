@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { playChatPing } from '../utils/sounds';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+// Canonical API host (audit C1). The old peoplestar.com/PlayPBNow/api value
+// never matched utils/apiClient's API_MARKER, so no Bearer token was attached
+// (every call 401'd) and on web the CORS pin blocked it outright — chat was
+// dead everywhere and sends failed silently.
+const API_URL = 'https://playpbnow.com/api';
 const POLL_INTERVAL = 3000;
 
 export interface InviteChatMessage {
@@ -18,7 +23,14 @@ export interface InviteChatMessage {
 export function useInviteChat() {
   const [messages, setMessages] = useState<InviteChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  // Last send failure, in words the organizer can act on. Cleared on the
+  // next successful send. The screen shows it under the input (audit C1:
+  // failures used to vanish without a trace).
+  const [sendError, setSendError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // App in the background: keep the interval but skip the network call
+  // (LOW: pause polling on AppState background). Resumes on foreground.
+  const appActiveRef = useRef(true);
   const lastIdRef = useRef<number>(0);
   const inviteIdRef = useRef<number | null>(null);
   const initialFetchDoneRef = useRef(false);
@@ -103,6 +115,7 @@ export function useInviteChat() {
       initialFetchDoneRef.current = true;
 
       pollingRef.current = setInterval(() => {
+        if (!appActiveRef.current) return;
         if (inviteIdRef.current === inviteId && !pollInProgressRef.current) {
           pollInProgressRef.current = true;
           fetchMessages(inviteIdRef.current, lastIdRef.current)
@@ -127,7 +140,13 @@ export function useInviteChat() {
           message: text,
         }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        // Read the server's reason when there is one (401 session, 403 not
+        // the organizer, etc.) instead of a bare status code.
+        let reason = '';
+        try { reason = (await res.json())?.message || ''; } catch { /* non-JSON body */ }
+        throw new Error(reason || (res.status === 401 ? 'Please sign in again' : `Could not send (HTTP ${res.status})`));
+      }
       const data = await res.json();
       if (data.status === 'success' && data.data) {
         const msg = data.data;
@@ -136,13 +155,35 @@ export function useInviteChat() {
           return [...prev, msg];
         });
         lastIdRef.current = msg.id;
+        setSendError(null);
         return true;
       }
+      setSendError(data.message || 'Message not sent');
       return false;
-    } catch {
+    } catch (err) {
+      setSendError(err instanceof Error && err.message ? err.message : 'Network error — message not sent');
       return false;
     }
   }, []);
+
+  const clearSendError = useCallback(() => setSendError(null), []);
+
+  // Pause the poll while the app is backgrounded; catch up immediately on
+  // return so the chat is current before the user looks at it.
+  useEffect(() => {
+    const onChange = (next: AppStateStatus) => {
+      const active = next === 'active';
+      const wasActive = appActiveRef.current;
+      appActiveRef.current = active;
+      if (active && !wasActive && inviteIdRef.current && initialFetchDoneRef.current && !pollInProgressRef.current) {
+        pollInProgressRef.current = true;
+        fetchMessages(inviteIdRef.current, lastIdRef.current)
+          .finally(() => { pollInProgressRef.current = false; });
+      }
+    };
+    const sub = AppState.addEventListener('change', onChange);
+    return () => { sub.remove(); };
+  }, [fetchMessages]);
 
   useEffect(() => {
     return () => {
@@ -158,5 +199,7 @@ export function useInviteChat() {
     sendMessage,
     startPolling,
     stopPolling,
+    sendError,
+    clearSendError,
   };
 }

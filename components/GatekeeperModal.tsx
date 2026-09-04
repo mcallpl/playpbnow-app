@@ -74,7 +74,7 @@ export function GatekeeperModal({ visible, onClose, onSuccess }: GatekeeperModal
                             </View>
                             <TextInput
                                 style={styles.input}
-                                placeholder="(555) 123-4567"
+                                placeholder="(555) 555-1234"
                                 placeholderTextColor={colors.inputPlaceholder}
                                 keyboardType="phone-pad"
                                 value={phoneNumber}
@@ -84,7 +84,7 @@ export function GatekeeperModal({ visible, onClose, onSuccess }: GatekeeperModal
 
                         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={loading}>
                             {loading ? (
-                                <ActivityIndicator color={colors.text} />
+                                <ActivityIndicator color={colors.accentText} />
                             ) : (
                                 <Text style={styles.saveBtnText}>UNLOCK NOW</Text>
                             )}
@@ -109,7 +109,8 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.inputBg, borderRadius: 10, paddingHorizontal: 15, height: 50, marginBottom: 20, borderWidth: 1, borderColor: c.inputBorder },
     input: { flex: 1, fontSize: 16, color: c.inputText, fontFamily: FONT_BODY_BOLD },
     saveBtn: { backgroundColor: c.accent, paddingVertical: 15, borderRadius: 10, alignItems: 'center', marginBottom: 10 },
-    saveBtnText: { color: c.text, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, letterSpacing: 1 },
+    // accentText, not text: white-on-green in dark mode was about 2.6:1 (M6).
+    saveBtnText: { color: c.accentText, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, letterSpacing: 1 },
     skipBtn: { alignItems: 'center', padding: 10 },
     skipText: { color: c.textMuted, fontFamily: FONT_BODY_BOLD },
 });

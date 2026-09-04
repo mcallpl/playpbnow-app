@@ -127,8 +127,17 @@ export function PlayerListStep({
             <TouchableOpacity onPress={() => onEditPlayer(item)}>
               <BrandedIcon name="edit" size={18} color={colors.textMuted} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => dispatch({ type: 'REMOVE_PLAYER', payload: item.id })}>
+            {/* UAT C-L2: this only takes the player out of THIS match (their
+                record is untouched) — say so instead of looking like delete. */}
+            <TouchableOpacity
+              onPress={() => dispatch({ type: 'REMOVE_PLAYER', payload: item.id })}
+              accessibilityLabel={`Remove ${item.first_name} from this match`}
+              accessibilityHint="Takes the player out of this match only. Their record is kept."
+              hitSlop={6}
+              style={{ alignItems: 'center' }}
+            >
               <BrandedIcon name="close" size={22} color={colors.danger} style={{ opacity: 0.5 }} />
+              <Text style={{ fontFamily: FONT_BODY_BOLD, fontSize: 7, letterSpacing: 0.5, color: colors.danger, opacity: 0.7, marginTop: -2 }}>REMOVE</Text>
             </TouchableOpacity>
           </View>
         </View>

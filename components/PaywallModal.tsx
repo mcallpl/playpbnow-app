@@ -13,7 +13,7 @@ import {
     View
 } from 'react-native';
 import { FONT_BODY_BOLD, FONT_BODY_MEDIUM, FONT_BODY_REGULAR, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, ThemeColors } from '../constants/theme';
-import { useSubscription } from '../context/SubscriptionContext';
+import { useSubscription, WEB_PURCHASE_MESSAGE } from '../context/SubscriptionContext';
 import { useTheme } from '../context/ThemeContext';
 import { BrandedIcon } from './BrandedIcon';
 
@@ -30,7 +30,7 @@ const isWeb = Platform.OS === 'web';
 export const PaywallModal: React.FC = () => {
     const {
         paywallVisible, paywallMessage, hidePaywall,
-        isTrial, trialDaysRemaining, isPro,
+        isTrial, trialDaysRemaining, isPro, subscription,
         offerings, offeringsLoading, offeringsError, retryLoadOfferings,
         purchaseSubscription, restorePurchases, purchaseLoading,
         purchaseViaStripe, redeemPromoCode,
@@ -39,6 +39,12 @@ export const PaywallModal: React.FC = () => {
     const styles = useMemo(() => createStyles(colors), [colors]);
     const [promoCode, setPromoCode] = useState('');
     const [showPromoInput, setShowPromoInput] = useState(false);
+    // Trial clock starts on the first saved match — an unstarted trial must
+    // not read as "N days left" (that implies it is already counting down).
+    const trialStarted = subscription?.trialStarted ?? true;
+    // Purchase controls exist on native only: the web build has no checkout
+    // endpoint, so web shows where Pro is bought instead (Audit A C3).
+    const showPurchaseControls = !isPro && !isWeb;
 
     const monthlyPrice = offerings.monthly?.product?.priceString || '$4.99';
     const annualPrice = offerings.annual?.product?.priceString || '$29.99';
@@ -110,7 +116,7 @@ export const PaywallModal: React.FC = () => {
                         {BENEFITS.map((b, i) => (
                             <View key={i} style={styles.benefitRow}>
                                 <View style={styles.checkCircle}>
-                                    <BrandedIcon name="checkmark" size={14} color={colors.text} />
+                                    <BrandedIcon name="checkmark" size={14} color={colors.accentText} />
                                 </View>
                                 <View style={styles.benefitText}>
                                     <Text style={styles.benefitTitle}>{b.title}</Text>
@@ -123,15 +129,31 @@ export const PaywallModal: React.FC = () => {
                     {/* Trial Info */}
                     {isTrial && trialDaysRemaining > 0 && (
                         <View style={styles.infoBox}>
-                            <BrandedIcon name="star" size={20} color={colors.accent} />
+                            <BrandedIcon name="star" size={20} color={colors.accentStrong} />
                             <Text style={styles.infoText}>
-                                You're enjoying a free <Text style={styles.infoBold}>{trialDaysRemaining}-day Pro trial</Text>! Subscribe now to keep all features.
+                                {trialStarted ? (
+                                    <>
+                                        You're on a free <Text style={styles.infoBold}>Pro trial</Text> with <Text style={styles.infoBold}>{trialDaysRemaining} day{trialDaysRemaining === 1 ? '' : 's'}</Text> left. Subscribe any time to keep every feature.
+                                    </>
+                                ) : (
+                                    <>
+                                        Your free <Text style={styles.infoBold}>{trialDaysRemaining}-day Pro trial</Text> starts with your first saved match. Subscribe any time to keep every feature.
+                                    </>
+                                )}
                             </Text>
                         </View>
                     )}
 
-                    {/* Purchase Buttons */}
-                    {!isPro && (
+                    {/* Web: no checkout here — explain where Pro is bought (Audit A C3) */}
+                    {!isPro && isWeb && (
+                        <View style={styles.infoBox}>
+                            <BrandedIcon name="phone" size={20} color={colors.accentStrong} />
+                            <Text style={styles.infoText}>{WEB_PURCHASE_MESSAGE}</Text>
+                        </View>
+                    )}
+
+                    {/* Purchase Buttons (native only) */}
+                    {showPurchaseControls && (
                         <View style={styles.purchaseSection}>
                             {/* Loading offerings */}
                             {!isWeb && offeringsLoading && (
@@ -160,7 +182,7 @@ export const PaywallModal: React.FC = () => {
                                 activeOpacity={0.8}
                             >
                                 {purchaseLoading ? (
-                                    <ActivityIndicator color="#ffffff" />
+                                    <ActivityIndicator color={colors.accentText} />
                                 ) : (
                                     <>
                                         <View style={styles.bestValueBadge}>
@@ -193,7 +215,9 @@ export const PaywallModal: React.FC = () => {
                             </TouchableOpacity>
                             )}
 
-                            {/* Promo Code — web only (Apple guideline 3.1.1) */}
+                            {/* Promo Code — web only (Apple guideline 3.1.1).
+                                Unreachable while purchase controls are native-
+                                only; kept for the day a web checkout ships. */}
                             {isWeb && (
                                 !showPromoInput ? (
                                     <TouchableOpacity style={styles.restoreBtn} onPress={() => setShowPromoInput(true)}>
@@ -237,7 +261,7 @@ export const PaywallModal: React.FC = () => {
                     )}
 
                     {/* Dismiss */}
-                    {isPro && (
+                    {(isPro || isWeb) && (
                         <TouchableOpacity style={styles.gotItBtn} onPress={hidePaywall} activeOpacity={0.8}>
                             <Text style={styles.gotItBtnText}>Got It</Text>
                         </TouchableOpacity>
@@ -247,10 +271,12 @@ export const PaywallModal: React.FC = () => {
                         <View style={styles.legalSection}>
                             <Text style={styles.legalText}>
                                 {isWeb
-                                    ? 'Payment is processed securely via Stripe. Subscription automatically renews unless canceled. You can manage your subscription from your account settings.'
-                                    : 'Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless it is canceled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions by going to your App Store account settings after purchase.'}
+                                    ? 'Subscriptions are billed by the App Store or Google Play and renew automatically unless cancelled. Manage or cancel them from your App Store or Google Play account settings.'
+                                    : Platform.OS === 'android'
+                                        ? 'Payment will be charged to your Google Play account at confirmation of purchase. Subscription automatically renews unless it is canceled at least 24 hours before the end of the current period. You can manage and cancel your subscriptions in your Google Play account settings after purchase.'
+                                        : 'Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless it is canceled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions by going to your App Store account settings after purchase.'}
                             </Text>
-                            {isTrial && trialDaysRemaining > 0 && (
+                            {isTrial && trialDaysRemaining > 0 && !isWeb && (
                                 <Text style={styles.legalText}>
                                     Any unused portion of a free trial period will be forfeited when you purchase a subscription.
                                 </Text>
@@ -310,7 +336,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     },
     proLabel: {
         backgroundColor: c.accent,
-        color: c.text,
+        color: c.accentText,
         fontFamily: FONT_DISPLAY_EXTRABOLD,
         fontSize: 14,
         paddingHorizontal: 10,
@@ -420,21 +446,24 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         color: '#000000',
         letterSpacing: 0.5,
     },
+    // Labels sit ON the accent fill: near-white was ~2.6:1 on the green in both
+    // themes; accentText is the dark ink the theme reserves for exactly this.
     purchaseBtnTitle: {
         fontFamily: FONT_DISPLAY_EXTRABOLD,
         fontSize: 18,
-        color: '#ffffff',
+        color: c.accentText,
     },
     purchaseBtnPrice: {
         fontFamily: FONT_BODY_BOLD,
         fontSize: 15,
-        color: '#ffffff',
+        color: c.accentText,
         marginTop: 2,
     },
     purchaseBtnSub: {
         fontFamily: FONT_BODY_REGULAR,
         fontSize: 12,
-        color: 'rgba(255,255,255,0.8)',
+        color: c.accentText,
+        opacity: 0.85,
         marginTop: 2,
     },
     purchaseBtnTitleMonthly: {
@@ -470,7 +499,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         shadowRadius: 5,
     },
     gotItBtnText: {
-        color: c.text,
+        color: c.accentText,
         fontFamily: FONT_DISPLAY_EXTRABOLD,
         fontSize: 16,
         letterSpacing: 0.5,
@@ -528,7 +557,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     retryBtnText: {
         fontFamily: FONT_DISPLAY_BOLD,
         fontSize: 14,
-        color: '#ffffff',
+        color: c.accentText,
     },
     promoRow: {
         flexDirection: 'row',
@@ -556,7 +585,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     promoBtnText: {
         fontFamily: FONT_DISPLAY_BOLD,
         fontSize: 13,
-        color: '#ffffff',
+        color: c.accentText,
         letterSpacing: 0.5,
     },
 });

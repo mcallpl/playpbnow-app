@@ -26,7 +26,7 @@ import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { BeaconProvider } from '../context/BeaconContext';
 import { PaywallModal } from '../components/PaywallModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth, signOut, PHONE_GATE_SKIP_PREFIX } from '../hooks/useAuth';
 import { useSoundPlayers } from '../utils/sounds';
 import { installAuthInterceptor, setOnUnauthorized } from '@/utils/apiClient';
 
@@ -43,6 +43,11 @@ import {
 
 const API_URL = 'https://playpbnow.com/api';
 
+// PhoneGate "Skip for now" is remembered per user_id for this long, then the
+// prompt comes back once (Audit A H4). The stamp survives sign-out on purpose
+// (see signOut in hooks/useAuth) so the same person is not nagged on re-login.
+const PHONE_GATE_SKIP_MS = 7 * 24 * 60 * 60 * 1000;
+
 SplashScreen.preventAutoHideAsync();
 
 function PhoneGate({ children }: { children: React.ReactNode }) {
@@ -57,6 +62,16 @@ function PhoneGate({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated || !userId) {
       setNeedsPhone(null);
       return;
+    }
+    // Honour a recent "Skip for now" before asking the server at all.
+    try {
+      const stamp = await AsyncStorage.getItem(PHONE_GATE_SKIP_PREFIX + userId);
+      if (stamp && Date.now() - Number(stamp) < PHONE_GATE_SKIP_MS) {
+        setNeedsPhone(false);
+        return;
+      }
+    } catch {
+      // storage unavailable — fall through to the normal check
     }
     try {
       const res = await fetch(`${API_URL}/check_phone.php`, {
@@ -96,20 +111,37 @@ function PhoneGate({ children }: { children: React.ReactNode }) {
         await AsyncStorage.setItem('user_phone', phoneInput.trim());
         setNeedsPhone(false);
       } else {
-        setError(data.message || 'Failed to save phone number.');
+        setError(data.message || "We couldn't save that number. Please check it and try again.");
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError("We couldn't reach PlayPBNow. Please check your connection and try again.");
     } finally {
       setSaving(false);
     }
+  };
+
+  // "Skip for now": dismiss and remember it for this user for 7 days. The
+  // gate used to be unclosable (onRequestClose was a no-op), which trapped
+  // anyone whose number already belonged to another account.
+  const handleSkip = async () => {
+    try {
+      if (userId) await AsyncStorage.setItem(PHONE_GATE_SKIP_PREFIX + userId, String(Date.now()));
+    } catch {}
+    setNeedsPhone(false);
+  };
+
+  // "Use a different account": the only way out when the number belongs to
+  // another account. Shared sign-out clears everything and lands on /login.
+  const handleSwitchAccount = async () => {
+    setNeedsPhone(false);
+    await signOut();
   };
 
   if (needsPhone) {
     return (
       <>
         {children}
-        <Modal animationType="slide" transparent visible onRequestClose={() => {}}>
+        <Modal animationType="slide" transparent visible onRequestClose={handleSkip}>
           <View style={{
             flex: 1,
             backgroundColor: 'rgba(0,0,0,0.6)',
@@ -127,7 +159,7 @@ function PhoneGate({ children }: { children: React.ReactNode }) {
                 color: colors.text,
                 textAlign: 'center',
                 marginBottom: 8,
-              }}>Phone Number Required</Text>
+              }}>Add Your Phone Number</Text>
               <Text style={{
                 fontSize: 14,
                 fontFamily: FONT_BODY_REGULAR,
@@ -135,7 +167,7 @@ function PhoneGate({ children }: { children: React.ReactNode }) {
                 textAlign: 'center',
                 marginBottom: 20,
                 lineHeight: 20,
-              }}>Your phone number is now used to sign in and recover your password. Please add it to continue.</Text>
+              }}>Add a phone number so you can recover your password by text if you ever forget it. It's optional — you can add it later in Settings.</Text>
               <TextInput
                 style={{
                   backgroundColor: colors.bg,
@@ -146,15 +178,19 @@ function PhoneGate({ children }: { children: React.ReactNode }) {
                   color: colors.text,
                   marginBottom: 12,
                 }}
-                placeholder="(949) 735-9415"
-                placeholderTextColor={colors.textMuted}
+                placeholder="(555) 555-1234"
+                placeholderTextColor={colors.inputPlaceholder}
                 keyboardType="phone-pad"
+                autoComplete="tel"
+                textContentType="telephoneNumber"
                 value={phoneInput}
                 onChangeText={setPhoneInput}
+                onSubmitEditing={handleSavePhone}
+                returnKeyType="done"
               />
               {error !== '' && (
                 <Text style={{
-                  color: '#dc2626',
+                  color: colors.danger,
                   fontSize: 13,
                   fontFamily: FONT_BODY_MEDIUM,
                   textAlign: 'center',
@@ -173,15 +209,38 @@ function PhoneGate({ children }: { children: React.ReactNode }) {
                 disabled={saving}
               >
                 {saving ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color={colors.accentText} size="small" />
                 ) : (
                   <Text style={{
-                    color: '#fff',
+                    color: colors.accentText,
                     fontSize: 16,
                     fontFamily: FONT_DISPLAY_EXTRABOLD,
                     letterSpacing: 1,
-                  }}>CONTINUE</Text>
+                  }}>SAVE NUMBER</Text>
                 )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSkip}
+                disabled={saving}
+                style={{ alignItems: 'center', paddingVertical: 14, minHeight: 44, justifyContent: 'center' }}
+              >
+                <Text style={{
+                  color: colors.text,
+                  fontSize: 14,
+                  fontFamily: FONT_BODY_SEMIBOLD,
+                }}>Skip for now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSwitchAccount}
+                disabled={saving}
+                style={{ alignItems: 'center', paddingVertical: 8, minHeight: 44, justifyContent: 'center' }}
+              >
+                <Text style={{
+                  color: colors.textMuted,
+                  fontSize: 13,
+                  fontFamily: FONT_BODY_MEDIUM,
+                  textDecorationLine: 'underline',
+                }}>Use a different account</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -277,7 +336,13 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary
+      // Surface every caught render crash in the device/browser console (and
+      // therefore in the Expo/EAS logs). A crash reporter can hook here later.
+      onError={(error, info) => {
+        console.error('[PlayPBNow] Uncaught render error:', error?.message || error, info?.componentStack || '');
+      }}
+    >
       <ThemeProvider>
         <RootLayoutInner />
       </ThemeProvider>

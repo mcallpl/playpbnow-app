@@ -85,9 +85,13 @@ export default function HeadToHeadModal({
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.subtitle}>
-                    DATA SOURCE: MY ENTRIES
-                </Text>
+                {/* UAT E-LOW: "DATA SOURCE: MY ENTRIES" was a leftover from the
+                    removed GLOBAL mode. The group being compared is what matters. */}
+                {!!groupName && (
+                    <Text style={styles.subtitle}>
+                        {groupName.toUpperCase()}
+                    </Text>
+                )}
 
                 <View style={styles.selectors}>
                     <TouchableOpacity style={styles.selectorBtn} onPress={() => { setPickingFor('p1'); setRosterSearch(''); }}>
@@ -113,8 +117,11 @@ export default function HeadToHeadModal({
                             style={styles.clickableArea}
                         >
                             <Text style={[styles.totalGames, stats.total > 0 && styles.clickableText]}>
-                                {stats.total} Games Played Against Each Other
+                                {stats.total} Game{stats.total === 1 ? '' : 's'} Played Against Each Other
                             </Text>
+                            {stats.ties > 0 && (
+                                <Text style={styles.diffText}>{stats.ties} tie{stats.ties === 1 ? '' : 's'} (counted for neither)</Text>
+                            )}
                             {stats.total > 0 && <Text style={styles.tapHint}>(Tap to view games)</Text>}
                         </TouchableOpacity>
 

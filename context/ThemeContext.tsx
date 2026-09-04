@@ -3,6 +3,10 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { Colors, ThemeColors } from '../constants/theme';
 
 const STORAGE_KEY = 'theme_preference';
+// Exported so the shared signOut() (hooks/useAuth.ts) can preserve the theme
+// across AsyncStorage.clear() — the theme is a device preference, not account
+// state, and used to be wiped on every logout.
+export const THEME_STORAGE_KEY = STORAGE_KEY;
 
 type ThemeMode = 'dark' | 'light';
 

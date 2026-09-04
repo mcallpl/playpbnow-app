@@ -25,8 +25,9 @@ import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
 import { TrialBanner } from '../../components/TrialBanner';
-import { useSubscription } from '../../context/SubscriptionContext';
+import { useSubscription, WEB_PURCHASE_MESSAGE } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
+import { signOut } from '../../hooks/useAuth';
 import {
   ThemeColors,
   FONT_DISPLAY_BOLD,
@@ -67,6 +68,10 @@ export default function HomeScreen() {
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { isPro, isFree, isTrial, isAdmin, trialDaysRemaining, showPaywall, features, subscription, refreshSubscription, restorePurchases, purchaseLoading } = useSubscription();
   const [groups, setGroups] = useState<Group[]>([]);
+  // Who is signed in — shown at the top of Settings (UAT 2026-09-04).
+  const [userLastName, setUserLastName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [userPhone, setUserPhone] = useState('');
   const [joinModalVisible, setJoinModalVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [changePasswordVisible, setChangePasswordVisible] = useState(false);
@@ -131,6 +136,16 @@ export default function HomeScreen() {
     const firstName = await AsyncStorage.getItem('user_first_name');
     const email = await AsyncStorage.getItem('user_email');
     setUserName(firstName || email || '');
+    const lastName = await AsyncStorage.getItem('user_last_name');
+    const phone = await AsyncStorage.getItem('user_phone');
+    setUserLastName(lastName || '');
+    setUserEmail(email || '');
+    setUserPhone(phone || '');
+    // Older sessions cached only the id — fill the identity row from the
+    // server so Settings never shows a blank "signed in as".
+    if (!firstName && !email && !phone) {
+      loadProfileFromAPI(uid);
+    }
 
     const cachedGroups = await loadCachedGroups();
     if (cachedGroups.length > 0) {
@@ -138,6 +153,25 @@ export default function HomeScreen() {
     }
 
     await Promise.all([loadGroupsFromAPI(uid), loadCourts()]);
+  };
+
+  const loadProfileFromAPI = async (uid: string) => {
+    try {
+      const res = await fetch(`${API_URL}/get_user_profile.php`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: uid }),
+      });
+      const data = await res.json();
+      if (data.status === 'success' && data.user) {
+        const u = data.user;
+        if (u.first_name) { setUserName(u.first_name); await AsyncStorage.setItem('user_first_name', u.first_name); }
+        if (u.last_name) { setUserLastName(u.last_name); await AsyncStorage.setItem('user_last_name', u.last_name); }
+        if (u.email) { setUserEmail(u.email); await AsyncStorage.setItem('user_email', u.email); if (!u.first_name) setUserName(u.email); }
+        if (u.phone) { setUserPhone(u.phone); await AsyncStorage.setItem('user_phone', u.phone); }
+      }
+    } catch (e) {
+      // best effort — the row simply shows what we have
+    }
   };
 
   const cacheGroups = async (groupsList: Group[]) => {
@@ -250,17 +284,23 @@ export default function HomeScreen() {
           body: JSON.stringify({ group_key: editingGroup.group_key, new_name: newGroupName.trim(), user_id: userId, court_id: selectedCourtId }),
         });
         const data = await res.json();
-        if (data.status === 'success') { haptic.save(); await loadGroups(userId); closeModal(); }
-        else Alert.alert('Error', data.message || 'Failed to update group');
+        // forceRefresh: loadGroups(uid) alone re-read the cache, so the rename
+        // did not show until the 30s background refresh (Audit E H1).
+        if (data.status === 'success') { haptic.save(); await loadGroups(userId, true); closeModal(); }
+        else Alert.alert('Could Not Update Group', data.message || "We couldn't update that group. Please try again.");
       } else {
         const res = await fetch(`${API_URL}/create_group.php`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: newGroupName.trim(), user_id: userId, court_id: selectedCourtId }),
         });
         const data = await res.json();
-        if (data.status === 'success') {
+        if (data.status === 'exists') {
+          // create_group.php reports a same-name group instead of silently
+          // reusing it (Audit E M2). Keep the modal open so they can rename.
+          Alert.alert('Group Already Exists', `You already have a group named "${newGroupName.trim()}". Pick a different name, or open the existing group from your list.`);
+        } else if (data.status === 'success') {
           haptic.save();
-          await loadGroups(userId);
+          await loadGroups(userId, true);
           const group = data.group;
           await AsyncStorage.setItem('active_group_name', group.name);
           await AsyncStorage.setItem('active_group_key', group.group_key);
@@ -269,9 +309,9 @@ export default function HomeScreen() {
             pathname: '/setup',
             params: { groupId: group.id.toString(), groupName: group.name, groupKey: group.group_key, courtId: (selectedCourtId || '').toString(), courtName: getSelectedCourtName() || '' }
           });
-        } else Alert.alert('Error', data.message || 'Failed to create group');
+        } else Alert.alert('Could Not Create Group', data.message || "We couldn't create that group. Please try again.");
       }
-    } catch (e) { Alert.alert('Error', 'Failed to save group'); }
+    } catch (e) { Alert.alert('Connection Problem', "We couldn't reach PlayPBNow. Please check your connection and try again."); }
     finally { setLoading(false); }
   };
 
@@ -300,13 +340,15 @@ export default function HomeScreen() {
         setNewCourtCity('');
         setNewCourtState('');
         setModalView('form');
-      } else { Alert.alert('Error', data.message); }
-    } catch (e) { Alert.alert('Error', 'Failed to create court'); }
+      } else { Alert.alert('Could Not Save Location', data.message || "We couldn't save that location. Please try again."); }
+    } catch (e) { Alert.alert('Connection Problem', "We couldn't reach PlayPBNow. Please check your connection and try again."); }
     finally { setSavingCourt(false); }
   };
 
   const deleteGroup = (group: Group) => {
-    Alert.alert("Delete Group", `Delete "${group.name}" and all its data?`, [
+    // Honest copy (Audit E M1): the server removes the group row; its players
+    // and match history stop appearing in Rankings rather than being wiped.
+    Alert.alert("Delete Group", `Remove "${group.name}"? Its players and match history will no longer appear in Rankings.`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete", style: "destructive", onPress: async () => {
@@ -317,9 +359,9 @@ export default function HomeScreen() {
               body: JSON.stringify({ group_key: group.group_key, user_id: userId }),
             });
             const data = await res.json();
-            if (data.status === 'success') await loadGroups(userId);
-            else Alert.alert('Error', data.message);
-          } catch (e) { Alert.alert('Error', 'Failed to delete group'); }
+            if (data.status === 'success') await loadGroups(userId, true);
+            else Alert.alert('Could Not Delete Group', data.message || "We couldn't delete that group. Please try again.");
+          } catch (e) { Alert.alert('Connection Problem', "We couldn't reach PlayPBNow. Please check your connection and try again."); }
           finally { setLoading(false); }
         }
       }
@@ -343,15 +385,43 @@ export default function HomeScreen() {
   const handleManageSubscription = async () => {
     if (Platform.OS === 'ios') {
       Linking.openURL('https://apps.apple.com/account/subscriptions');
-    } else {
+    } else if (Platform.OS === 'android') {
       Linking.openURL('https://play.google.com/store/account/subscriptions');
+    } else {
+      // Web (Audit A M4): a browser cannot open the store's subscription
+      // page for the matching account, so explain where the plan lives.
+      Alert.alert('Manage Subscription', WEB_PURCHASE_MESSAGE + ' Manage or cancel it from your App Store or Google Play account settings.');
     }
   };
 
+  // isPro now means PAID (or admin); a trialling user shows TRIAL and still
+  // sees "Upgrade to Pro" (Audit A H1 — trial users could not buy before).
   const tierLabel = isPro ? 'PRO' : isTrial ? 'TRIAL' : 'FREE';
   const tierColor = isPro ? colors.accent : isTrial ? colors.secondary : '#ff6b35';
+  // Dark ink on the green badge, white on the purple/orange ones (M6).
+  const tierTextColor = isPro ? colors.accentText : '#ffffff';
+  const trialStarted = subscription?.trialStarted ?? true;
+  const trialEndsLabel = subscription?.expiryDate
+    ? new Date(subscription.expiryDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
+  const isWeb = Platform.OS === 'web';
+  const identityLine = [userName, userLastName].filter(Boolean).join(' ').trim();
+  const contactLine = userEmail || userPhone || '';
 
-  const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
+  // One shared sign-out (Audit A H5) behind a confirm (L5). AsyncStorage.clear()
+  // alone left the in-memory Bearer token and RevenueCat identity behind.
+  const handleLogout = () => {
+    Alert.alert('Log Out', 'Log out of PlayPBNow?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out', style: 'destructive', onPress: async () => {
+          setSettingsVisible(false);
+          await signOut({ navigate: false });
+          router.replace('/login');
+        },
+      },
+    ]);
+  };
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -383,10 +453,10 @@ export default function HomeScreen() {
         setNewPassword('');
         setConfirmPassword('');
       } else {
-        Alert.alert('Error', data.message || 'Failed to change password');
+        Alert.alert('Could Not Change Password', data.message || "We couldn't change your password. Please check your current password and try again.");
       }
     } catch {
-      Alert.alert('Error', 'Network error. Please try again.');
+      Alert.alert('Connection Problem', "We couldn't reach PlayPBNow. Please check your connection and try again.");
     } finally {
       setPasswordLoading(false);
     }
@@ -399,18 +469,25 @@ export default function HomeScreen() {
       setDeleteError('');
       setDeleteAccountVisible(true);
     };
-    if (Platform.OS === 'web') {
-      showModal();
-    } else {
-      Alert.alert(
-        'Delete Account',
-        'This will permanently delete your account and all associated data. This action cannot be undone.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Continue', style: 'destructive', onPress: showModal },
-        ]
-      );
-    }
+    // iOS presents ONE native modal at a time — give Settings 450ms to
+    // dismiss before the confirm sheet / password modal (Audit E M8), the
+    // same workaround the Upgrade button already uses.
+    const present = () => {
+      if (Platform.OS === 'web') {
+        showModal();
+      } else {
+        Alert.alert(
+          'Delete Account',
+          'This will permanently delete your account and all associated data. This action cannot be undone.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Continue', style: 'destructive', onPress: () => setTimeout(showModal, 450) },
+          ]
+        );
+      }
+    };
+    if (Platform.OS === 'web') present();
+    else setTimeout(present, 450);
   };
 
   const confirmDeleteAccount = async () => {
@@ -430,6 +507,9 @@ export default function HomeScreen() {
       if (data.status === 'success') {
         setDeleteAccountVisible(false);
         await AsyncStorage.clear();
+        // The account and its sessions are gone — also drop the cached
+        // Bearer and RevenueCat identity (no server call needed).
+        await signOut({ skipServer: true, navigate: false });
         if (Platform.OS === 'web') {
           if (typeof window !== 'undefined') window.alert('Your account has been permanently deleted.');
         } else {
@@ -437,10 +517,10 @@ export default function HomeScreen() {
         }
         router.replace('/login');
       } else {
-        setDeleteError(data.message || 'Failed to delete account');
+        setDeleteError(data.message || "We couldn't delete your account. Please check your password and try again.");
       }
     } catch (e) {
-      setDeleteError('Network error. Please try again.');
+      setDeleteError("We couldn't reach PlayPBNow. Please check your connection and try again.");
     }
     setDeleteLoading(false);
   };
@@ -572,9 +652,9 @@ export default function HomeScreen() {
             value={newCourtState} onChangeText={setNewCourtState} autoCapitalize="characters" maxLength={2} />
 
           <TouchableOpacity style={styles.saveCourtBtn} onPress={handleAddCourt} disabled={savingCourt}>
-            {savingCourt ? <ActivityIndicator color={colors.bg} /> : (
+            {savingCourt ? <ActivityIndicator color={colors.accentText} /> : (
               <>
-                <BrandedIcon name="checkmark" size={22} color={colors.bg} />
+                <BrandedIcon name="checkmark" size={22} color={colors.accentText} />
                 <Text style={styles.saveCourtBtnText}>SAVE LOCATION</Text>
               </>
             )}
@@ -622,7 +702,7 @@ export default function HomeScreen() {
             <Text style={styles.cancelBtnText}>CANCEL</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={saveGroup} disabled={loading}>
-            {loading ? <ActivityIndicator color={colors.bg} /> : (
+            {loading ? <ActivityIndicator color={colors.accentText} /> : (
               <Text style={styles.saveBtnText}>
                 {editingGroup ? 'UPDATE' : 'CREATE'}
               </Text>
@@ -638,7 +718,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Your Groups</Text>
-          <Text style={styles.headerSub}>{userName ? `${userName} · ` : ''}{groups.length} groups · {totalPlayers} players</Text>
+          <Text style={styles.headerSub}>{userName ? `${userName} · ` : ''}{groups.length} group{groups.length === 1 ? '' : 's'} · {totalPlayers} player{totalPlayers === 1 ? '' : 's'}</Text>
         </View>
         <TouchableOpacity onPress={() => setJoinModalVisible(true)} style={styles.headerBtn}>
           <BrandedIcon name="flash" size={18} color={colors.text} />
@@ -714,6 +794,25 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Who is signed in (UAT 2026-09-04) */}
+            <View style={styles.settingsSection}>
+              <Text style={styles.settingsSectionTitle}>ACCOUNT</Text>
+              <View style={styles.identityRow}>
+                <View style={styles.identityAvatar}>
+                  <Text style={styles.identityAvatarText}>{(identityLine || contactLine || '?').trim().charAt(0).toUpperCase()}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.identityName} numberOfLines={1}>{identityLine || contactLine || 'Signed in'}</Text>
+                  {identityLine && contactLine ? (
+                    <Text style={styles.identityContact} numberOfLines={1}>{contactLine}</Text>
+                  ) : null}
+                  {userEmail && userPhone ? (
+                    <Text style={styles.identityContact} numberOfLines={1}>{userPhone}</Text>
+                  ) : null}
+                </View>
+              </View>
+            </View>
+
             {/* Appearance */}
             <View style={styles.settingsSection}>
               <Text style={styles.settingsSectionTitle}>APPEARANCE</Text>
@@ -738,17 +837,29 @@ export default function HomeScreen() {
                 <Text style={styles.settingsActionText}>Current Plan</Text>
                 <View style={{ flex: 1 }} />
                 <View style={[styles.tierBadge, { backgroundColor: tierColor }]}>
-                  <Text style={styles.tierBadgeText}>{tierLabel}</Text>
+                  <Text style={[styles.tierBadgeText, { color: tierTextColor }]}>{tierLabel}</Text>
                 </View>
               </View>
-              {isTrial && trialDaysRemaining !== null && (
+              {/* Trial copy: the clock starts on the first saved match, so an
+                  unstarted trial must not read "Trial Ends In 30 days". */}
+              {isTrial && !trialStarted && (
                 <Text style={{ color: colors.secondary, fontSize: 13, fontFamily: FONT_BODY_MEDIUM, marginBottom: 8 }}>
-                  Trial Ends In {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''}
+                  Pro Trial — your {trialDaysRemaining} days start with your first saved match
                 </Text>
               )}
-              {subscription?.expiryDate && (
+              {isTrial && trialStarted && trialDaysRemaining !== null && (
+                <Text style={{ color: colors.secondary, fontSize: 13, fontFamily: FONT_BODY_MEDIUM, marginBottom: 8 }}>
+                  Trial Ends In {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''}{trialEndsLabel ? ` (${trialEndsLabel})` : ''}
+                </Text>
+              )}
+              {subscription?.expiryDate && !(isTrial && trialStarted) && (
                 <Text style={{ color: colors.textMuted, fontSize: 12, fontFamily: FONT_BODY_REGULAR, marginBottom: 8 }}>
-                  Expires: {new Date(subscription.expiryDate).toLocaleDateString()}
+                  {isTrial ? 'Trial ends' : 'Expires'}: {new Date(subscription.expiryDate).toLocaleDateString()}
+                </Text>
+              )}
+              {isWeb && !isPro && (
+                <Text style={{ color: colors.textMuted, fontSize: 13, fontFamily: FONT_BODY_REGULAR, lineHeight: 19, marginBottom: 8 }}>
+                  {WEB_PURCHASE_MESSAGE}
                 </Text>
               )}
               {!isPro && (
@@ -760,27 +871,41 @@ export default function HomeScreen() {
                   setSettingsVisible(false);
                   setTimeout(() => showPaywall('Unlock all features with Pro!'), 450);
                 }}>
-                  <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
+                  <Text style={styles.upgradeBtnText}>{isTrial ? 'Subscribe to Pro' : 'Upgrade to Pro'}</Text>
                 </TouchableOpacity>
               )}
-              {isPro && (
+              {isPro && !isWeb && (
                 <TouchableOpacity style={styles.manageBtn} onPress={handleManageSubscription}>
                   <Text style={styles.manageBtnText}>Manage Subscription</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.settingsActionRow} onPress={restorePurchases} disabled={purchaseLoading}>
-                <BrandedIcon name="refresh" size={18} color={colors.secondary} />
-                <Text style={[styles.settingsActionText, { color: colors.secondary }]}>
-                  {purchaseLoading ? 'Restoring...' : 'Restore Purchases'}
+              {isPro && isWeb && (
+                // Web cannot open the store's subscription page for the right
+                // account (Audit A M4) — say where the plan is managed instead.
+                <Text style={{ color: colors.textMuted, fontSize: 13, fontFamily: FONT_BODY_REGULAR, lineHeight: 19, marginVertical: 8 }}>
+                  Manage or cancel your subscription in the PlayPBNow app on iPhone or Android, or from your App Store / Google Play account settings.
                 </Text>
-              </TouchableOpacity>
+              )}
+              {/* Restore Purchases is a StoreKit/Play call — native only (M4). */}
+              {!isWeb && (
+                <TouchableOpacity style={styles.settingsActionRow} onPress={restorePurchases} disabled={purchaseLoading}>
+                  <BrandedIcon name="refresh" size={18} color={colors.secondary} />
+                  <Text style={[styles.settingsActionText, { color: colors.secondary }]}>
+                    {purchaseLoading ? 'Restoring...' : 'Restore Purchases'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
             )}
 
-            {/* Account */}
+            {/* Account actions */}
             <View style={styles.settingsSection}>
-              <Text style={styles.settingsSectionTitle}>ACCOUNT</Text>
-              <TouchableOpacity style={styles.settingsActionRow} onPress={() => { setSettingsVisible(false); setChangePasswordVisible(true); }}>
+              <Text style={styles.settingsSectionTitle}>SECURITY</Text>
+              <TouchableOpacity style={styles.settingsActionRow} onPress={() => {
+                // iOS: one native modal at a time — let Settings dismiss first (M8).
+                setSettingsVisible(false);
+                setTimeout(() => setChangePasswordVisible(true), Platform.OS === 'web' ? 0 : 450);
+              }}>
                 <BrandedIcon name="lock" size={20} color={colors.text} />
                 <Text style={styles.settingsActionText}>Change Password</Text>
               </TouchableOpacity>
@@ -843,9 +968,9 @@ export default function HomeScreen() {
                 disabled={passwordLoading}
               >
                 {passwordLoading ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color={colors.accentText} size="small" />
                 ) : (
-                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.bg }}>Update</Text>
+                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.accentText }}>Update</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -887,9 +1012,11 @@ export default function HomeScreen() {
                 disabled={deleteLoading}
               >
                 {deleteLoading ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color="#ffffff" size="small" />
                 ) : (
-                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.bg }}>Delete Forever</Text>
+                  // White on the red danger fill in BOTH themes — colors.bg
+                  // was navy-on-red in dark mode.
+                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: '#ffffff' }}>Delete Forever</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -955,7 +1082,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   courtLabel: {
     fontFamily: FONT_BODY_MEDIUM,
     fontSize: 13,
-    color: c.accent,
+    color: c.accentStrong,
   },
   courtCityLabel: {
     fontFamily: FONT_BODY_REGULAR,
@@ -978,7 +1105,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   playerBadgeText: {
     fontFamily: FONT_DISPLAY_BOLD,
     fontSize: 16,
-    color: c.accent,
+    color: c.accentStrong,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -1028,20 +1155,22 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
     backgroundColor: c.accent,
     gap: 8,
   },
+  // Ink on accent fills is accentText (M6): c.bg was near-white on green in
+  // the light theme (about 2.5:1).
   createBtnPlus: {
     fontSize: 18,
     fontFamily: FONT_DISPLAY_EXTRABOLD,
-    color: c.bg,
+    color: c.accentText,
   },
   createBtnText: {
     fontFamily: FONT_DISPLAY_EXTRABOLD,
     fontSize: 14,
-    color: c.bg,
+    color: c.accentText,
     letterSpacing: 0.5,
   },
 
   groupCountLabel: {
-    color: c.accent,
+    color: c.accentStrong,
     fontSize: 12,
     fontFamily: FONT_BODY_BOLD,
     textAlign: 'center',
@@ -1108,7 +1237,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   cancelBtn: { backgroundColor: c.surfaceLight },
   cancelBtnText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.textSoft },
   saveBtn: { backgroundColor: c.accent },
-  saveBtnText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.bg },
+  saveBtnText: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.accentText },
 
   // Court picker
   courtOption: {
@@ -1145,7 +1274,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
     borderRadius: 8,
     marginTop: 16,
   },
-  saveCourtBtnText: { color: c.bg, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14 },
+  saveCourtBtnText: { color: c.accentText, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14 },
 
   closeBtn: { marginTop: 16, alignItems: "center", padding: 8, minHeight: 44, minWidth: 44, justifyContent: "center" },
   closeBtnText: { color: c.textMuted, fontFamily: FONT_BODY_BOLD },
@@ -1161,8 +1290,22 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   },
   settingsActionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   settingsActionText: { color: c.text, fontSize: 14, fontFamily: FONT_BODY_SEMIBOLD },
+  identityRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
+  identityAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: c.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  identityAvatarText: { color: c.accentText, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 18 },
+  identityName: { color: c.text, fontSize: 15, fontFamily: FONT_BODY_BOLD },
+  identityContact: { color: c.textMuted, fontSize: 13, fontFamily: FONT_BODY_REGULAR, marginTop: 2 },
   passwordInput: { backgroundColor: c.bg, borderRadius: 8, padding: 12, fontSize: 14, fontFamily: FONT_BODY_REGULAR, color: c.text, marginBottom: 12, height: 48 },
   tierBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
+  // Colour is set inline per badge (dark ink on the green PRO badge, white on
+  // the purple TRIAL / orange FREE badges) — see tierTextColor.
   tierBadgeText: { color: 'white', fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 12, letterSpacing: 1 },
   upgradeBtn: { backgroundColor: c.secondary, padding: 12, borderRadius: 8, alignItems: 'center', marginVertical: 8 },
   upgradeBtnText: { color: 'white', fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 14 },

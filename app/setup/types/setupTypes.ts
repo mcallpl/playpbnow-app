@@ -84,6 +84,8 @@ export interface SetupState {
   // Match config
   roundsConfig: RoundConfig[];
   isFixedTeams: boolean;
+  // UAT C-M3: courts available. null = auto (one per 4 players).
+  courts: number | null;
 
   // UI
   loading: boolean;
@@ -125,6 +127,7 @@ export type SetupAction =
   | { type: 'SET_COURT_SEARCH_TEXT'; payload: string }
   | { type: 'SET_ROUNDS_CONFIG'; payload: RoundConfig[] }
   | { type: 'SET_IS_FIXED_TEAMS'; payload: boolean }
+  | { type: 'SET_COURTS'; payload: number | null }
   | { type: 'ADD_ROUND' }
   | { type: 'REMOVE_ROUND' }
   | { type: 'UPDATE_ROUND_TYPE'; payload: { index: number; type: 'mixed' | 'gender' | 'mixer' } }
@@ -170,6 +173,7 @@ export const initialSetupState: SetupState = {
     { type: 'mixed' },
   ],
   isFixedTeams: false,
+  courts: null,
   loading: false,
   error: null,
 };

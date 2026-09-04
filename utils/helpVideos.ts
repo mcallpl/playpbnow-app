@@ -75,13 +75,13 @@ export const HELP_VIDEOS: HelpVideo[] = [
   {
     slug: 'm10-beacon',
     title: 'Beacons',
-    blurb: 'Post an open spot and fill your court',
+    blurb: 'Play Now: post a beacon and fill your court',
     seconds: 112,
   },
   {
     slug: 'm11-share-and-text',
     title: 'Share & Report',
-    blurb: 'Send results and share match reports',
+    blurb: 'TEXT MATCH: send the schedule and an HD match report',
     seconds: 95,
   },
 ];

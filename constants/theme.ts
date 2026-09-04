@@ -14,6 +14,10 @@ export const Colors = {
     // dark in BOTH themes: the accent is a mid-green in each, so dark text gives
     // ~9:1 contrast while a light value would give roughly 2.6:1 and fail.
     accentText: '#0f1b2d',
+    // Accent used AS TEXT on the theme background (labels, counts, links).
+    // In dark the accent itself is fine (#87ca37 on #0f1b2d is about 9:1);
+    // the light theme overrides this with a deeper green — see below.
+    accentStrong: '#87ca37',
     accentGlow: 'rgba(135, 202, 55, 0.15)',
     accentSoft: 'rgba(135, 202, 55, 0.08)',
     secondary: '#6c5ce7',
@@ -52,6 +56,10 @@ export const Colors = {
     // Dark here too — NOT the light `bg`. On #6db82c a near-white label is about
     // 2.6:1 (unreadable); this near-black is about 7:1.
     accentText: '#1a1d26',
+    // UAT 2026-09-04 (Audit E M6): the light accent #6db82c as TEXT on white is
+    // only 2.46:1. Buttons keep `accent` as their fill; anything that draws the
+    // accent as text on the page uses this deeper green (about 4.6:1 on white).
+    accentStrong: '#4f8f1f',
     accentGlow: 'rgba(109, 184, 44, 0.12)',
     accentSoft: 'rgba(109, 184, 44, 0.06)',
     secondary: '#6c5ce7',
@@ -60,7 +68,9 @@ export const Colors = {
     bronze: '#cd7f32',
     text: '#1a1d26',
     textMuted: '#6b7394',
-    textSoft: '#8892b0',
+    // Was #8892b0 (3.1:1 on white). Matched to textMuted so secondary copy in
+    // the light theme clears 4.5:1 (Audit E M6).
+    textSoft: '#6b7394',
     danger: '#ff4757',
     male: '#4facfe',
     female: '#f78ca2',

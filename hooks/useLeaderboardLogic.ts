@@ -157,7 +157,7 @@ export const useLeaderboardLogic = (
         try {
             const res = await fetch(`${API_URL}/get_universal_sessions.php?user_id=${encodeURIComponent(uid)}`);
             const responseText = await res.text();
-            console.log('📥 Sessions response:', responseText);
+            if (__DEV__) console.log('📥 Sessions response:', responseText);
             const data = JSON.parse(responseText);
             if (data.status === 'success') {
                 const sessions = data.sessions || [];
@@ -186,7 +186,7 @@ export const useLeaderboardLogic = (
             const batchToUse = explicitBatchId !== undefined ? explicitBatchId : selectedBatchId;
             const url = `${API_URL}/get_leaderboard.php?group=${encodeURIComponent(targetGroup)}&batch_id=${encodeURIComponent(batchToUse)}&user_id=${encodeURIComponent(uid)}`;
 
-            console.log('📊 Fetching leaderboard:', { uid, url });
+            if (__DEV__) console.log('📊 Fetching leaderboard:', { uid, url });
 
             const res = await fetch(url);
             const data = await res.json();
@@ -213,15 +213,19 @@ export const useLeaderboardLogic = (
                     };
                 });
 
-                console.log('📊 Loaded history:', safeHistory.length, 'matches');
+                if (__DEV__) console.log('📊 Loaded history:', safeHistory.length, 'matches');
 
                 setHistory(safeHistory);
                 setRoster(cleanRoster);
                 setAllSessions(data.sessions || []);
-                if (data.session_meta) setSessionMeta(data.session_meta);
+                // UAT E-H4: the server only sends session_meta for a specific
+                // session; ALL TIME (or an older server) must clear it so a
+                // previous session's fixed-teams/placements don't linger.
+                setSessionMeta(data.session_meta ?? {});
             } else {
                 setLeaderboard([]);
                 setHistory([]);
+                setSessionMeta({});
             }
         } catch (e) { console.error("Fetch error:", e); } 
         finally { setLoading(false); }

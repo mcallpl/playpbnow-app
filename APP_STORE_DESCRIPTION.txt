@@ -27,24 +27,24 @@ KEY FEATURES:
   and win percentage across all your matches.
 
 • Group Management
-  Create teams, invite friends, and track group statistics. Build your
-  pickleball community and compete together.
+  Create groups with a home court, build the roster, and track group
+  statistics. Build your pickleball community and compete together.
 
-• Player Invites
-  Browse a network of pickleball players and send invites to grow your
-  playing circle. Find new opponents and expand your game.
+• Smart Matchups
+  Rotating partners or fixed teams, mixed or gender rounds, round robin
+  with playoffs. The app builds who plays who; you just play.
 
 • Head-to-Head Statistics
   Compare detailed stats with other players. See match history, win records,
   and competitive matchups.
 
 • Beacons
-  Broadcast that you're looking to play. Nearby players get notified of your
-  availability for spontaneous games.
+  Tell players you're at the court and want to play. Anyone who opens Play
+  Now nearby can see your beacon, claim a spot, and chat.
 
-• Broadcasts
-  Share live match updates with friends in real-time. Keep your network
-  informed about current games.
+• Live Shared Scoring
+  Share a 6-letter code and everyone at the court scores from their own
+  phone, in sync, in real time.
 
 ================================================================================
 WHY PLAYPBNOW?
@@ -53,7 +53,7 @@ WHY PLAYPBNOW?
 ✓ Accurate score tracking with real-time scoring
 ✓ Sync across all your devices
 ✓ Clean, intuitive interface designed for the court
-✓ Free features included - no ads, no paywalls
+✓ Free to start - no ads; a 30-day Pro trial begins with your first saved match
 ✓ Build and manage your pickleball community
 ✓ Access comprehensive player statistics
 
@@ -74,8 +74,10 @@ tournament, friend network, community, paddle sports
 ================================================================================
 SUPPORT & LEGAL
 ================================================================================
-Support: https://peoplestar.com/PlayPBNow/help
-Privacy Policy: https://peoplestar.com/PlayPBNow/privacy.html
+Support: https://playpbnow.com/support.html
+Privacy Policy: https://playpbnow.com/privacy.html
+Terms of Service: https://playpbnow.com/terms.html
+Email: mcallpl@gmail.com
 
 Questions or feedback? We'd love to hear from you!
 Contact us through the app or visit our help page.

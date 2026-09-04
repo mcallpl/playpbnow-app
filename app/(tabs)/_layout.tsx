@@ -8,6 +8,12 @@ import { useSubscription } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { FONT_DISPLAY_BOLD } from '../../constants/theme';
 
+// A signed-in user's first screen is GROUPS, never the hidden `index` landing
+// page (Audit A M6). index.tsx is kept and redirects itself as a second guard.
+export const unstable_settings = {
+  initialRouteName: 'groups',
+};
+
 export default function TabLayout() {
   const { activeMatch } = useActiveMatch();
   const { hasOtherBeacons, hasOwnBeacon, otherBeaconCount } = useBeaconStatus();

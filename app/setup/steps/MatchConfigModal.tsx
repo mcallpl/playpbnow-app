@@ -29,7 +29,10 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
   const router = useRouter();
   const styles = useMemo(() => createSetupStyles(colors, false), [colors]);
 
-  const courtCount = Math.floor(state.players.length / 4);
+  const maxCourts = Math.max(1, Math.floor(state.players.length / 4));
+  // UAT C-M3: courts is user-settable; null = auto (one court per 4 players)
+  const courtCount = state.courts ? Math.min(state.courts, maxCourts) : maxCourts;
+  const sittersPerRound = Math.max(0, state.players.length - courtCount * 4);
   const teamCount = Math.floor(state.players.length / 2);
   const fixedRoundCount =
     teamCount > 1 ? (teamCount % 2 === 0 ? teamCount - 1 : teamCount) : 0;
@@ -92,6 +95,7 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
             group_key: state.groupKey,
             round_configs: state.roundsConfig,
             group: state.groupName,
+            courts: courtCount, // UAT C-M3
             players: state.players.map((p) => ({
               id: p.id,
               first_name: p.first_name,
@@ -105,12 +109,22 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
+      // UAT C-H1: an empty schedule is a failure, not a success — the old path
+      // navigated to a blank "No Matches Generated" screen with no explanation.
+      if (data.status === 'success' && (!Array.isArray(data.schedule) || data.schedule.length === 0)) {
+        Alert.alert(
+          'Could Not Build Matchups',
+          data.message || `Could not build ${state.roundsConfig.length} round${state.roundsConfig.length === 1 ? '' : 's'} for ${state.players.length} players. Try fewer rounds or a different round type.`
+        );
+        return;
+      }
       if (data.status === 'success') {
         const navId = await storeNavData({
           schedule: data.schedule,
           players: state.players,
           isFixedTeams: state.isFixedTeams,
           teams: teamsPayload,
+          courts: courtCount,
         });
         router.push({
           pathname: '/(tabs)/game',
@@ -124,12 +138,15 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
           },
         });
       } else {
-        Alert.alert('Error', data.message || 'Generation failed.');
+        Alert.alert('Could Not Build Matchups', data.message || 'Generation failed. Try fewer rounds or a different round type.');
       }
     } catch (e) {
       Alert.alert('Error', 'Network error.');
     }
   };
+
+  const ROUND_TYPE_LEGEND =
+    'Mixed = a man + a woman on each team  ·  Gender = men vs men, women vs women  ·  Mixer = anyone with anyone';
 
   return (
     <Modal visible={state.configModalVisible} transparent animationType="slide">
@@ -141,9 +158,12 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
               <Text style={styles.infoBoxText}>{state.players.length} Players</Text>
               <Text style={styles.infoBoxText}>·</Text>
               {state.isFixedTeams ? (
-                <Text style={styles.infoBoxText}>{teamCount} Teams</Text>
+                <Text style={styles.infoBoxText}>{teamCount} Team{teamCount === 1 ? '' : 's'}</Text>
               ) : (
-                <Text style={styles.infoBoxText}>{courtCount} Courts</Text>
+                <Text style={styles.infoBoxText}>
+                  {courtCount} Court{courtCount === 1 ? '' : 's'}
+                  {sittersPerRound > 0 ? ` · ${sittersPerRound} sit${sittersPerRound === 1 ? 's' : ''} each round` : ''}
+                </Text>
               )}
             </View>
 
@@ -196,6 +216,29 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
               </>
             ) : (
               <>
+                {/* UAT C-M3: courts stepper (default = one per 4 players) */}
+                <View style={styles.counterRow}>
+                  <Text style={styles.label}>COURTS:</Text>
+                  <View style={styles.roundControls}>
+                    <TouchableOpacity
+                      onPress={() => dispatch({ type: 'SET_COURTS', payload: courtCount - 1 })}
+                      style={[styles.roundBtn, courtCount <= 1 && { opacity: 0.3 }]}
+                      disabled={courtCount <= 1}
+                      accessibilityLabel="Fewer courts"
+                    >
+                      <BrandedIcon name="minus" size={24} color={colors.text} />
+                    </TouchableOpacity>
+                    <Text style={styles.roundCountText}>{courtCount}</Text>
+                    <TouchableOpacity
+                      onPress={() => dispatch({ type: 'SET_COURTS', payload: courtCount + 1 })}
+                      style={[styles.roundBtn, courtCount >= maxCourts && { opacity: 0.3 }]}
+                      disabled={courtCount >= maxCourts}
+                      accessibilityLabel="More courts"
+                    >
+                      <BrandedIcon name="add" size={24} color={colors.text} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
                 <View style={styles.counterRow}>
                   <Text style={styles.label}>ROUNDS:</Text>
                   <View style={styles.roundControls}>
@@ -257,6 +300,19 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
                     ))}
                   </ScrollView>
                 </View>
+                {/* UAT C-L4: one-line legend so MIXED / GENDER / MIXER never need guessing */}
+                <Text
+                  style={{
+                    fontFamily: FONT_BODY_REGULAR,
+                    fontSize: 11,
+                    lineHeight: 16,
+                    color: colors.textMuted,
+                    marginBottom: 12,
+                    textAlign: 'center',
+                  }}
+                >
+                  {ROUND_TYPE_LEGEND}
+                </Text>
               </>
             )}
             <TouchableOpacity style={styles.startMatchBtn} onPress={generateSchedule}>

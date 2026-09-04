@@ -14,6 +14,8 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert } from '@/utils/crossAlert';
+import { signOut } from '../../hooks/useAuth';
 
 import HeadToHeadModal from '../../components/HeadToHeadModal';
 import { HistoryModal } from '../../components/HistoryModal';
@@ -37,7 +39,13 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   const params = useLocalSearchParams();
   const { colors, isDark } = useTheme();
 
-  const handleLogout = async () => { await AsyncStorage.clear(); router.replace('/login'); };
+  // UAT E-M5: shared sign-out behind a confirm (was a one-tap AsyncStorage.clear)
+  const handleLogout = () => {
+      Alert.alert('Log Out', 'Log out of PlayPBNow?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Log Out', style: 'destructive', onPress: async () => { await signOut(); router.replace('/login'); } },
+      ]);
+  };
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const {
@@ -59,8 +67,13 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   } = useLeaderboardLogic(localHistory, localRoster);
 
   // Fixed teams flag: from URL params (direct navigation) or from session metadata (viewing past sessions)
-  const isFixedTeams = params.isFixedTeams === 'true' || sessionMeta?.is_fixed_teams === true;
-  const tournamentPlacementsRaw = params.tournamentPlacements as string || '';
+  // UAT E-H4: the URL params describe ONE session (the one just finished). Once
+  // the user switches to ALL TIME or another session they must stop applying,
+  // otherwise every board renders as fixed-teams with stale placements.
+  const paramsApplyToSelection =
+      selectedBatchId !== 'all' && (!params.sessionId || String(params.sessionId) === String(selectedBatchId));
+  const isFixedTeams = (paramsApplyToSelection && params.isFixedTeams === 'true') || sessionMeta?.is_fixed_teams === true;
+  const tournamentPlacementsRaw = paramsApplyToSelection ? (params.tournamentPlacements as string || '') : '';
 
   // Parse tournament placements: from URL params (direct) or session metadata (past sessions)
   const tournamentPlacements: { id: string; first_name: string }[][] = useMemo(() => {
@@ -288,10 +301,13 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
 
   const getActiveFilterLabel = (): string => {
       if (localHistory && localHistory.length > 0) return "CURRENT SESSION";
-      if (selectedBatchId === 'all') return "ALL TIME / SELECT SESSION";
+      if (selectedBatchId === 'all') return "ALL TIME";
       const session = universalSessions.find((s: any) => s.id === selectedBatchId);
       return session?.label || "Select Session";
   };
+
+  // UAT E-LOW: honest empty state instead of "No data found."
+  const EMPTY_RANKINGS_COPY = 'No scored games yet. Finish a match with scoring turned on and it will show up here.';
 
   const checkDeleteSessionPermission = () => {
       if (localHistory && localHistory.length > 0) return false;
@@ -436,12 +452,13 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/')} style={styles.backBtn}>
+        {/* UAT E-M4: home goes to Groups (the real home), not the hidden legacy index */}
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/groups')} style={styles.backBtn} accessibilityLabel="Home">
             <BrandedIcon name="home" size={24} color={colors.text} />
         </TouchableOpacity>
 
         <View style={{alignItems:'center', gap: 5}}>
-            <Text style={styles.title}>GAME STATS</Text>
+            <Text style={styles.title}>RANKINGS</Text>
 
             <View style={styles.sortRow}>
                 <TouchableOpacity onPress={() => setSortMode('wins')} style={[styles.sortBtn, sortMode === 'wins' && styles.sortBtnActive]}>
@@ -457,10 +474,10 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
         </View>
 
         <View style={{flexDirection:'row', gap: 10, alignItems: 'center'}}>
-            <TouchableOpacity onPress={() => setCompareModalVisible(true)} style={styles.backBtn}>
+            <TouchableOpacity onPress={() => setCompareModalVisible(true)} style={styles.backBtn} accessibilityLabel="Head to head">
                 <BrandedIcon name="players" size={24} color={colors.text} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleLogout} hitSlop={8}>
+            <TouchableOpacity onPress={handleLogout} hitSlop={8} accessibilityLabel="Log out">
                 <BrandedIcon name="logout" size={20} color={colors.textMuted} />
             </TouchableOpacity>
         </View>
@@ -471,7 +488,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           setFilterModalVisible(true);
       }} style={styles.dateBar}>
           <Text style={styles.dateBarText}>
-              {getActiveFilterLabel()} ▼
+              {getActiveFilterLabel()} ▾
           </Text>
       </TouchableOpacity>
 
@@ -485,7 +502,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             ListHeaderComponent={renderTeamPedestal}
             alwaysBounceHorizontal={false}
             contentContainerStyle={{padding: 16, paddingBottom: 100}}
-            ListEmptyComponent={<Text style={styles.empty}>{sortedTeamLeaderboard.length === 0 ? "No data found." : ""}</Text>}
+            ListEmptyComponent={<Text style={styles.empty}>{sortedTeamLeaderboard.length === 0 ? EMPTY_RANKINGS_COPY : ""}</Text>}
             refreshControl={<RefreshControl refreshing={loading} onRefresh={() => fetchLeaderboard(groupName, deviceId, selectedBatchId)} />}
         />
       ) : (
@@ -496,7 +513,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
             ListHeaderComponent={renderPedestal}
             alwaysBounceHorizontal={false}
             contentContainerStyle={{padding: 16, paddingBottom: 100}}
-            ListEmptyComponent={<Text style={styles.empty}>{leaderboard.length === 0 ? "No data found." : ""}</Text>}
+            ListEmptyComponent={<Text style={styles.empty}>{leaderboard.length === 0 ? EMPTY_RANKINGS_COPY : ""}</Text>}
             refreshControl={<RefreshControl refreshing={loading} onRefresh={() => fetchLeaderboard(groupName, deviceId, selectedBatchId)} />}
         />
       )}
@@ -539,7 +556,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
 
 const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg },
-  header: { padding: 16, paddingTop: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: c.surface },
+  header: { padding: 16, paddingTop: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: c.surface },
   title: { color: c.accent, fontSize: 12, fontFamily: FONT_DISPLAY_EXTRABOLD, textTransform: 'uppercase', textAlign:'center', marginBottom: 8 },
   sortRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   sortBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: c.surfaceLight },
@@ -571,5 +588,5 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   record: { fontSize: 12, color: c.textSoft, fontFamily: FONT_BODY_MEDIUM, marginTop: 4 },
   pctBox: { alignItems: 'flex-end' },
   pct: { fontSize: 18, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.accent },
-  empty: { textAlign: 'center', color: c.text, fontFamily: FONT_BODY_REGULAR, marginTop: 50, opacity: 0.5 },
+  empty: { textAlign: 'center', color: c.text, fontFamily: FONT_BODY_REGULAR, marginTop: 50, opacity: 0.5, paddingHorizontal: 32, lineHeight: 20 },
 });

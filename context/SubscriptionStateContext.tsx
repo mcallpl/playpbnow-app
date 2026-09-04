@@ -19,7 +19,13 @@ export interface SubscriptionData {
     trialStarted: boolean;
     trialDaysRemaining: number;
     trialExpired: boolean;
+    /** PAID (or admin). During the trial this is false — that is what lets a
+     *  trial user see the purchase buttons (UAT 2026-09-04, Audit A H1). */
     isPro: boolean;
+    /** Has Pro features right now: paid OR in an active trial OR admin.
+     *  Feature gates use this; purchase UI uses !isPro. Optional because
+     *  older API builds do not send it — consumers fall back to isPro. */
+    hasAccess?: boolean;
     isAdmin: boolean;
     features: SubscriptionFeatures;
 }
@@ -27,6 +33,8 @@ export interface SubscriptionData {
 interface SubscriptionStateContextType {
     subscription: SubscriptionData | null;
     isPro: boolean;
+    /** paid || trial || admin — gate features on this, never on isPro alone. */
+    hasAccess: boolean;
     isAdmin: boolean;
     isTrial: boolean;
     isFree: boolean;
@@ -46,6 +54,7 @@ export const DEFAULT_FEATURES: SubscriptionFeatures = {
 export const SubscriptionStateContext = createContext<SubscriptionStateContextType>({
     subscription: null,
     isPro: false,
+    hasAccess: false,
     isAdmin: false,
     isTrial: false,
     isFree: true,

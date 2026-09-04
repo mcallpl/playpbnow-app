@@ -42,12 +42,17 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
         }
     };
 
+    // UAT C-L7: on native "COPY" never copied (no clipboard module is
+    // installed). The system share sheet carries the bare code instead — its
+    // "Copy" action IS the clipboard, and Messages/WhatsApp are one tap away.
     const copyToClipboard = async () => {
         const text = shareCode;
         try {
             if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
                 await navigator.clipboard.writeText(text);
                 Alert.alert('Copied!', `Code "${shareCode}" copied to clipboard.`);
+            } else if (Platform.OS !== 'web') {
+                await Share.share(Platform.OS === 'ios' ? { message: text } : { message: text, title: 'Match code' });
             } else {
                 Alert.alert('Share Code', `Code: ${shareCode}\n\nShare this code with others so they can view and score this match live!`, [{ text: 'OK' }]);
             }
@@ -55,6 +60,7 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
             Alert.alert('Share Code', `Code: ${shareCode}`, [{ text: 'OK' }]);
         }
     };
+    const copyBtnLabel = Platform.OS === 'web' ? 'COPY' : 'SHARE CODE';
 
     return (
         <Modal visible={visible} animationType="slide" transparent>
@@ -81,12 +87,12 @@ export function ShareMatchModal({ visible, onClose, shareCode, matchTitle }: Sha
                     <View style={styles.buttons}>
                         <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
                             <BrandedIcon name="share" size={24} color="white" style={{ marginRight: 8 }} />
-                            <Text style={styles.shareBtnText}>SHARE CODE</Text>
+                            <Text style={styles.shareBtnText}>SHARE INVITE</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.copyBtn} onPress={copyToClipboard}>
+                        <TouchableOpacity style={styles.copyBtn} onPress={copyToClipboard} accessibilityLabel={Platform.OS === 'web' ? 'Copy code' : 'Share code'}>
                             <BrandedIcon name="copy" size={20} color={colors.text} style={{ marginRight: 8 }} />
-                            <Text style={styles.copyBtnText}>COPY</Text>
+                            <Text style={styles.copyBtnText}>{copyBtnLabel}</Text>
                         </TouchableOpacity>
                     </View>
 

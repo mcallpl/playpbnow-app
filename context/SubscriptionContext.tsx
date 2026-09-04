@@ -22,8 +22,26 @@ import { SubscriptionDispatchContext } from './SubscriptionDispatchContext';
 
 const isWeb = Platform.OS === 'web';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+// Canonical host (same-origin on web, so the Bearer header never trips CORS).
+// The legacy peoplestar.com/PlayPBNow/api path still serves the same PHP tree
+// and utils/apiClient recognises both, so nothing else has to move.
+const API_URL = 'https://playpbnow.com/api';
 const STORAGE_KEY = 'subscription_data';
+
+// The web build has NO checkout endpoint (stripe_create_checkout.php is a
+// 404 live — Audit A C3). Until one exists, the web paywall explains where
+// Pro is bought instead of promising a Stripe page that "Network error"s.
+// Flip this on when a checkout endpoint ships; the code path below is kept.
+const WEB_CHECKOUT_AVAILABLE = false;
+export const WEB_PURCHASE_MESSAGE =
+    "Pro is purchased in the PlayPBNow app on iPhone or Android. Your plan works everywhere once it's active.";
+
+// After a StoreKit/Play purchase the RevenueCat webhook has to reach our
+// server before check_subscription reports isPro. One 1.5s wait was a coin
+// flip; poll a few times instead (Audit A M9).
+const POST_PURCHASE_POLLS = 5;
+const POST_PURCHASE_POLL_MS = 1500;
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 // Convenience hook that combines both contexts (for backwards compatibility)
 export const useSubscription = () => {
@@ -82,11 +100,30 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
         setOfferingsLoading(false);
     }, []);
 
-    // Fetch subscription from your backend
-    const fetchSubscription = useCallback(async () => {
+    // Explicit RevenueCat identify for the login screen (Audit A C2). The mount
+    // path above configures with whatever user_id is in storage — before a
+    // login that is nobody, so RC minted an anonymous customer and the
+    // webhook's app_user_id ("$RCAnonymousID:...") matched no users.id row.
+    const identifyPurchasesUser = useCallback(async (userId: string) => {
+        if (isWeb || !userId) return;
+        try {
+            if (!rcInitialized.current) {
+                await initializePurchases(userId);
+                rcInitialized.current = true;
+            }
+            await identifyUser(userId);
+        } catch (e) {
+            console.error('RevenueCat identify error (ignored):', e);
+        }
+    }, []);
+
+    // Fetch subscription from your backend.
+    // Returns the parsed data (or null) so callers such as the post-purchase
+    // poll can inspect it without waiting for a React state round-trip.
+    const fetchSubscription = useCallback(async (): Promise<SubscriptionData | null> => {
         try {
             const userId = await AsyncStorage.getItem('user_id');
-            if (!userId) return;
+            if (!userId) return null;
 
             // The cache must NEVER cross accounts: if it was written for a
             // different user, drop it and reset state BEFORE fetching. (Bug:
@@ -118,6 +155,10 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
                     trialDaysRemaining: data.subscription.trialDaysRemaining,
                     trialExpired: data.subscription.trialExpired,
                     isPro: data.subscription.isPro,
+                    // Older servers omit hasAccess; there isPro already meant
+                    // "paid or trialling", so falling back to it keeps every
+                    // existing gate exactly as it was.
+                    hasAccess: data.subscription.hasAccess ?? data.subscription.isPro,
                     isAdmin: data.subscription.isAdmin ?? false,
                     features: {
                         canGenerateCleanReports: data.features.canGenerateCleanReports,
@@ -135,6 +176,7 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
                 } catch (storageError) {
                     console.error('Failed to cache subscription:', storageError);
                 }
+                return subData;
             }
         } catch (e) {
             console.error('Failed to fetch subscription:', e);
@@ -144,12 +186,15 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
                 const cacheOwner = await AsyncStorage.getItem(`${STORAGE_KEY}_owner`);
                 const cached = await AsyncStorage.getItem(STORAGE_KEY);
                 if (cached && !subscription && userId && cacheOwner === userId) {
-                    setSubscription(JSON.parse(cached));
+                    const parsed = JSON.parse(cached);
+                    setSubscription(parsed);
+                    return parsed;
                 }
             } catch (ce) {
                 console.error('Failed to load cached subscription:', ce);
             }
         }
+        return null;
     }, []);
 
     // Load cached data on mount, then init RC and refresh from server
@@ -188,7 +233,14 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
     const isPro = useMemo(() => subscription?.isPro ?? false, [subscription?.isPro]);
     const isAdmin = useMemo(() => subscription?.isAdmin ?? false, [subscription?.isAdmin]);
     const isTrial = useMemo(() => subscription?.subscriptionStatus === 'trial', [subscription?.subscriptionStatus]);
-    const isFree = useMemo(() => !isPro, [isPro]);
+    // Feature access = paid OR active trial OR admin. isFree derives from THIS,
+    // not from isPro, so a trial user is neither "free" (no paywall on Pro
+    // features) nor "pro" (still shown the purchase buttons) — Audit A H1.
+    const hasAccess = useMemo(
+        () => (subscription?.hasAccess ?? subscription?.isPro ?? false) || isAdmin,
+        [subscription?.hasAccess, subscription?.isPro, isAdmin]
+    );
+    const isFree = useMemo(() => !hasAccess, [hasAccess]);
     const trialDaysRemaining = useMemo(() => subscription?.trialDaysRemaining ?? 0, [subscription?.trialDaysRemaining]);
     const features = useMemo(() => subscription?.features ?? DEFAULT_FEATURES, [subscription?.features]);
 
@@ -225,10 +277,14 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
             }
 
             if (hasProEntitlement(customerInfo)) {
-                // Purchase succeeded — refresh from backend (webhook will have updated it)
-                // Give webhook a moment to process
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                await fetchSubscription();
+                // Purchase succeeded — refresh from backend (webhook will have updated it).
+                // Poll rather than a single fixed wait: the webhook round-trip
+                // is usually 1-3s but occasionally longer (Audit A M9).
+                for (let attempt = 0; attempt < POST_PURCHASE_POLLS; attempt++) {
+                    await sleep(POST_PURCHASE_POLL_MS);
+                    const latest = await fetchSubscription();
+                    if (latest?.isPro) break;
+                }
                 setPurchaseLoading(false);
                 return true;
             }
@@ -239,7 +295,11 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
             return true;
         } catch (e: any) {
             setPurchaseLoading(false);
-            Alert.alert('Purchase Failed', e.message || 'Something went wrong. Please try again.');
+            console.error('Purchase error:', e);
+            Alert.alert(
+                'Purchase Not Completed',
+                "We couldn't complete that purchase. You have not been charged. Please try again in a moment."
+            );
             return false;
         }
     }, [fetchSubscription]);
@@ -263,7 +323,11 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
             return false;
         } catch (e: any) {
             setPurchaseLoading(false);
-            Alert.alert('Restore Failed', e.message || 'Could not restore purchases. Please try again.');
+            console.error('Restore error:', e);
+            Alert.alert(
+                'Restore Not Completed',
+                "We couldn't check your purchases right now. Please make sure you're signed in to the App Store or Google Play and try again."
+            );
             return false;
         }
     }, [fetchSubscription]);
@@ -273,6 +337,12 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
     // an App Store 3.1.1 violation, so this hard-guards against any call path.
     const purchaseViaStripe = useCallback(async (plan: 'monthly' | 'annual') => {
         if (!isWeb) return;
+        if (!WEB_CHECKOUT_AVAILABLE) {
+            // No checkout endpoint exists on the web build yet — say so
+            // instead of posting to a 404 (Audit A C3).
+            Alert.alert('Get Pro in the App', WEB_PURCHASE_MESSAGE);
+            return;
+        }
         setPurchaseLoading(true);
         try {
             const userId = await AsyncStorage.getItem('user_id');
@@ -297,16 +367,21 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
                     Linking.openURL(data.checkout_url);
                 }
             } else {
-                Alert.alert('Error', data.message || 'Could not start checkout.');
+                Alert.alert('Checkout Unavailable', data.message || "We couldn't start checkout right now. Please try again in a moment.");
             }
         } catch (e) {
-            Alert.alert('Error', 'Network error. Please try again.');
+            Alert.alert('Connection Problem', "We couldn't reach PlayPBNow. Please check your connection and try again.");
         }
         setPurchaseLoading(false);
     }, []);
 
     // Redeem promo/bypass code (works on all platforms)
     const redeemPromoCode = useCallback(async (code: string): Promise<boolean> => {
+        if (isWeb && !WEB_CHECKOUT_AVAILABLE) {
+            // The redeem endpoint is the same missing checkout script.
+            Alert.alert('Get Pro in the App', WEB_PURCHASE_MESSAGE);
+            return false;
+        }
         setPurchaseLoading(true);
         try {
             const userId = await AsyncStorage.getItem('user_id');
@@ -343,7 +418,7 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
                 return false;
             }
         } catch (e) {
-            Alert.alert('Error', 'Network error. Please try again.');
+            Alert.alert('Connection Problem', "We couldn't reach PlayPBNow. Please check your connection and try again.");
             setPurchaseLoading(false);
             return false;
         }
@@ -368,12 +443,13 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
     const stateValue = useMemo(() => ({
         subscription,
         isPro,
+        hasAccess,
         isAdmin,
         isTrial,
         isFree,
         trialDaysRemaining,
         features,
-    }), [subscription, isPro, isAdmin, isTrial, isFree, trialDaysRemaining, features]);
+    }), [subscription, isPro, hasAccess, isAdmin, isTrial, isFree, trialDaysRemaining, features]);
 
     // Memoize dispatch context value
     const dispatchValue = useMemo(() => ({
@@ -389,6 +465,7 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
         purchaseSubscription,
         restorePurchases: handleRestorePurchases,
         purchaseLoading,
+        identifyPurchasesUser,
         purchaseViaStripe,
         redeemPromoCode,
     }), [
@@ -404,6 +481,7 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
         purchaseSubscription,
         handleRestorePurchases,
         purchaseLoading,
+        identifyPurchasesUser,
         purchaseViaStripe,
         redeemPromoCode,
     ]);

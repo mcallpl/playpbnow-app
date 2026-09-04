@@ -20,6 +20,7 @@ import Svg, { Rect, Line, Circle, Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BrandedIcon } from '../../components/BrandedIcon';
 import { useTheme } from '../../context/ThemeContext';
+import { signOut } from '../../hooks/useAuth';
 import {
   ThemeColors,
   FONT_DISPLAY_EXTRABOLD,
@@ -94,6 +95,29 @@ export default function LandingScreen() {
   const [systemStatus, setSystemStatus] = useState<'stable' | 'checking'>('checking');
   const [lastSync, setLastSync] = useState<number | null>(null);
 
+  // This landing route must never be the first thing a signed-in user sees
+  // (Audit A M6): send them straight to Groups. The screen itself is kept —
+  // it is still reachable when there is no session.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [token, uid] = await Promise.all([
+          AsyncStorage.getItem('session_token'),
+          AsyncStorage.getItem('user_id'),
+        ]);
+        if (!cancelled && token && uid) {
+          router.replace('/(tabs)/groups');
+        }
+      } catch {
+        // storage unavailable — fall through and render the landing page
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -116,18 +140,19 @@ export default function LandingScreen() {
   };
 
   const handleLogout = () => {
+    // Shared sign-out (Audit A H5): clears every cached key, the Bearer token
+    // and the RevenueCat identity, revokes the server session, and lands on
+    // /login. AsyncStorage.clear() alone left the in-memory token behind.
     const doLogout = async () => {
-      await AsyncStorage.clear();
+      await signOut({ navigate: false });
       router.replace('/login');
     };
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm('Are you sure you want to log out?')) doLogout();
-    } else {
-      Alert.alert('Log Out', 'Are you sure you want to log out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Log Out', style: 'destructive', onPress: doLogout },
-      ]);
-    }
+    // crossAlert maps this to window.confirm on web and the native sheet on
+    // iOS/Android, so one call covers both.
+    Alert.alert('Log Out', 'Log out of PlayPBNow?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log Out', style: 'destructive', onPress: doLogout },
+    ]);
   };
 
   // Account deletion state
@@ -174,6 +199,9 @@ export default function LandingScreen() {
       if (data.status === 'success') {
         setDeleteModalVisible(false);
         await AsyncStorage.clear();
+        // The account (and its server sessions) are gone — drop the cached
+        // Bearer and RevenueCat identity too, no server call needed.
+        await signOut({ skipServer: true, navigate: false });
         if (Platform.OS === 'web') {
           if (typeof window !== 'undefined') window.alert('Your account has been permanently deleted.');
         } else {
@@ -181,10 +209,10 @@ export default function LandingScreen() {
         }
         router.replace('/login');
       } else {
-        setDeleteError(data.message || 'Failed to delete account');
+        setDeleteError(data.message || "We couldn't delete your account. Please check your password and try again.");
       }
     } catch (e) {
-      setDeleteError('Network error. Please try again.');
+      setDeleteError("We couldn't reach PlayPBNow. Please check your connection and try again.");
     }
     setDeleteLoading(false);
   };
@@ -358,7 +386,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     marginTop: 8,
   },
   enterText: {
-    color: 'white',
+    color: c.accentText,
     fontSize: 16,
     fontFamily: FONT_DISPLAY_BOLD,
     letterSpacing: 0.5,

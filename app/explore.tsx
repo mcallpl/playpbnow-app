@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { Redirect } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 
 import { Collapsible } from '@/components/ui/collapsible';
@@ -9,7 +10,15 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 
-export default function TabTwoScreen() {
+// Expo template leftover. It was still a live route (/explore) showing
+// "This app includes example code..." to anyone who typed the URL
+// (Audit A L7). The route now lands on Groups; the template screen is kept
+// below as a named export rather than deleted.
+export default function ExploreRedirect() {
+  return <Redirect href="/(tabs)/groups" />;
+}
+
+export function TabTwoScreen() {
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}

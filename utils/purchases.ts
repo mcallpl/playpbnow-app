@@ -36,8 +36,32 @@ export async function initializePurchases(appUserId?: string): Promise<void> {
  */
 export async function identifyUser(appUserId: string): Promise<CustomerInfo> {
   if (isExpoGo) return {} as CustomerInfo;
+  // logIn() before configure() throws inside the native SDK. The provider
+  // configures on mount, but the login screen can race it — configure here
+  // with the real id so the purchase is never attributed to $RCAnonymousID
+  // (UAT 2026-09-04, Audit A C2).
+  if (!isInitialized) {
+    await initializePurchases(appUserId);
+  }
   const { customerInfo } = await Purchases.logIn(appUserId);
   return customerInfo;
+}
+
+/**
+ * Detach the RevenueCat identity on sign-out so the next account on this
+ * device does not inherit the previous user's entitlements. Never throws —
+ * logout must not be blocked by a billing SDK hiccup.
+ */
+export async function logOutPurchasesUser(): Promise<void> {
+  if (isExpoGo || !isInitialized || Platform.OS === 'web') return;
+  try {
+    const anonymous = await Purchases.isAnonymous();
+    if (!anonymous) {
+      await Purchases.logOut();
+    }
+  } catch (e) {
+    console.error('RevenueCat logOut error (ignored):', e);
+  }
 }
 
 /**

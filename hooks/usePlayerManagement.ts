@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState } from 'react';
 import { Alert } from '@/utils/crossAlert';
 
-const API_URL = 'https://peoplestar.com/PlayPBNow/api';
+// Canonical same-origin host: the auth interceptor in utils/apiClient.ts only
+// attaches the Bearer token to 'playpbnow.com/api' URLs (UAT H7 / E-M9).
+const API_URL = 'https://playpbnow.com/api';
 
 export interface Player {
     id: number;

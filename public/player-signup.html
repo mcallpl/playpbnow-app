@@ -584,7 +584,7 @@
         <label>Interested in Tournaments?</label>
         <div class="checkbox-group" id="upd-tournament-group">
           <label class="chip selected" data-value="Yes"><input type="checkbox" checked>Yes, invite me!</label>
-          <label class="chip" data-value="No"><input type="checkbox">No, advance notice only</label>
+          <label class="chip" data-value="No"><input type="checkbox">Not right now</label>
         </div>
       </div>
 
@@ -616,19 +616,20 @@
 <section class="invite-view" id="invite-view">
   <div style="text-align:center;margin-bottom:24px">
     <div class="logo-badge" style="display:inline-flex">
-      <img src="/PlayPBNow/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!">
+      <img src="https://playpbnow.com/api/images/PlayPBNow-Logo-SMALL.png" alt="Play Pickleball NOW!">
     </div>
   </div>
-  <h2 class="section-title" style="margin-bottom:8px">You're Invited!</h2>
-  <p style="text-align:center;color:var(--muted);font-size:1rem;margin-bottom:24px">A match organizer wants you to play. Check the details and respond below.</p>
+  <h2 class="section-title" id="invite-heading" style="margin-bottom:8px">You're Invited!</h2>
+  <p id="invite-subheading" style="text-align:center;color:var(--muted);font-size:1rem;margin-bottom:24px">A match organizer wants you to play. Check the details and respond below.</p>
 
   <div class="invite-card">
     <div id="invite-alert" class="alert"></div>
     <div id="invite-details"></div>
+    <div id="invite-your-status" style="display:none;text-align:center;margin:16px 0 4px;color:var(--soft);font-size:0.95rem"></div>
     <div class="response-buttons" id="response-buttons" style="display:none">
-      <button class="response-btn confirm" onclick="respondToInvite('confirmed')">I'm In!</button>
-      <button class="response-btn interested" onclick="respondToInvite('interested')">Interested</button>
-      <button class="response-btn decline" onclick="respondToInvite('declined')">Can't Make It</button>
+      <button class="response-btn confirm" id="btn-confirm" onclick="respondToInvite('confirmed')">I'm In!</button>
+      <button class="response-btn interested" id="btn-interested" onclick="respondToInvite('interested')">Interested</button>
+      <button class="response-btn decline" id="btn-decline" onclick="respondToInvite('declined')">Can't Make It</button>
     </div>
   </div>
 
@@ -644,8 +645,22 @@
 </footer>
 
 <script>
-const API = 'https://peoplestar.com/PlayPBNow/api';
+// Canonical API host. This page is served from playpbnow.com, so this is
+// same-origin (no CORS); peoplestar.com/PlayPBNow/api is the legacy host.
+const API = 'https://playpbnow.com/api';
 let registeredPhone = '';
+
+// Escape anything that came from the server before it goes into innerHTML
+// (audit H5): court name, address, match type, cost and the organizer's
+// message are all free text typed by an organizer.
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // Smart chip toggle logic with auto-collapse
 const ALL_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];

@@ -51,10 +51,12 @@ export const useHeadToHead = (
         return map;
     }, [history]);
 
-    console.log('🗺️ OpponentMap size:', opponentMap.size);
-    console.log('🗺️ Sample keys:', Array.from(opponentMap.keys()).slice(0, 5));
-    console.log('🗺️ History length:', history.length);
-    console.log('🗺️ Sample history p1:', history[0]?.p1, 'p1_name:', history[0]?.p1_name);
+    if (__DEV__) {
+        console.log('🗺️ OpponentMap size:', opponentMap.size);
+        console.log('🗺️ Sample keys:', Array.from(opponentMap.keys()).slice(0, 5));
+        console.log('🗺️ History length:', history.length);
+        console.log('🗺️ Sample history p1:', history[0]?.p1, 'p1_name:', history[0]?.p1_name);
+    }
 
     useEffect(() => {
         if (p1 && p2) {
@@ -68,6 +70,7 @@ export const useHeadToHead = (
     const calculateStats = (id1: string, id2: string) => {
         let p1_wins = 0;
         let p2_wins = 0;
+        let ties = 0; // UAT C-L10: a tied game is a win for neither
         let total = 0;
         let diff = 0;
         const matches: MatchRecord[] = [];
@@ -97,16 +100,20 @@ export const useHeadToHead = (
             matches.push(safeMatch);
             total++;
 
-            const winningTeam = safeMatch.s1 > safeMatch.s2 ? 1 : 2;
-
-            if (p1Team === winningTeam) p1_wins++;
-            else p2_wins++;
+            // UAT C-L10: ties used to be credited to Player 2. Now neither.
+            if (safeMatch.s1 === safeMatch.s2) {
+                ties++;
+            } else {
+                const winningTeam = safeMatch.s1 > safeMatch.s2 ? 1 : 2;
+                if (p1Team === winningTeam) p1_wins++;
+                else p2_wins++;
+            }
 
             if (p1Team === 1) diff += (safeMatch.s1 - safeMatch.s2);
             else diff += (safeMatch.s2 - safeMatch.s1);
         });
 
-        setStats({ p1_wins, p2_wins, total, diff });
+        setStats({ p1_wins, p2_wins, ties, total, diff });
         setFilteredMatches(matches.sort((a, b) => b.timestamp - a.timestamp));
     };
 

@@ -111,7 +111,11 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
     };
 
     // CORE RULES ENGINE — returns ScoreChangeResult
-    const handleScoreChange = (rIdx: number, gIdx: number, team: 't1' | 't2', value: string): ScoreChangeResult | null => {
+    const handleScoreChange = (rIdx: number, gIdx: number, team: 't1' | 't2', rawValue: string): ScoreChangeResult | null => {
+        // UAT C-M10: a score is digits only. The numeric keyboard still offers
+        // "-" and "." (and web accepts anything), and save_scores cast whatever
+        // was stored to 0 — so "-5" or "a" silently became a 0-point game.
+        const value = (rawValue ?? '').replace(/[^0-9]/g, '');
         if (value.length > 2) return null;
 
         const currentKey = `${rIdx}_${gIdx}_${team}`;
@@ -217,8 +221,8 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
     };
 
     const updateWTS = (val: string) => {
-        const num = parseInt(val);
-        if (!isNaN(num) && num > 0) {
+        const num = parseInt((val ?? '').replace(/[^0-9]/g, ''));
+        if (!isNaN(num) && num > 0 && num <= 99) {
             setWinningScore(num);
             AsyncStorage.setItem(`wts_${groupName}`, val);
         }

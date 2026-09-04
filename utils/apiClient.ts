@@ -17,6 +17,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_MARKER = 'playpbnow.com/api';
+// UAT 2026-09-04 (Audit A H3): several hooks still talk to the legacy
+// peoplestar.com/PlayPBNow/api host, and nothing there carried a Bearer, so
+// update_player/delete_player came back 401 "Authentication required". Both
+// hosts are the same PHP tree, so both get the token and the 401 self-heal.
+// Additive: the original marker is still first in the list.
+const API_MARKERS = [API_MARKER, 'peoplestar.com/PlayPBNow/api'];
+
+function isPlayPBNowApiUrl(url: string): boolean {
+  for (const marker of API_MARKERS) {
+    if (url.indexOf(marker) !== -1) return true;
+  }
+  return false;
+}
 
 let cachedToken: string | null = null;
 let primed = false;
@@ -64,7 +77,7 @@ export function installAuthInterceptor(): void {
     let url = '';
     try {
       url = typeof input === 'string' ? input : (input && input.url) || '';
-      if (url.indexOf(API_MARKER) !== -1) {
+      if (isPlayPBNowApiUrl(url)) {
         isApiCall = true;
         if (!primed) {
           await primeAuthToken();
@@ -102,6 +115,19 @@ export function installAuthInterceptor(): void {
           lastUnauthorizedAt = now;
           cachedToken = null;
           AsyncStorage.multiRemove(['session_token', 'user_id']).catch(() => {});
+          // UAT 2026-09-04 (Audit A H5): removing two keys left the previous
+          // user's name, phone, cached groups and subscription behind for the
+          // next login. Run the ONE shared sign-out routine so every stale key
+          // (and the RevenueCat identity) goes with the dead token. Required
+          // lazily: hooks/useAuth imports this module, so a static import
+          // would be a cycle. The server call is skipped — the token is
+          // already dead, that is why we are here.
+          try {
+            const { signOut } = require('../hooks/useAuth');
+            Promise.resolve(signOut({ skipServer: true, navigate: false })).catch(() => {});
+          } catch {
+            // never let cleanup break the response path
+          }
           if (onUnauthorized) onUnauthorized();
         }
       }
