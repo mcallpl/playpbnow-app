@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Keyboard, TextInput } from 'react-native';
 
 /**
@@ -20,7 +20,22 @@ export interface ScoreChangeResult {
     changed: boolean;
 }
 
-export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresComplete?: () => void) => {
+/**
+ * UAT 2026-09-04 (#17): the on-device cache used to be keyed by group name
+ * alone, so a PREVIOUS match for the same group could be restored on top of
+ * freshly pulled live scores (and then self-healed to the server as phantom
+ * scores). When the match has a share code the cache is scoped to it; without
+ * one the legacy key is kept exactly as it was, so nothing existing breaks.
+ */
+export const scoresCacheKey = (groupName: string, cacheScope?: string | null): string =>
+    cacheScope ? `scores_${groupName}__${cacheScope}` : `scores_${groupName}`;
+
+export const useSmartScoring = (
+    groupName: string,
+    schedule: any[],
+    onAllScoresComplete?: () => void,
+    cacheScope?: string | null
+) => {
     const [scores, setScoresRaw] = useState<{ [key: string]: string }>({});
     const [winningScore, setWinningScore] = useState(11);
 
@@ -32,8 +47,25 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
     // This prevents poll-delivered scores from being wiped by stale closures.
     const scoresRef = useRef<{ [key: string]: string }>({});
 
-    // Wrapper that keeps ref + state in sync
-    const setScores = (newScores: { [key: string]: string } | ((prev: { [key: string]: string }) => { [key: string]: string })) => {
+    // #17 — the cache must never replace state once the server has been pulled.
+    const serverPulledRef = useRef(false);
+    const markServerPulled = useCallback(() => { serverPulledRef.current = true; }, []);
+
+    const storageKey = scoresCacheKey(groupName, cacheScope);
+    const storageKeyRef = useRef(storageKey);
+    useEffect(() => { storageKeyRef.current = storageKey; }, [storageKey]);
+
+    // Wrapper that keeps ref + state in sync.
+    //
+    // MUST be a STABLE callback. As a plain function it got a new identity on
+    // every render, which flowed into useCollaborativeScoring's pollForUpdates
+    // deps and from there into the polling effect — so every render tore the
+    // poll timer down and restarted it with a full delay. While anything
+    // re-rendered faster than POLL_INTERVAL (a toast, the connected count, a
+    // collaborator's update, the user typing) the poll could be starved
+    // indefinitely while the LIVE banner still said "connected".
+    // (UAT 2026-09-04 — found live.)
+    const setScores = useCallback((newScores: { [key: string]: string } | ((prev: { [key: string]: string }) => { [key: string]: string })) => {
         if (typeof newScores === 'function') {
             setScoresRaw(prev => {
                 const result = newScores(prev);
@@ -44,25 +76,55 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
             scoresRef.current = newScores;
             setScoresRaw(newScores);
         }
-    };
+    }, []);
 
     // Persist scores & WTS
+    // #17: the restore must never land ON TOP of a server pull. groupName is not
+    // stable at mount and the key is not match-specific for legacy matches, so
+    // an unconditional full replace could drop a PREVIOUS match's scores over
+    // freshly pulled live ones — which self-heal then pushed to the server.
     useEffect(() => {
         if (!groupName) return;
+        let cancelled = false;
         const load = async () => {
             try {
-                const saved = await AsyncStorage.getItem(`scores_${groupName}`);
+                if (serverPulledRef.current) return; // server already won
+                const saved = await AsyncStorage.getItem(storageKey);
+                if (cancelled || serverPulledRef.current) return; // pull landed while we waited
                 if (saved) {
                     const parsed = JSON.parse(saved);
-                    scoresRef.current = parsed;
-                    setScoresRaw(parsed);
+                    if (parsed && typeof parsed === 'object') {
+                        const current = scoresRef.current || {};
+                        const localNonEmpty: { [key: string]: string } = {};
+                        for (const [k, v] of Object.entries(current)) {
+                            if (v && v !== '') localNonEmpty[k] = v as string;
+                        }
+                        // Cold start (nothing typed yet) keeps the original full
+                        // restore; otherwise anything already on screen wins.
+                        const next = Object.keys(localNonEmpty).length === 0
+                            ? parsed
+                            : { ...parsed, ...localNonEmpty };
+                        scoresRef.current = next;
+                        setScoresRaw(next);
+                    }
                 }
                 const savedWts = await AsyncStorage.getItem(`wts_${groupName}`);
-                if (savedWts) setWinningScore(parseInt(savedWts));
+                if (!cancelled && savedWts) setWinningScore(parseInt(savedWts));
             } catch (e) {}
         };
         load();
-    }, [groupName]);
+        return () => { cancelled = true; };
+    }, [groupName, storageKey]);
+
+    // #17: when the cache key becomes match-scoped (a share code arrives after
+    // the host started scoring), carry what is on screen into the new key so
+    // nothing is stranded under the old one.
+    const prevStorageKeyRef = useRef(storageKey);
+    useEffect(() => {
+        if (prevStorageKeyRef.current === storageKey) return;
+        prevStorageKeyRef.current = storageKey;
+        AsyncStorage.setItem(storageKey, JSON.stringify(scoresRef.current || {})).catch(() => {});
+    }, [storageKey]);
 
     // Initial focus
     useEffect(() => {
@@ -128,7 +190,7 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
         const numVal = parseInt(value);
 
         setScores(newState);
-        AsyncStorage.setItem(`scores_${groupName}`, JSON.stringify(newState));
+        AsyncStorage.setItem(storageKeyRef.current, JSON.stringify(newState));
 
         // Helper to build result
         const result = (state: typeof newState, changed: boolean): ScoreChangeResult => ({
@@ -152,7 +214,7 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
                 if (!newState[otherKey] || newState[otherKey] === '') {
                     newState = { ...newState, [otherKey]: wtsStr };
                     setScores(newState);
-                    AsyncStorage.setItem(`scores_${groupName}`, JSON.stringify(newState));
+                    AsyncStorage.setItem(storageKeyRef.current, JSON.stringify(newState));
                 }
                 jumpToNextEmpty(rIdx, gIdx, team, newState);
                 return result(newState, true);
@@ -163,7 +225,7 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
                 if (!newState[otherKey] || newState[otherKey] === '') {
                     newState = { ...newState, [otherKey]: (wts + 1).toString() };
                     setScores(newState);
-                    AsyncStorage.setItem(`scores_${groupName}`, JSON.stringify(newState));
+                    AsyncStorage.setItem(storageKeyRef.current, JSON.stringify(newState));
                 }
                 jumpToNextEmpty(rIdx, gIdx, team, newState);
                 return result(newState, true);
@@ -192,7 +254,7 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
                 if (!newState[otherKey] || newState[otherKey] === '') {
                     newState = { ...newState, [otherKey]: (wts + 1).toString() };
                     setScores(newState);
-                    AsyncStorage.setItem(`scores_${groupName}`, JSON.stringify(newState));
+                    AsyncStorage.setItem(storageKeyRef.current, JSON.stringify(newState));
                 }
                 jumpToNextEmpty(rIdx, gIdx, team, newState);
                 return result(newState, true);
@@ -203,7 +265,7 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
                 if (!newState[otherKey] || newState[otherKey] === '') {
                     newState = { ...newState, [otherKey]: wtsStr };
                     setScores(newState);
-                    AsyncStorage.setItem(`scores_${groupName}`, JSON.stringify(newState));
+                    AsyncStorage.setItem(storageKeyRef.current, JSON.stringify(newState));
                 }
                 jumpToNextEmpty(rIdx, gIdx, team, newState);
                 return result(newState, true);
@@ -230,7 +292,12 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
 
     const clearScores = async () => {
         setScores({});
-        await AsyncStorage.removeItem(`scores_${groupName}`);
+        // #17: clear BOTH the match-scoped key and the legacy group key, so a
+        // cleared match can never be resurrected from the other one.
+        await AsyncStorage.removeItem(storageKeyRef.current);
+        if (storageKeyRef.current !== `scores_${groupName}`) {
+            await AsyncStorage.removeItem(`scores_${groupName}`);
+        }
         setTimeout(() => inputRefs.current['0_0_t1']?.focus(), 100);
     };
 
@@ -238,6 +305,10 @@ export const useSmartScoring = (groupName: string, schedule: any[], onAllScoresC
         scores, setScores, scoresRef,
         winningScore, setWinningScore: updateWTS,
         clearScores, inputRefs, flatListRef, finishButtonRef,
-        handleScoreChange
+        handleScoreChange,
+        // #17 — the screen calls this once the server's scores have been
+        // adopted; after that the AsyncStorage cache can never replace them.
+        markServerPulled,
+        scoresStorageKey: storageKey,
     };
 };

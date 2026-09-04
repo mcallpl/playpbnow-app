@@ -213,31 +213,52 @@ export default function GameScreen() {
   const [shareCode, setShareCode] = useState<string | null>(null);
   const [isCollaborator, setIsCollaborator] = useState(false);
 
-  const {
-      scores, setScores, scoresRef, winningScore, setWinningScore,
-      clearScores, inputRefs, flatListRef, handleScoreChange
-  } = useSmartScoring(groupName, schedule, () => {
-      if (finishButtonRef.current && isMatchScored) {
+  // UAT 2026-09-04 (#17): the score cache is scoped to the SHARE CODE when there
+  // is one, so a previous match for the same group can never be restored on top
+  // of freshly pulled live scores.
+  // (isMatchScored is declared further down; read it through a ref so this
+  // callback can stay stable — an unstable one churns the scoring hook.)
+  const onAllScoresCompleteCb = React.useCallback(() => {
+      if (finishButtonRef.current && isMatchScoredRef.current) {
           setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
       }
-  });
+  }, []);
+  const {
+      scores, setScores, scoresRef, winningScore, setWinningScore,
+      clearScores, inputRefs, flatListRef, handleScoreChange,
+      markServerPulled, scoresStorageKey
+  } = useSmartScoring(groupName, schedule, onAllScoresCompleteCb, shareCode);
+
+  // Always-current schedule, for callbacks that fire outside the render that
+  // produced it (the post-shuffle reset push below).
+  const scheduleRef = React.useRef(schedule);
+  useEffect(() => { scheduleRef.current = schedule; }, [schedule]);
   // UAT C-L5: local text for the PLAY TO field (see the input below)
   const [wtsText, setWtsText] = useState(String(winningScore));
   useEffect(() => { setWtsText(String(winningScore)); }, [winningScore]);
 
+  // UAT C-H5: when the host reshuffles, this device adopts the new pairings AND
+  // the server's (now empty) scores — persist that locally so a refresh doesn't
+  // resurrect the old ones from AsyncStorage.
+  // Must be a STABLE callback: an inline arrow gets a new identity every render,
+  // which used to churn the collab hook's callbacks (and its poll timer).
+  const handleScheduleAdoptedFromHost = React.useCallback((serverScores: { [key: string]: string }) => {
+      if (!groupName) return;
+      AsyncStorage.setItem(scoresStorageKey, JSON.stringify(serverScores)).catch(() => {});
+  }, [groupName, scoresStorageKey]);
+
   const {
-      syncScoreToServer, createCollabSession, joinAndSync, resumeOwnerSession, pushScheduleToServer,
+      syncScoreToServer, markLocalEdit, createCollabSession, joinAndSync, resumeOwnerSession, pushScheduleToServer,
+      forgetJoinedSession,
       isSyncing, connectedUsers, toastMessage, dismissToast,
+      connectionState, unsyncedCount, lastSyncedAtRef,
       matchFinishedByRemote, finishedGroupName, finishedSessionId, clearMatchFinished, sessionExpired
   } = useCollaborativeScoring({
       sessionId, shareCode, isCollaborator, schedule, setSchedule, scores, setScores, scoresRef, inputRefs,
-      // UAT C-H5: when the host reshuffles, this device adopts the new
-      // pairings AND the server's (now empty) scores — persist that locally so
-      // a refresh doesn't resurrect the old ones from AsyncStorage.
-      onScheduleAdoptedFromHost: (serverScores) => {
-          if (!groupName) return;
-          AsyncStorage.setItem(`scores_${groupName}`, JSON.stringify(serverScores)).catch(() => {});
-      },
+      onScheduleAdoptedFromHost: handleScheduleAdoptedFromHost,
+      // UAT 2026-09-04 (#17): once the server's scores have been adopted, the
+      // AsyncStorage cache may never replace them again.
+      onServerPull: markServerPulled,
   });
 
   // UAT C-H6: only the host may change matchups. Collaborator edits were
@@ -250,6 +271,8 @@ export default function GameScreen() {
   const { isPro, isTrial, isFree, isAdmin, showPaywall, features } = useSubscription();
 
   const [isMatchScored, setIsMatchScored] = useState(false);
+  const isMatchScoredRef = React.useRef(false);
+  useEffect(() => { isMatchScoredRef.current = isMatchScored; }, [isMatchScored]);
   const [creatorUserId, setCreatorUserId] = useState('');
   const [generatingImg, setGeneratingImg] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
@@ -380,8 +403,12 @@ export default function GameScreen() {
   // session torn down, scores archived, straight to the trophies/leaderboard.
   // saveModalVisible is a dep so a device sitting in the save dialog still
   // concludes the moment the dialog closes (previously it got stranded).
+  const remoteFinishHandledRef = React.useRef(false);
   useEffect(() => {
-      if (matchFinishedByRemote && !saveModalVisible) {
+      if (!matchFinishedByRemote) { remoteFinishHandledRef.current = false; return; }
+      if (saveModalVisible || remoteFinishHandledRef.current) return;
+      remoteFinishHandledRef.current = true;
+      const concludeRemotely = () => {
           clearMatchFinished();
           clearScores();
           endLiveSessionLocally();
@@ -398,8 +425,20 @@ export default function GameScreen() {
                   }
               });
           }, 1500);
+      };
+      // UAT 2026-09-04 (#21): clearScores() also wipes this device's local copy.
+      // If anything typed here never reached the server it is about to be gone —
+      // say so BEFORE tearing down, on web and native alike.
+      if (unsyncedCount > 0) {
+          Alert.alert(
+              'Match Finished Elsewhere',
+              `${unsyncedCount} score${unsyncedCount === 1 ? '' : 's'} you entered on this device never reached the server, so ${unsyncedCount === 1 ? 'it is' : 'they are'} not in the saved results. Note ${unsyncedCount === 1 ? 'it' : 'them'} now — this screen is about to close.`,
+              [{ text: 'Continue', onPress: concludeRemotely }]
+          );
+          return;
       }
-  }, [matchFinishedByRemote, saveModalVisible]);
+      concludeRemotely();
+  }, [matchFinishedByRemote, saveModalVisible, unsyncedCount]);
 
   // Session expired (12h window lapsed): disconnect cleanly but KEEP the scores
   // and the scoring UI — the organizer can keep scoring locally and still save.
@@ -486,13 +525,21 @@ export default function GameScreen() {
   const scheduleVersionRef = React.useRef(0);
   // UAT C-H5: set by handleShuffle so the very next schedule push also wipes
   // the server's scores for this session.
-  const pendingScoreResetRef = React.useRef(false);
+  // UAT 2026-09-04 (#12): this used to be armed BEFORE performShuffle(), which
+  // can return false without changing anything (empty roster). The flag then
+  // stayed armed and the NEXT schedule change of any kind — a rename, a swap,
+  // starting playoffs — deleted every score on the server. It is now armed only
+  // after the shuffle actually succeeded, carries a timestamp so a stale arm
+  // expires, and is cleared on teardown.
+  const pendingScoreResetRef = React.useRef<number | null>(null);
+  const SCORE_RESET_ARM_TTL = 10000;
   useEffect(() => {
       if (sessionId && shareCode && !isCollaborator && schedule.length > 0) {
           // Skip the initial mount (scheduleVersionRef starts at 0)
           if (scheduleVersionRef.current > 0) {
-              const resetScores = pendingScoreResetRef.current;
-              pendingScoreResetRef.current = false;
+              const armedAt = pendingScoreResetRef.current;
+              pendingScoreResetRef.current = null;
+              const resetScores = !!armedAt && (Date.now() - armedAt) < SCORE_RESET_ARM_TTL;
               pushScheduleToServer(schedule, { resetScores });
           }
           scheduleVersionRef.current++;
@@ -502,8 +549,22 @@ export default function GameScreen() {
   const handleShuffle = () => {
     if (!canEditSchedule) { hostOnlyAlert(); return; } // UAT C-H6
     const doShuffle = () => {
-        pendingScoreResetRef.current = !!(sessionId && shareCode); // UAT C-H5
-        performShuffle().then((s) => { if (s) clearScores(); }).catch(() => {});
+        const live = !!(sessionId && shareCode);
+        const versionBefore = scheduleVersionRef.current;
+        performShuffle().then((ok) => {
+            if (!ok) { pendingScoreResetRef.current = null; return; } // #12: nothing changed — never arm
+            clearScores();
+            if (!live) return;
+            if (scheduleVersionRef.current > versionBefore) {
+                // The schedule-push effect already fired for this shuffle. Push
+                // again WITH the reset flag — the hook debounces and ORs the
+                // flag, so both collapse into one request.
+                pendingScoreResetRef.current = null;
+                pushScheduleToServer(scheduleRef.current, { resetScores: true });
+            } else {
+                pendingScoreResetRef.current = Date.now(); // UAT C-H5
+            }
+        }).catch(() => { pendingScoreResetRef.current = null; });
     };
     if (Platform.OS === 'web') {
         if (typeof window !== 'undefined' && window.confirm("Shuffle Matchups?\n\nThis will generate completely NEW matchups. Current scores will be cleared.")) {
@@ -694,6 +755,11 @@ export default function GameScreen() {
   // ends (finished here, finished remotely, or expired) the session state is
   // fully cleared so nothing polls, redirects, or resurrects it afterward.
   const endLiveSessionLocally = () => {
+      // UAT 2026-09-04 (#12): never leave a score-wipe armed behind us.
+      pendingScoreResetRef.current = null;
+      // UAT 2026-09-04 (#4): drop the "already joined" marker so a later join of
+      // the same code is a genuine first join again (full replace, not merge).
+      forgetJoinedSession(shareCode).catch(() => {});
       setSessionId(null);
       setShareCode(null);
       setIsCollaborator(false);
@@ -719,16 +785,21 @@ export default function GameScreen() {
   };
 
   const executeSave = async (forceUpdate: boolean = false, tiesConfirmed: boolean = false) => {
+    // UAT 2026-09-04 (#20): read the scores at CALL time, not from this render's
+    // closure. The tie-confirmation path re-invokes executeSave from an Alert
+    // callback, so anything a collaborator pushed while that dialog was open was
+    // missing from the payload — those games were saved with stale scores.
+    const snap = scoresRef.current || {};
     const matchesToSave: any[] = [];
     schedule.forEach((round, rIdx) => {
         round.games.forEach((game, gIdx) => {
             const keyT1 = `${rIdx}_${gIdx}_t1`; const keyT2 = `${rIdx}_${gIdx}_t2`;
-            if (scores[keyT1] && scores[keyT2]) {
+            if (snap[keyT1] && snap[keyT2]) {
                 const cleanPlayer = (p: any) => ({ id: p.id || '', first_name: p.first_name || 'Unknown' });
                 matchesToSave.push({
                     t1: game.team1.map(cleanPlayer),
                     t2: game.team2.map(cleanPlayer),
-                    s1: scores[keyT1], s2: scores[keyT2],
+                    s1: snap[keyT1], s2: snap[keyT2],
                     round_num: rIdx + 1, court_num: gIdx + 1
                 });
             }
@@ -773,10 +844,10 @@ export default function GameScreen() {
             if (goldRound && bronzeRound) {
                 const gIdx = schedule.indexOf(goldRound);
                 const bIdx = schedule.indexOf(bronzeRound);
-                const gs1 = parseInt(scores[`${gIdx}_0_t1`] || '0');
-                const gs2 = parseInt(scores[`${gIdx}_0_t2`] || '0');
-                const bs1 = parseInt(scores[`${bIdx}_0_t1`] || '0');
-                const bs2 = parseInt(scores[`${bIdx}_0_t2`] || '0');
+                const gs1 = parseInt(snap[`${gIdx}_0_t1`] || '0');
+                const gs2 = parseInt(snap[`${gIdx}_0_t2`] || '0');
+                const bs1 = parseInt(snap[`${bIdx}_0_t1`] || '0');
+                const bs2 = parseInt(snap[`${bIdx}_0_t2`] || '0');
                 const goldWinner = gs1 >= gs2 ? goldRound.games[0].team1 : goldRound.games[0].team2;
                 const goldLoser = gs1 >= gs2 ? goldRound.games[0].team2 : goldRound.games[0].team1;
                 const bronzeWinner = bs1 >= bs2 ? bronzeRound.games[0].team1 : bronzeRound.games[0].team2;
@@ -830,10 +901,10 @@ export default function GameScreen() {
                 if (goldRound && bronzeRound) {
                     const gIdx = schedule.indexOf(goldRound);
                     const bIdx = schedule.indexOf(bronzeRound);
-                    const gs1 = parseInt(scores[`${gIdx}_0_t1`] || '0');
-                    const gs2 = parseInt(scores[`${gIdx}_0_t2`] || '0');
-                    const bs1 = parseInt(scores[`${bIdx}_0_t1`] || '0');
-                    const bs2 = parseInt(scores[`${bIdx}_0_t2`] || '0');
+                    const gs1 = parseInt(snap[`${gIdx}_0_t1`] || '0');
+                    const gs2 = parseInt(snap[`${gIdx}_0_t2`] || '0');
+                    const bs1 = parseInt(snap[`${bIdx}_0_t1`] || '0');
+                    const bs2 = parseInt(snap[`${bIdx}_0_t2`] || '0');
                     const goldWinner = gs1 >= gs2 ? goldRound.games[0].team1 : goldRound.games[0].team2;
                     const goldLoser = gs1 >= gs2 ? goldRound.games[0].team2 : goldRound.games[0].team1;
                     const bronzeWinner = bs1 >= bs2 ? bronzeRound.games[0].team1 : bronzeRound.games[0].team2;
@@ -903,6 +974,13 @@ export default function GameScreen() {
 
   // Syncs FINAL values after auto-fill — uses refs for rock-solid FlatList compatibility
   const handleScoreChangeWithSync = (rIdx: number, gIdx: number, team: 't1' | 't2', value: string) => {
+      // UAT 2026-09-04 (#5): protect on the KEYSTROKE, not on the sync. Two paths
+      // in useSmartScoring deliberately return changed:false while the user is
+      // mid-typing (first digit equals PLAY TO's first digit; WTS-1 waiting for a
+      // second digit) — the cell had zero protection there, so a poll could
+      // overwrite it and the next keystroke was silently dropped by the 2-char
+      // cap. Refreshes the window rather than stacking timers.
+      if (sessionId) markLocalEdit(rIdx, gIdx);
       const result = handleScoreChange(rIdx, gIdx, team, value);
       if (sessionId && result && result.changed) {
           syncScoreToServer(result.roundIdx, result.gameIdx, result.s1, result.s2);
@@ -916,6 +994,30 @@ export default function GameScreen() {
   React.useEffect(() => {
       syncHandlerRef.current = handleScoreChangeWithSync;
   });
+
+  // UAT 2026-09-04 (#21 / #10): sync health, visible. A failure used to be
+  // console-only, which is what turned a recoverable hiccup into silent loss.
+  const [syncTick, setSyncTick] = useState(0);
+  useEffect(() => {
+      if (!shareCode) return;
+      const t = setInterval(() => setSyncTick(v => v + 1), 5000);
+      return () => clearInterval(t);
+  }, [shareCode]);
+  const lastSyncedLabel = useMemo(() => {
+      const lastSyncedAt = lastSyncedAtRef.current;
+      if (!lastSyncedAt) return null;
+      const secs = Math.max(0, Math.round((Date.now() - lastSyncedAt) / 1000));
+      if (secs < 5) return 'synced just now';
+      if (secs < 90) return `last synced ${secs}s ago`;
+      return `last synced ${Math.floor(secs / 60)}m ago`;
+  }, [syncTick, shareCode, connectedUsers]);
+  const connectionLabel = connectionState === 'offline'
+      ? 'NOT CONNECTED — retrying'
+      : connectionState === 'reconnecting'
+          ? 'RECONNECTING'
+          : connectionState === 'connecting'
+              ? 'CONNECTING'
+              : null;
 
   // True only when every game in every round has both scores entered
   const matchIsComplete = useMemo(() => {
@@ -1226,10 +1328,18 @@ export default function GameScreen() {
           )}
           {shareCode && (
               <View style={styles.collabStatusBar}>
-                  <BrandedIcon name="live" size={14} color={colors.accent} />
-                  <Text style={styles.collabStatusText}>
-                      LIVE — Code: {shareCode}{connectedUsers > 0 ? ` \u2022 ${connectedUsers} connected` : ''}
-                  </Text>
+                  <BrandedIcon name="live" size={14} color={connectionLabel ? colors.danger : colors.accent} />
+                  <View style={{ flex: 1 }}>
+                      <Text style={[styles.collabStatusText, connectionLabel && { color: colors.danger }]}>
+                          LIVE — Code: {shareCode}{connectedUsers > 0 ? ` \u2022 ${connectedUsers} connected` : ''}
+                          {unsyncedCount > 0 ? ` \u2022 ${unsyncedCount} not synced` : ''}
+                      </Text>
+                      {(connectionLabel || lastSyncedLabel) && (
+                          <Text style={[styles.collabSyncText, connectionLabel && { color: colors.danger }]}>
+                              {connectionLabel ? `${connectionLabel}\u2026` : lastSyncedLabel}
+                          </Text>
+                      )}
+                  </View>
               </View>
           )}
         </View>
@@ -1447,6 +1557,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   connectedText: { color: c.accentText, fontSize: 10, fontFamily: FONT_DISPLAY_EXTRABOLD },
   collabStatusBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderColor: c.border },
   collabStatusText: { color: c.accent, fontSize: 12, fontFamily: FONT_BODY_BOLD, letterSpacing: 0.5 },
+  collabSyncText: { color: c.textMuted, fontSize: 10, fontFamily: FONT_BODY_MEDIUM, letterSpacing: 0.3, marginTop: 2 },
   subHeaderAction: { alignItems: 'center', marginVertical: 12 },
   addPlayerBtn: { flexDirection: 'row', backgroundColor: c.surfaceLight, padding: 8, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', gap: 8 },
   addPlayerText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 12 },

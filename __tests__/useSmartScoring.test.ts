@@ -8,6 +8,7 @@
  */
 
 import { renderHook, act } from '@testing-library/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSmartScoring } from '../hooks/useSmartScoring';
 
 const schedule = [
@@ -108,6 +109,57 @@ describe('useSmartScoring', () => {
       expect(result.current.winningScore).toBe(11);
       act(() => result.current.setWinningScore('15'));
       expect(result.current.winningScore).toBe(15);
+    });
+  });
+
+  /**
+   * UAT 2026-09-04 (#17) — the AsyncStorage restore must never land on top of a
+   * server pull. groupName is not stable at mount and the legacy key is not
+   * match-specific, so an unconditional replace could drop a PREVIOUS match's
+   * scores over freshly pulled live ones (which self-heal then pushed to the
+   * server as phantom scores).
+   */
+  describe('cache vs server pull (#17)', () => {
+    afterEach(() => {
+      (AsyncStorage.getItem as jest.Mock).mockImplementation(() => Promise.resolve(null));
+      (AsyncStorage.setItem as jest.Mock).mockClear();
+    });
+
+    it('restores the cache normally on a cold start', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+        Promise.resolve(k.startsWith('scores_') ? JSON.stringify({ '0_0_t1': '11' }) : null)
+      );
+      const { result } = renderHook(() => useSmartScoring('TestGroup', schedule));
+      await act(async () => { await Promise.resolve(); });
+      expect(result.current.scores['0_0_t1']).toBe('11');
+    });
+
+    it('does NOT let the cache replace scores once the server has been pulled', async () => {
+      let release: (v: any) => void = () => {};
+      (AsyncStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+        k.startsWith('scores_')
+          ? new Promise((res) => { release = res; })
+          : Promise.resolve(null)
+      );
+      const { result } = renderHook(() => useSmartScoring('TestGroup', schedule));
+      // The live pull lands first...
+      act(() => {
+        result.current.markServerPulled();
+        result.current.setScores({ '0_0_t1': '7' });
+      });
+      // ...and the stale cache read only comes back afterwards.
+      await act(async () => { release(JSON.stringify({ '0_0_t1': '11', '0_1_t1': '9' })); await Promise.resolve(); });
+      expect(result.current.scores['0_0_t1']).toBe('7');
+      expect(result.current.scores['0_1_t1']).toBeUndefined();
+    });
+
+    it('scopes the cache to the share code when the match is live', async () => {
+      const { result } = renderHook(() => useSmartScoring('TestGroup', schedule, undefined, 'ABC123'));
+      expect(result.current.scoresStorageKey).toBe('scores_TestGroup__ABC123');
+      act(() => { result.current.handleScoreChange(0, 0, 't1', '5'); });
+      const wroteScoped = (AsyncStorage.setItem as jest.Mock).mock.calls
+        .some((c: any[]) => c[0] === 'scores_TestGroup__ABC123');
+      expect(wroteScoped).toBe(true);
     });
   });
 });

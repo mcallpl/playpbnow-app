@@ -188,6 +188,61 @@ behind it was repaired anyway, because the RSVP and signup pages are live today:
 - The trial is **30 days and starts with the first saved match**, not at signup.
 - One support address everywhere: **mcallpl@gmail.com**, as a tappable mailto.
 
+## Connected (multi-user) scoring — locked 2026-09-04
+
+Two to four people scoring one match from their own phones. This was audited
+and hardened end to end, and verified against production with three real
+accounts scoring concurrently. Regression suite:
+`php playpbnow-api/tests/collab_concurrency_test.php` (84 assertions).
+
+- **An erased score must stay erased.** Every layer used to treat `''` as "no
+  value supplied" rather than "the user deleted this", so a score typed onto
+  the wrong court could not be removed: it blanked locally, then reappeared on
+  every device on the next poll, and the client's self-heal actively pushed it
+  back. The server now distinguishes a field that was ABSENT from one sent
+  EMPTY (`array_key_exists`), and the client applies an explicit clear and
+  never re-pushes a value someone else deliberately cleared.
+- **A delayed write must never overwrite a newer one.** The client sent
+  `updated_at` and the server ignored it, so a retry that landed late clobbered
+  a newer score from another scorer and all three devices converged on the
+  older value. There is now a server-issued sequence (`collab_sessions.seq_counter`,
+  `collab_score_updates.s1_seq/s2_seq`) and a write is rejected only when a
+  DIFFERENT writer got there after the caller's `last_seen_seq`. The response
+  says `superseded: true` when that happens.
+- **The writer identity falls back to the user id** when no `device_id` is
+  sent. Without that fallback every writer was the empty string, two different
+  people looked like the same device, and the ordering guard could never fire.
+  Verified failing against production before this was added.
+- **Only the host may change the matchups.** `collab_update_schedule.php` was
+  completely unauthenticated: anyone who could see or overhear the 6-character
+  share code could `curl` one request with `reset_scores:true` and delete every
+  score in a live match for everyone. Confirmed exploitable in production, now
+  blocked. `session_id` is validated against the share code so it cannot be
+  used as a bypass. `PBNOW_COLLAB_STRICT_AUTH` in `collab_auth.php` should be
+  flipped to `true` once the new client is everywhere.
+- **Two devices finishing at once produce ONE session.** The old check read the
+  status ~200 lines before writing it. The finish is now claimed with the write
+  itself (`status='finishing'`, checked via affected_rows) before anything is
+  inserted, with a shutdown hook that releases the claim on any early exit.
+  Without this both devices saved and every player's W/L doubled.
+- **Never full-replace a returning collaborator's scores.** Re-entering the
+  match wiped anything the server had not received. A genuine first join
+  replaces; a re-join merges and re-pushes local-only values.
+- **A joiner adopts the host's schedule on join.** Joining during a shuffle used
+  to leave the joiner scoring against pairings the host no longer had, so the
+  wrong players got the win in career stats. Nothing on screen hinted at it.
+- **Destructive score replacement only on a real reset.** Any host edit (a swap,
+  a rename, adding playoffs) used to wipe a collaborator's unsynced work;
+  it is now gated on a new `scores_reset_at`, and the shuffle reset is atomic
+  under the same row lock the syncs take.
+- **The poll loop is ref-driven.** `setScores` was a plain function recreated
+  every render, so the polling effect tore down and rescheduled on every render
+  and could be starved indefinitely while the LIVE banner still looked healthy.
+- **Sync state is visible.** The LIVE bar shows connected count, "N not synced"
+  and "last synced Ns ago", and a remote finish warns before clearing local
+  storage if anything is unsynced. Silent failure is what turned every bug
+  above from recoverable into lost data.
+
 ## Known item awaiting Chip's decision
 
 `app/\(tabs\)/help.tsx` — a directory whose name is literally `\(tabs\)`,
