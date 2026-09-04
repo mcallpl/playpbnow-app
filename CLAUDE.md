@@ -197,7 +197,9 @@ duplicate of the real Help screen and expo-router registers it as a malformed
 left in place** because deleting it would violate the ADDITIVE ONLY rule.
 Removing it is a one-line `git rm` whenever Chip says so.
 
-## UAT account
+## UAT accounts — already cleaned up
 
-`uat.claude@playpbnow.com` (user id 88) is a synthetic tester created during
-this pass, with a fictional phone number. Safe to delete at any time.
+Three synthetic testers were created during this pass and **all three were
+deleted afterwards through the app's own `delete_account.php`**, which also
+verified that flow end to end (Apple and Google both require it to work).
+No test data was left in production.
