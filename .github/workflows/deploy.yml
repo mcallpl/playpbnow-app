@@ -206,6 +206,14 @@ jobs:
           else
             echo "ℹ️  No existing deployment to backup"
           fi
+
+          # Retention: keep the newest 5 backups, delete older ones.
+          # Added 2026-09-06 — unbounded growth had reached 110 copies / 5.0G.
+          # The rollback step below uses the NEWEST backup, so 5 is ample.
+          ls -1dt /var/backups/PlayPBNow-backup-* 2>/dev/null | tail -n +6 | while read -r OLD; do
+            echo "🧹 Pruning old backup: $OLD"
+            rm -rf -- "$OLD"
+          done
           EOSH
 
       - name: Deploy web files
