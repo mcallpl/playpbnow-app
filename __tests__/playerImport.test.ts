@@ -164,6 +164,14 @@ describe('player list import', () => {
       'Ronald P','Scott K','Daniel W','Chip M','Kathleen S','John T','Diana C','Sabina K','Aaron R','Kana M','Kim M']);
   });
 
+  test('a new person whose short name is taken in the group is lengthened, never dropped', () => {
+    expect(shortNames(['Greg Stone', 'Kim Park'], ['Greg S', 'Chip M'])).toEqual(['Greg St', 'Kim P']);
+    // Pasted already short and already taken: left as given (the panel skips it as already in the group).
+    expect(shortNames(['Greg S'], ['Greg S'])).toEqual(['Greg S']);
+    // Taken and nothing left to lengthen: stays, and the review screen says so.
+    expect(shortNames(['Kim M'], ['Kim M'])).toEqual(['Kim M']);
+  });
+
   test('tidyName keeps hyphens and apostrophes readable', () => {
     expect(tidyName("mary-kate o'brien")).toBe("Mary-Kate O'Brien");
   });

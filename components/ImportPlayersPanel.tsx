@@ -46,20 +46,28 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
   // "Chip M" (first name + last initial) is the default; "Chip McAllister" keeps the full name.
   const [useShort, setUseShort] = useState(true);
   const fileRef = useRef<any>(null);
-  const shorts = useMemo(() => shortNames(rows.map(r => r.name)), [rows]);
+  const shorts = useMemo(() => shortNames(rows.map(r => r.name), existingNames), [rows, existingNames]);
   const finalName = (i: number) => (useShort ? shorts[i] : rows[i].name);
 
   const takeResult = (parsed: { rows: ImportRow[]; duplicates: string[] }) => {
-    // Someone counts as already in the group under either form of their name.
+    // Skipped only when the name as pasted is already in the group. A full
+    // name whose SHORT form is taken ("Greg Stone" vs an existing "Greg S")
+    // may be a different person, so it is kept and lengthened ("Greg St").
     const have = new Set(existingNames.map(n => n.trim().toLowerCase()));
-    const sn = shortNames(parsed.rows.map(r => r.name));
     const fresh: ImportRow[] = [];
     const already: ImportRow[] = [];
-    parsed.rows.forEach((r, i) => (have.has(r.name.toLowerCase()) || have.has(sn[i].toLowerCase()) ? already : fresh).push(r));
+    parsed.rows.forEach(r => (have.has(r.name.toLowerCase()) ? already : fresh).push(r));
+    const plain = shortNames(fresh.map(r => r.name));
+    const sn = shortNames(fresh.map(r => r.name), existingNames);
+    const lengthened = fresh.filter((r, i) => sn[i] !== plain[i] && have.has(plain[i].toLowerCase()));
     const kept = fresh.slice(0, MAX_ROWS);
     const n: string[] = [];
     if (already.length) n.push(`Already in this group, skipped: ${already.map(r => r.name).join(', ')}`);
     if (parsed.duplicates.length) n.push(`Listed twice, kept once: ${parsed.duplicates.join(', ')}`);
+    lengthened.forEach((r) => {
+      const i = fresh.indexOf(r);
+      n.push(`${plain[i]} is already in this group, so ${r.name} will be added as ${sn[i]}. Remove ${r.name} below if that is the same person.`);
+    });
     if (fresh.length > MAX_ROWS) n.push(`Only the first ${MAX_ROWS} names were kept.`);
     if (!kept.length) {
       setError(already.length ? 'Everyone on that list is already in this group.' : 'No names found. Put one player on each line.');

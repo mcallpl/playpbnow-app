@@ -173,17 +173,22 @@ export function shortName(full: string, prefix = 1): string {
  * are kept until they differ ("Greg Sm", "Greg St"), so two people are never
  * merged into one player.
  */
-export function shortNames(fullNames: string[]): string[] {
+export function shortNames(fullNames: string[], taken: string[] = []): string[] {
+  // `taken` are names already in the group: a new person whose short name
+  // matches one is lengthened too, never silently treated as that person.
+  const takenKeys = new Set(taken.map(n => n.trim().toLowerCase()));
   const prefix = fullNames.map(() => 1);
   for (let pass = 0; pass < 30; pass++) {
     const out = fullNames.map((n, i) => shortName(n, prefix[i]));
     const byKey: Record<string, number[]> = {};
     out.forEach((n, i) => { (byKey[n.toLowerCase()] = byKey[n.toLowerCase()] || []).push(i); });
     let changed = false;
-    Object.values(byKey).forEach(ix => {
-      if (ix.length < 2) return;
+    Object.entries(byKey).forEach(([key, ix]) => {
+      if (ix.length < 2 && !takenKeys.has(key)) return;
       ix.forEach(i => {
         const lastLen = (fullNames[i].trim().split(/\s+/).pop() || '').replace(/\.$/, '').length;
+        // A name pasted already short ("Greg S") is never lengthened: that is the name as given.
+        if (out[i] === fullNames[i].trim() && takenKeys.has(key) && ix.length < 2) return;
         if (prefix[i] < lastLen) { prefix[i]++; changed = true; }
       });
     });
