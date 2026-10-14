@@ -40,6 +40,8 @@ import {
   ANIMATION,
 } from '../../constants/theme';
 import { haptic } from '../../utils/haptics';
+import { ImportPlayersPanel } from '../../components/ImportPlayersPanel';
+import { addRowsToGroup, ImportGender } from '../../utils/playerImport';
 
 interface Court {
   id: number;
@@ -88,11 +90,14 @@ export default function HomeScreen() {
   const [userName, setUserName] = useState('');
 
   const [modalVisible, setModalVisible] = useState(false);
-  type ModalView = 'form' | 'courtPicker' | 'addCourt';
+  type ModalView = 'form' | 'courtPicker' | 'addCourt' | 'import';
   const [modalView, setModalView] = useState<ModalView>('form');
 
   const [newGroupName, setNewGroupName] = useState('');
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+  // Players imported from a pasted list or spreadsheet, added right after the group is created.
+  const [importRows, setImportRows] = useState<{ name: string; gender: ImportGender }[]>([]);
+  const [importProgress, setImportProgress] = useState('');
 
   const [courts, setCourts] = useState<Court[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState<number | null>(null);
@@ -252,6 +257,7 @@ export default function HomeScreen() {
     setEditingGroup(null);
     setNewGroupName('');
     setSelectedCourtId(null);
+    setImportRows([]);
     setModalView('form');
     setModalVisible(true);
   };
@@ -269,6 +275,8 @@ export default function HomeScreen() {
     setNewGroupName('');
     setEditingGroup(null);
     setSelectedCourtId(null);
+    setImportRows([]);
+    setImportProgress('');
     setModalView('form');
   };
 
@@ -304,6 +312,17 @@ export default function HomeScreen() {
           const group = data.group;
           await AsyncStorage.setItem('active_group_name', group.name);
           await AsyncStorage.setItem('active_group_key', group.group_key);
+          if (importRows.length) {
+            const total = importRows.length;
+            setImportProgress(`Adding players: 0 of ${total}`);
+            const result = await addRowsToGroup(API_URL, group.group_key, importRows,
+              (done) => setImportProgress(`Adding players: ${done} of ${total}`));
+            await loadGroups(userId, true);
+            if (result.failed.length) {
+              Alert.alert('Some Players Were Not Added',
+                `${result.added} of ${total} players were added. These were not: ${result.failed.join(', ')}. You can add them from the group screen.`);
+            }
+          }
           closeModal();
           router.push({
             pathname: '/setup',
@@ -574,6 +593,16 @@ export default function HomeScreen() {
   );
 
   const renderModalContent = () => {
+    if (modalView === 'import') {
+      return (
+        <ImportPlayersPanel
+          initialRows={importRows}
+          confirmLabel={(n) => `USE ${n} PLAYER${n === 1 ? '' : 'S'}`}
+          onCancel={() => setModalView('form')}
+          onConfirm={(rows) => { setImportRows(rows); setModalView('form'); }}
+        />
+      );
+    }
     if (modalView === 'courtPicker') {
       return (
         <>
@@ -697,6 +726,33 @@ export default function HomeScreen() {
             autoFocus={!!editingGroup} editable={!loading} />
         </View>
 
+        {!editingGroup && (
+          <View style={styles.stepSection}>
+            <Text style={styles.stepLabel}>STEP 3: PLAYERS (OPTIONAL)</Text>
+            <TouchableOpacity
+              style={[styles.courtSelector, importRows.length ? styles.courtSelectorSelected : null]}
+              onPress={() => setModalView('import')}
+              disabled={loading}
+            >
+              <BrandedIcon name="document" size={20} color={importRows.length ? colors.accent : colors.textMuted} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.courtSelectorText, importRows.length ? { color: colors.accent, fontFamily: FONT_DISPLAY_EXTRABOLD } : null]}>
+                  {importRows.length
+                    ? `${importRows.length} player${importRows.length === 1 ? '' : 's'} ready to add`
+                    : 'Import a list or spreadsheet'}
+                </Text>
+                <Text style={{ fontSize: 12, fontFamily: FONT_BODY_REGULAR, color: colors.textMuted, marginTop: 2 }}>
+                  {importRows.length
+                    ? `${importRows.filter(r => r.gender === 'male').length} Male · ${importRows.filter(r => r.gender === 'female').length} Female · tap to change`
+                    : 'Paste names, one per line, or skip and add players later'}
+                </Text>
+              </View>
+              <BrandedIcon name="chevron-right" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
+        {!!importProgress && <Text style={{ fontSize: 13, fontFamily: FONT_BODY_SEMIBOLD, color: colors.textSoft, textAlign: 'center', marginBottom: 8 }}>{importProgress}</Text>}
+
         <View style={styles.modalButtons}>
           <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={closeModal} disabled={loading}>
             <Text style={styles.cancelBtnText}>CANCEL</Text>
@@ -704,7 +760,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={saveGroup} disabled={loading}>
             {loading ? <ActivityIndicator color={colors.accentText} /> : (
               <Text style={styles.saveBtnText}>
-                {editingGroup ? 'UPDATE' : 'CREATE'}
+                {editingGroup ? 'UPDATE' : importRows.length ? `CREATE + ADD ${importRows.length}` : 'CREATE'}
               </Text>
             )}
           </TouchableOpacity>

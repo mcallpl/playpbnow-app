@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   Text,
@@ -23,6 +24,8 @@ import { PlayerListStep } from './steps/PlayerListStep';
 import { EditPlayerModal } from './steps/EditPlayerModal';
 import { SaveRosterModal } from './steps/SaveRosterModal';
 import { MatchConfigModal } from './steps/MatchConfigModal';
+import { ImportPlayersPanel } from '@/components/ImportPlayersPanel';
+import { addRowsToGroup, ImportGender } from '@/utils/playerImport';
 
 const API_URL = 'https://playpbnow.com/api';
 
@@ -35,6 +38,28 @@ export default function SetupFlow() {
 
   const nameInputRef = useRef<any>(null);
   const listRef = useRef<any>(null);
+  const [importVisible, setImportVisible] = useState(false);
+  const [importBusy, setImportBusy] = useState('');
+  // A Quick Match roster has no server group, so there is nothing to import into.
+  const canImport = !!state.groupKey && !state.groupKey.startsWith('quick_');
+
+  const runImport = async (rows: { name: string; gender: ImportGender }[]) => {
+    const total = rows.length;
+    setImportBusy(`Adding players: 0 of ${total}`);
+    const result = await addRowsToGroup(API_URL, state.groupKey, rows,
+      (done) => setImportBusy(`Adding players: ${done} of ${total}`));
+    try {
+      const res = await fetch(`${API_URL}/get_players.php?group_key=${state.groupKey}`);
+      const data = await res.json();
+      if (data.status === 'success') dispatch({ type: 'SET_PLAYERS', payload: data.players || [] });
+    } catch (e) {}
+    setImportBusy('');
+    setImportVisible(false);
+    if (result.failed.length) {
+      Alert.alert('Some Players Were Not Added',
+        `${result.added} of ${total} players were added. These were not: ${result.failed.join(', ')}. You can add them one at a time above.`);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -276,6 +301,17 @@ export default function SetupFlow() {
 
           {/* PLAYER INPUT WITH GLOBAL SEARCH */}
           <PlayerInputStep state={state} dispatch={dispatch} />
+          {canImport && (
+            <TouchableOpacity
+              onPress={() => setImportVisible(true)}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 }}
+            >
+              <BrandedIcon name="document" size={16} color={colors.accent} />
+              <Text style={{ fontFamily: FONT_BODY_BOLD, fontSize: 13, color: colors.accent }}>
+                IMPORT A LIST OF PLAYERS
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* PLAYER LIST */}
           <PlayerListStep
@@ -290,6 +326,29 @@ export default function SetupFlow() {
           <EditPlayerModal state={state} dispatch={dispatch} />
           <SaveRosterModal state={state} dispatch={dispatch} />
           <MatchConfigModal state={state} dispatch={dispatch} />
+          <Modal
+            visible={importVisible}
+            transparent
+            animationType="slide"
+            onRequestClose={() => { if (!importBusy) setImportVisible(false); }}
+          >
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 16 }}
+            >
+              <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, maxWidth: 520, width: '100%', alignSelf: 'center' }}>
+                <ImportPlayersPanel
+                  existingNames={state.players.map((p) => [p.first_name, p.last_name].filter(Boolean).join(' '))
+                    .concat(state.players.map((p) => p.first_name))}
+                  confirmLabel={(n) => `ADD ${n} PLAYER${n === 1 ? '' : 'S'}`}
+                  onCancel={() => setImportVisible(false)}
+                  onConfirm={runImport}
+                  busy={!!importBusy}
+                  busyText={importBusy}
+                />
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </GestureHandlerRootView>

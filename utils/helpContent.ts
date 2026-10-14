@@ -290,7 +290,7 @@ There is no player rating or feedback system — chat is for coordinating the ga
     id: 'create-group',
     title: 'How to Create a Group',
     category: 'Groups',
-    searchKeywords: ['create', 'group', 'new', 'team', 'location', 'court', 'new group'],
+    searchKeywords: ['create', 'group', 'new', 'team', 'location', 'court', 'new group', 'import', 'spreadsheet', 'excel', 'paste', 'list'],
     content: `1. **Go to the GROUPS tab** and tap **NEW GROUP** at the bottom
 
 2. **SELECT LOCATION**
@@ -301,6 +301,13 @@ There is no player rating or feedback system — chat is for coordinating the ga
 3. **Name the group**
    - Type a name such as "Friday Crew" and save
    - CANCEL backs out without creating anything
+
+3b. **Import your players (optional)**
+   - Under **STEP 3: PLAYERS** tap **Import a list or spreadsheet**
+   - Paste your names, one player on each line. Add M or F after a name if you have it ("Jane Smith, F"). You can also copy the Name and Gender columns out of a spreadsheet and paste them
+   - On the web you can tap **CHOOSE A SPREADSHEET FILE** instead (Excel .xlsx, CSV or a text file)
+   - Tap **NEXT**, then tap **M** or **F** for anyone the list did not say, or use **Set everyone not set to Male / Female**
+   - Tap **USE ... PLAYERS**, then **CREATE + ADD** to make the group with everyone in it
 
 4. **Add players**
    - The new group opens on its roster screen
@@ -353,6 +360,12 @@ There is no player rating or feedback system — chat is for coordinating the ga
 3. If the person already exists in your account they appear in a dropdown — tap them to add them to this group
 4. Otherwise set the **gender toggle** — the coloured button right of the box, showing the ♂ or ♀ symbol; tap it to switch — and tap **+** to create them
 5. Tap **SAVE** at the top right to keep the roster
+
+**Add a whole list at once**
+- Inside the group tap **IMPORT A LIST OF PLAYERS** under the add box
+- Paste names one per line (with M or F if you have them), or on the web choose a spreadsheet file
+- Anyone already in the group is skipped, and a name listed twice is added once
+- Tap **M** or **F** for anyone not set, then **ADD ... PLAYERS**
 
 **Edit a player's details**
 - On the roster tap the **pencil** on the player row, or open **ALL PLAYERS** and tap the pencil there
