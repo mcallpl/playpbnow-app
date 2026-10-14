@@ -304,7 +304,7 @@ There is no player rating or feedback system — chat is for coordinating the ga
 
 3b. **Import your players (optional)**
    - Under **STEP 3: PLAYERS** tap **Import a list or spreadsheet**
-   - Paste your names, one player on each line. Add M or F after a name if you have it ("Jane Smith, F"). You can also copy the Name and Gender columns out of a spreadsheet and paste them
+   - Paste your names, one player on each line. To include gender, put it after a comma ("Jane Smith, F"). You can also copy the Name and Gender columns out of a spreadsheet and paste them
    - On the web you can tap **CHOOSE A SPREADSHEET FILE** instead (Excel .xlsx, CSV or a text file)
    - Tap **NEXT**, then tap **M** or **F** for anyone the list did not say, or use **Set everyone not set to Male / Female**
    - Tap **USE ... PLAYERS**, then **CREATE + ADD** to make the group with everyone in it
@@ -363,7 +363,7 @@ There is no player rating or feedback system — chat is for coordinating the ga
 
 **Add a whole list at once**
 - Inside the group tap **IMPORT A LIST OF PLAYERS** under the add box
-- Paste names one per line (with M or F if you have them), or on the web choose a spreadsheet file
+- Paste names one per line (gender after a comma if you have it, "Jane Smith, F"), or on the web choose a spreadsheet file
 - Anyone already in the group is skipped, and a name listed twice is added once
 - Tap **M** or **F** for anyone not set, then **ADD ... PLAYERS**
 

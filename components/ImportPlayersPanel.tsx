@@ -17,7 +17,7 @@ import {
   FONT_BODY_SEMIBOLD,
   FONT_BODY_BOLD,
 } from '../constants/theme';
-import { ImportGender, ImportRow, parseGrid, parsePlayerText, splitExisting } from '../utils/playerImport';
+import { ImportGender, ImportRow, parseGrid, parsePlayerText, shortNames } from '../utils/playerImport';
 import { readSpreadsheetFile } from '../utils/readSpreadsheetFile';
 
 const MAX_ROWS = 200;
@@ -43,10 +43,19 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
   const [rows, setRows] = useState<ImportRow[]>(initialRows || []);
   const [notes, setNotes] = useState<string[]>([]);
   const [error, setError] = useState('');
+  // "Chip M" (first name + last initial) is the default; "Chip McAllister" keeps the full name.
+  const [useShort, setUseShort] = useState(true);
   const fileRef = useRef<any>(null);
+  const shorts = useMemo(() => shortNames(rows.map(r => r.name)), [rows]);
+  const finalName = (i: number) => (useShort ? shorts[i] : rows[i].name);
 
   const takeResult = (parsed: { rows: ImportRow[]; duplicates: string[] }) => {
-    const { fresh, already } = splitExisting(parsed.rows, existingNames);
+    // Someone counts as already in the group under either form of their name.
+    const have = new Set(existingNames.map(n => n.trim().toLowerCase()));
+    const sn = shortNames(parsed.rows.map(r => r.name));
+    const fresh: ImportRow[] = [];
+    const already: ImportRow[] = [];
+    parsed.rows.forEach((r, i) => (have.has(r.name.toLowerCase()) || have.has(sn[i].toLowerCase()) ? already : fresh).push(r));
     const kept = fresh.slice(0, MAX_ROWS);
     const n: string[] = [];
     if (already.length) n.push(`Already in this group, skipped: ${already.map(r => r.name).join(', ')}`);
@@ -90,7 +99,7 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
       <View>
         <Text style={s.title}>IMPORT PLAYERS</Text>
         <Text style={s.help}>
-          Paste your list with one player on each line. Add M or F after a name if you have it. You can also copy the Name and Gender columns straight out of a spreadsheet and paste them here.
+          Paste your list with one player on each line. To include gender, put it after a comma: Jane Smith, F. You can also copy the Name and Gender columns straight out of a spreadsheet and paste them here.
         </Text>
         <TextInput
           style={s.paste}
@@ -139,6 +148,15 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
       <Text style={s.help}>
         {rows.length} player{rows.length === 1 ? '' : 's'} · {males} Male · {females} Female{missing ? ` · ${missing} not set` : ''}
       </Text>
+      <View style={s.fillRow}>
+        <Text style={s.fillLabel}>Names</Text>
+        <TouchableOpacity style={[s.fillBtn, { borderColor: colors.accent }, useShort && { backgroundColor: colors.accent }]} onPress={() => setUseShort(true)}>
+          <Text style={[s.fillBtnText, { color: useShort ? colors.accentText : colors.accent }]}>Chip M</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.fillBtn, { borderColor: colors.accent }, !useShort && { backgroundColor: colors.accent }]} onPress={() => setUseShort(false)}>
+          <Text style={[s.fillBtnText, { color: !useShort ? colors.accentText : colors.accent }]}>Chip McAllister</Text>
+        </TouchableOpacity>
+      </View>
       {missing > 0 && (
         <View style={s.fillRow}>
           <Text style={s.fillLabel}>Set everyone not set to</Text>
@@ -153,7 +171,10 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
       <ScrollView style={s.list} nestedScrollEnabled keyboardShouldPersistTaps="handled">
         {rows.map((r, i) => (
           <View key={r.name + i} style={[s.row, !r.gender && s.rowMissing]}>
-            <Text style={s.rowName} numberOfLines={1}>{r.name}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.rowName} numberOfLines={1}>{finalName(i)}</Text>
+              {useShort && shorts[i] !== r.name && <Text style={s.rowFull} numberOfLines={1}>{r.name}</Text>}
+            </View>
             <TouchableOpacity
               style={[s.gBtn, r.gender === 'male' && { backgroundColor: colors.male, borderColor: colors.male }]}
               onPress={() => setGender(i, 'male')}
@@ -181,7 +202,7 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.btn, s.goBtn, (!!blockReason || busy) && { opacity: 0.5 }]}
-          onPress={() => onConfirm(rows.map(r => ({ name: r.name, gender: r.gender as ImportGender })))}
+          onPress={() => onConfirm(rows.map((r, i) => ({ name: finalName(i), gender: r.gender as ImportGender })))}
           disabled={!!blockReason || busy}
         >
           {busy ? <ActivityIndicator color={colors.accentText} /> : <Text style={s.goText}>{confirmLabel(rows.length)}</Text>}
@@ -224,7 +245,8 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     borderRadius: 10, marginBottom: 6, backgroundColor: c.inputBg, borderWidth: 1, borderColor: 'transparent',
   },
   rowMissing: { borderColor: c.danger },
-  rowName: { flex: 1, fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: c.text },
+  rowName: { fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: c.text },
+  rowFull: { fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: c.textMuted, marginTop: 1 },
   gBtn: { width: 36, height: 32, borderRadius: 8, borderWidth: 1, borderColor: c.inputBorder, alignItems: 'center', justifyContent: 'center' },
   gText: { fontFamily: FONT_BODY_BOLD, fontSize: 14, color: c.textMuted },
   gTextOn: { color: '#ffffff' },
