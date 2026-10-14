@@ -217,17 +217,20 @@ export function calculateIndividualStandings(
 
             const diff = s1 - s2;
             const t1Won = s1 > s2;
+            // A tie is neither a win nor a loss (locked rule, CLAUDE.md). This
+            // used to hand team2 a win and team1 a loss on any tie.
+            const tied = s1 === s2;
 
             // Update each player on team1
             game.team1.forEach(p => {
                 if (!stats[p.id]) stats[p.id] = { playerId: p.id, player: p, wins: 0, losses: 0, pointDiff: 0, winPct: 0, seed: 0 };
-                if (t1Won) stats[p.id].wins++; else stats[p.id].losses++;
+                if (!tied) { if (t1Won) stats[p.id].wins++; else stats[p.id].losses++; }
                 stats[p.id].pointDiff += diff;
             });
             // Update each player on team2
             game.team2.forEach(p => {
                 if (!stats[p.id]) stats[p.id] = { playerId: p.id, player: p, wins: 0, losses: 0, pointDiff: 0, winPct: 0, seed: 0 };
-                if (!t1Won) stats[p.id].wins++; else stats[p.id].losses++;
+                if (!tied) { if (!t1Won) stats[p.id].wins++; else stats[p.id].losses++; }
                 stats[p.id].pointDiff -= diff;
             });
         });
@@ -270,4 +273,100 @@ export function pairIndividualsIntoTeams(standings: IndividualStanding[]): TeamS
         });
     }
     return teams;
+}
+
+
+// ─── Live standings (the STANDINGS button on the game screen) ─────────────
+
+export interface LiveStanding {
+    rank: number;          // shared when two players' records are identical
+    player: Player;
+    wins: number;
+    losses: number;
+    ties: number;
+    played: number;
+    pointDiff: number;
+}
+
+export interface LiveStandingsResult {
+    standings: LiveStanding[];
+    gamesScored: number;
+    gamesTotal: number;
+}
+
+/** A score box counts only when something real was typed into it. */
+const entered = (v: string | undefined): number | null => {
+    if (v === undefined || v === null) return null;
+    const t = String(v).trim();
+    if (t === '' || !/^\d+$/.test(t)) return null;
+    return parseInt(t, 10);
+};
+
+/**
+ * Who is winning right now, from whatever has been scored so far, at any point
+ * in the match (round 5 of 12, mid-round, playoffs included).
+ *
+ * - Every player in the match is listed, including anyone who has only sat
+ *   out so far (0-0), so nobody wonders where they went.
+ * - A game counts only when BOTH scores are entered. One box filled in while
+ *   the other team's score is still being typed is not an 11-0 result.
+ * - A tie is neither a win nor a loss.
+ * - Ranked by most wins, then fewest losses, then point differential. Players
+ *   with an identical record share a rank.
+ */
+export function calculateLiveStandings(
+    schedule: RoundData[],
+    scores: Record<string, string>
+): LiveStandingsResult {
+    const stats: Record<string, LiveStanding> = {};
+    const ensure = (p: Player) => {
+        if (!p || p.id === undefined || p.id === null) return null;
+        const id = String(p.id);
+        if (!stats[id]) stats[id] = { rank: 0, player: p, wins: 0, losses: 0, ties: 0, played: 0, pointDiff: 0 };
+        return stats[id];
+    };
+
+    let gamesScored = 0;
+    let gamesTotal = 0;
+    (schedule || []).forEach((round, rIdx) => {
+        (round.byes || []).forEach((p: any) => ensure(p));
+        (round.games || []).forEach((game, gIdx) => {
+            (game.team1 || []).forEach(p => ensure(p));
+            (game.team2 || []).forEach(p => ensure(p));
+            gamesTotal++;
+            const s1 = entered(scores[`${rIdx}_${gIdx}_t1`]);
+            const s2 = entered(scores[`${rIdx}_${gIdx}_t2`]);
+            if (s1 === null || s2 === null) return;
+            if (s1 === 0 && s2 === 0) return; // 0-0 is an unplayed game, not a tie
+            gamesScored++;
+            const diff = s1 - s2;
+            const apply = (team: Player[], sign: 1 | -1) => team.forEach(p => {
+                const st = ensure(p);
+                if (!st) return;
+                st.played++;
+                st.pointDiff += sign * diff;
+                if (diff === 0) st.ties++;
+                else if (sign * diff > 0) st.wins++;
+                else st.losses++;
+            });
+            apply(game.team1 || [], 1);
+            apply(game.team2 || [], -1);
+        });
+    });
+
+    const list = Object.values(stats);
+    const name = (p: Player) => String(p.first_name || '');
+    list.sort((a, b) =>
+        b.wins - a.wins ||
+        a.losses - b.losses ||
+        b.pointDiff - a.pointDiff ||
+        name(a.player).localeCompare(name(b.player))
+    );
+    list.forEach((s, i) => {
+        const prev = list[i - 1];
+        s.rank = prev && prev.wins === s.wins && prev.losses === s.losses && prev.pointDiff === s.pointDiff
+            ? prev.rank
+            : i + 1;
+    });
+    return { standings: list, gamesScored, gamesTotal };
 }

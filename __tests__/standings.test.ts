@@ -14,6 +14,7 @@ import {
   generateFinals,
   calculateIndividualStandings,
   pairIndividualsIntoTeams,
+  calculateLiveStandings,
   TeamStanding,
   IndividualStanding,
 } from '../utils/standings';
@@ -342,5 +343,57 @@ describe('pairIndividualsIntoTeams', () => {
     pairIndividualsIntoTeams(ranked(8)).forEach(t =>
       expect(t).toMatchObject({ wins: 0, losses: 0, pointDiff: 0, winPct: 0 })
     );
+  });
+});
+
+
+describe('calculateIndividualStandings ties', () => {
+  it('a tie is neither a win nor a loss for anyone', () => {
+    const schedule = [round([[[p1, p2], [p3, p4]]])];
+    const st = calculateIndividualStandings(schedule, score(0, 0, 9, 9), 1);
+    st.forEach(s => expect(s).toMatchObject({ wins: 0, losses: 0, pointDiff: 0 }));
+  });
+});
+
+describe('calculateLiveStandings (the STANDINGS button)', () => {
+  const withByes = (games: [Player[], Player[]][], byes: Player[]): RoundData => ({ ...round(games), byes });
+
+  it('ranks by wins mid-match, counting only games with both scores entered', () => {
+    const schedule = [
+      withByes([[[p1, p2], [p3, p4]]], [p5]),
+      withByes([[[p1, p3], [p2, p5]]], [p4]),
+      withByes([[[p1, p4], [p3, p5]]], [p2]), // round 3: only one score typed so far
+    ];
+    const scores = { ...score(0, 0, 11, 5), ...score(1, 0, 11, 9), '2_0_t1': '7' };
+    const r = calculateLiveStandings(schedule, scores);
+    expect(r.gamesScored).toBe(2);
+    expect(r.gamesTotal).toBe(3);
+    const by = Object.fromEntries(r.standings.map(s => [s.player.id, s]));
+    expect(by['1']).toMatchObject({ rank: 1, wins: 2, losses: 0, played: 2, pointDiff: 8 });
+    expect(by['3']).toMatchObject({ wins: 1, losses: 1, played: 2 });
+    expect(by['4']).toMatchObject({ wins: 0, losses: 1, played: 1 });
+    // Every player is listed, even with nothing scored yet in their games.
+    expect(r.standings).toHaveLength(5);
+    expect(r.standings[0].player.id).toBe('1');
+  });
+
+  it('a tie counts for neither side, 0-0 is unplayed, blanks and junk are ignored', () => {
+    const schedule = [round([[[p1, p2], [p3, p4]]]), round([[[p1, p3], [p2, p4]]]), round([[[p1, p4], [p2, p3]]])];
+    const scores = { ...score(0, 0, 10, 10), ...score(1, 0, 0, 0), '2_0_t1': ' ', '2_0_t2': 'x' };
+    const r = calculateLiveStandings(schedule, scores);
+    expect(r.gamesScored).toBe(1);
+    r.standings.forEach(s => expect(s).toMatchObject({ wins: 0, losses: 0, ties: 1, played: 1, pointDiff: 0 }));
+    // Identical records share first place.
+    r.standings.forEach(s => expect(s.rank).toBe(1));
+  });
+
+  it('identical records share a rank; the next rank skips', () => {
+    const schedule = [round([[[p1, p2], [p3, p4]]])];
+    const r = calculateLiveStandings(schedule, score(0, 0, 11, 4));
+    expect(r.standings.map(s => s.rank)).toEqual([1, 1, 3, 3]);
+  });
+
+  it('copes with an empty or missing schedule', () => {
+    expect(calculateLiveStandings([], {})).toEqual({ standings: [], gamesScored: 0, gamesTotal: 0 });
   });
 });

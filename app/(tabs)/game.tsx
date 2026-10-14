@@ -30,7 +30,7 @@ import { useSubscription } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useCollaborativeScoring } from '../../hooks/useCollaborativeScoring';
 import { Player, useGameLogic } from '../../hooks/useGameLogic';
-import { calculateTeamStandings, calculateIndividualStandings, pairIndividualsIntoTeams, generateSemifinals, generateFinals, TeamStanding } from '../../utils/standings';
+import { calculateTeamStandings, calculateIndividualStandings, pairIndividualsIntoTeams, generateSemifinals, generateFinals, TeamStanding, calculateLiveStandings } from '../../utils/standings';
 import { useSmartScoring } from '../../hooks/useSmartScoring';
 import { ShareMatchModal } from '../../components/ShareMatchModal';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
@@ -228,6 +228,15 @@ export default function GameScreen() {
       clearScores, inputRefs, flatListRef, handleScoreChange,
       markServerPulled, scoresStorageKey
   } = useSmartScoring(groupName, schedule, onAllScoresCompleteCb, shareCode);
+
+  // STANDINGS button: who is winning right now, from the scores entered so
+  // far. Recomputed from live state, so it updates while open (including
+  // scores arriving from other phones in a shared match).
+  const [standingsVisible, setStandingsVisible] = useState(false);
+  const liveStandings = useMemo(
+      () => (standingsVisible ? calculateLiveStandings(schedule || [], scores || {}) : null),
+      [standingsVisible, schedule, scores]
+  );
 
   // Always-current schedule, for callbacks that fire outside the render that
   // produced it (the post-shuffle reset push below).
@@ -1319,6 +1328,18 @@ export default function GameScreen() {
                     style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }} />
               </View>
           )}
+          {isMatchScored && (
+              <TouchableOpacity
+                  onPress={() => setStandingsVisible(true)}
+                  style={styles.standingsBtn}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Standings: who is winning so far"
+              >
+                  <BrandedIcon name="leaderboard" size={16} color={colors.accent} />
+                  <Text style={styles.standingsBtnText}>STANDINGS</Text>
+              </TouchableOpacity>
+          )}
           {isTournament && tournamentPhase !== 'round-robin' && (
               <View style={{ alignItems: 'center', paddingVertical: 8 }}>
                   <Text style={{ fontFamily: FONT_BODY_BOLD, fontSize: 12, color: colors.accent, letterSpacing: 1 }}>
@@ -1404,6 +1425,45 @@ export default function GameScreen() {
                 </TouchableOpacity>
             )}
         </View>
+
+        {/* STANDINGS MODAL */}
+        <Modal visible={standingsVisible} transparent animationType="fade" onRequestClose={() => setStandingsVisible(false)}>
+            <View style={styles.modalOverlay}><View style={[styles.modalContent, { alignSelf: 'center' }]}>
+                <Text style={styles.modalTitle}>STANDINGS</Text>
+                <Text style={styles.standingsSub}>
+                    {liveStandings && liveStandings.gamesScored > 0
+                        ? `So far: ${liveStandings.gamesScored} of ${liveStandings.gamesTotal} games scored`
+                        : 'No games scored yet. Standings appear as soon as a game has both scores entered.'}
+                </Text>
+                <View style={styles.standingsHeadRow}>
+                    <Text style={[styles.standingsHead, { width: 34 }]}>#</Text>
+                    <Text style={[styles.standingsHead, { flex: 1 }]}>PLAYER</Text>
+                    <Text style={[styles.standingsHead, { width: 64, textAlign: 'center' }]}>W-L</Text>
+                    <Text style={[styles.standingsHead, { width: 48, textAlign: 'right' }]}>PTS</Text>
+                </View>
+                <ScrollView style={{ maxHeight: 420 }}>
+                    {(liveStandings?.standings || []).map((st) => (
+                        <View key={String(st.player.id)} style={[styles.standingsRow, st.rank === 1 && st.played > 0 && styles.standingsRowLeader]}>
+                            <Text style={[styles.standingsRank, st.rank === 1 && st.played > 0 && { color: colors.accent }]}>{st.rank}</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.standingsName} numberOfLines={1}>{st.player.first_name}</Text>
+                                <Text style={styles.standingsMeta}>
+                                    {st.played === 0 ? 'No scored games yet' : `${st.played} game${st.played === 1 ? '' : 's'}${st.ties ? ` · ${st.ties} tie${st.ties === 1 ? '' : 's'}` : ''}`}
+                                </Text>
+                            </View>
+                            <Text style={styles.standingsWL}>{st.wins}-{st.losses}</Text>
+                            <Text style={[styles.standingsPts, { color: st.pointDiff > 0 ? colors.accent : st.pointDiff < 0 ? colors.danger : colors.textMuted }]}>
+                                {st.pointDiff > 0 ? `+${st.pointDiff}` : st.pointDiff}
+                            </Text>
+                        </View>
+                    ))}
+                </ScrollView>
+                <Text style={styles.standingsNote}>Most wins first, then fewest losses, then points won minus points lost. A tie counts as neither a win nor a loss.</Text>
+                <TouchableOpacity onPress={() => setStandingsVisible(false)} style={styles.standingsClose}>
+                    <Text style={styles.standingsCloseText}>CLOSE</Text>
+                </TouchableOpacity>
+            </View></View>
+        </Modal>
 
         {/* REPORT MODAL */}
         <Modal visible={reportModalVisible} transparent animationType="slide" onRequestClose={() => setReportModalVisible(false)}>
@@ -1589,6 +1649,21 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: c.modalOverlay, justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: c.modalBg, padding: 24, borderRadius: 16, width: '90%', maxHeight: '90%' },
   modalTitle: { fontSize: 18, fontFamily: FONT_DISPLAY_EXTRABOLD, color: c.text, marginBottom: 16, textAlign: 'center' },
+  standingsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center', marginVertical: 6, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: c.accent },
+  standingsBtnText: { fontFamily: FONT_BODY_BOLD, fontSize: 12, color: c.accent, letterSpacing: 1 },
+  standingsSub: { fontFamily: FONT_BODY_REGULAR, fontSize: 13, color: c.textSoft, textAlign: 'center', marginTop: -8, marginBottom: 12 },
+  standingsHeadRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingBottom: 6 },
+  standingsHead: { fontFamily: FONT_BODY_BOLD, fontSize: 11, color: c.textMuted, letterSpacing: 1 },
+  standingsRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, marginBottom: 4, backgroundColor: c.inputBg },
+  standingsRowLeader: { borderWidth: 1, borderColor: c.accent },
+  standingsRank: { width: 34, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.text },
+  standingsName: { fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, color: c.text },
+  standingsMeta: { fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: c.textMuted, marginTop: 1 },
+  standingsWL: { width: 64, textAlign: 'center', fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16, color: c.text },
+  standingsPts: { width: 48, textAlign: 'right', fontFamily: FONT_BODY_BOLD, fontSize: 14 },
+  standingsNote: { fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: c.textMuted, textAlign: 'center', marginTop: 10 },
+  standingsClose: { marginTop: 14, paddingVertical: 12, borderRadius: 10, backgroundColor: c.accent, alignItems: 'center' },
+  standingsCloseText: { fontFamily: FONT_BODY_BOLD, fontSize: 14, color: c.accentText },
   label: { color: c.textMuted, fontFamily: FONT_BODY_BOLD, marginBottom: 8, fontSize: 12 },
   modalInput: { backgroundColor: c.inputBg, padding: 12, borderRadius: 8, fontSize: 14, fontFamily: FONT_BODY_BOLD, marginBottom: 16, borderWidth: 1, borderColor: c.inputBorder, color: c.inputText },
   searchResultsContainer: { maxHeight: 150, marginBottom: 16 },
