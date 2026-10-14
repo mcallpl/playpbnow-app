@@ -673,13 +673,25 @@ export default function RosterScreen() {
         <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <View>
-                    <Text style={styles.headerTitle}>PLAYERS</Text>
-                    <Text style={styles.headerSub}>
+                {/* The app turns off swipe-back (gestureEnabled: false), so this
+                    screen MUST carry its own way out. Without it, opening ALL
+                    PLAYERS on a phone left no way off the page. */}
+                <TouchableOpacity
+                    onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/groups'))}
+                    style={styles.backBtn}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Back"
+                >
+                    <BrandedIcon name="back" size={22} color={colors.text} />
+                </TouchableOpacity>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.headerTitle} numberOfLines={1}>PLAYERS</Text>
+                    <Text style={styles.headerSub} numberOfLines={2}>
                         {players.length} PLAYERS: {femaleCount} FEMALES & {maleCount} MALES
                     </Text>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                     <TouchableOpacity
                         style={[styles.selectBtn, selectionMode && styles.selectBtnActive]}
                         onPress={toggleSelectionMode}
@@ -1067,7 +1079,16 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
         paddingTop: 20,
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        gap: 12
+    },
+    backBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: c.card,
+        alignItems: 'center',
+        justifyContent: 'center'
     },
     headerTitle: { color: c.text, fontSize: 18, fontFamily: FONT_DISPLAY_EXTRABOLD },
     headerSub: { color: c.accent, fontSize: 10, fontFamily: FONT_BODY_BOLD, textTransform: 'uppercase' },
