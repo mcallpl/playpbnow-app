@@ -549,6 +549,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             clearUnsynced([key1, key2]);
             lastSyncedAtRef.current = Date.now();
         }
+        return result.status === 'success';
     }, [fetchWithRetry, protectKey, releaseKey, markUnsynced, clearUnsynced, refreshUnsyncedCount, setScores]); // NO sessionId/shareCode deps — uses refs
 
     // One game's writes go out ONE AT A TIME, in the order they were typed.
@@ -566,7 +567,20 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         pendingRef.current.add(`${gameKey}_t1`);
         pendingRef.current.add(`${gameKey}_t2`);
         const prev = gameQueueRef.current.get(gameKey) || Promise.resolve();
-        const next = prev.catch(() => {}).then(() => sendScoreNow(roundIdx, gameIdx, s1Val, s2Val));
+        const next: Promise<void> = prev.catch(() => {}).then(async () => {
+            const ok = await sendScoreNow(roundIdx, gameIdx, s1Val, s2Val);
+            // The server has acknowledged this game's latest write, so it is no
+            // longer "ours, in flight". Pending used to clear only when a later
+            // poll showed the server holding exactly our value; if another
+            // scorer changed the game first, that never happened and this
+            // screen ignored every later update to the game for the rest of
+            // the match (UAT 2026-10-15). The short protectKey window still
+            // stops a poll that was already in flight from flipping the cell.
+            if (ok && gameQueueRef.current.get(gameKey) === next) {
+                pendingRef.current.delete(`${gameKey}_t1`);
+                pendingRef.current.delete(`${gameKey}_t2`);
+            }
+        });
         gameQueueRef.current.set(gameKey, next);
         next.finally(() => { if (gameQueueRef.current.get(gameKey) === next) gameQueueRef.current.delete(gameKey); });
         return next;
