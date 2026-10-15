@@ -312,6 +312,17 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     // ── ALL session values as refs — immune to stale closures ──
     const sessionIdRef = useRef(sessionId);
     const shareCodeRef = useRef(shareCode);
+    // Highest server sequence number this device has SEEN (from any poll or
+    // write reply). Sent as last_seen_seq with every score write, so the
+    // server can refuse a late, out-of-date value instead of letting it
+    // overwrite a newer score typed on another phone. The server has supported
+    // this since 2026-09-04; the app never sent it until 2026-10-15, when a
+    // live UAT showed an old 6 overwriting a corrected 8.
+    const lastSeenSeqRef = useRef(0);
+    const noteSeq = (data: any) => {
+        const n = Number(data?.seq);
+        if (Number.isFinite(n) && n > lastSeenSeqRef.current) lastSeenSeqRef.current = n;
+    };
     const initialSyncDoneRef = useRef(initialSyncDone);
     const isCollaboratorRef = useRef(isCollaborator);
     const scheduleRef = useRef(schedule);
@@ -387,6 +398,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             try {
                 const res = await fetch(url, options);
                 const data = await res.json();
+            noteSeq(data);
                 if (data.status === 'success') return data;
                 console.error(`Server error (attempt ${attempt}/${retries}):`, data.message);
                 if (attempt === retries) return data; // return error on final attempt
@@ -433,6 +445,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                     game_idx: game.gIdx,
                     s1_str: game.s1,
                     s2_str: game.s2,
+                    last_seen_seq: lastSeenSeqRef.current,
                     updated_at: Date.now()
                 })
             })
@@ -461,6 +474,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 `${API_URL}/collab_get_scores.php?share_code=${code}&since=0`
             );
             const data = await res.json();
+            noteSeq(data);
 
             if (data.status === 'success') {
                 setConnectedUsers(data.connected_users || 0);
@@ -509,6 +523,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 game_idx: gameIdx,
                 s1_str: s1Val,
                 s2_str: s2Val,
+                last_seen_seq: lastSeenSeqRef.current,
                 updated_at: Date.now()
             })
         });
@@ -518,6 +533,14 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         releaseKey(key1, seq1, PROTECTION_RELEASE_SLACK);
         releaseKey(key2, seq2, PROTECTION_RELEASE_SLACK);
 
+        if (result.status === 'success' && result.superseded) {
+            // Someone else's newer score won for a field this phone sent out of
+            // date. Show the winning value now rather than keep the stale one.
+            const fix: { [key: string]: string } = {};
+            if (result.s1_applied === false && typeof result.s1_str === 'string') fix[key1] = result.s1_str;
+            if (result.s2_applied === false && typeof result.s2_str === 'string') fix[key2] = result.s2_str;
+            if (Object.keys(fix).length) setScores(prev => ({ ...prev, ...fix }));
+        }
         if (result.status !== 'success') {
             console.error(`⚠️ SYNC FAILED for game ${roundIdx}_${gameIdx}: ${result.message}`);
             // stays in unsyncedRef → surfaced in the LIVE bar, healed next poll
@@ -526,7 +549,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             clearUnsynced([key1, key2]);
             lastSyncedAtRef.current = Date.now();
         }
-    }, [fetchWithRetry, protectKey, releaseKey, markUnsynced, clearUnsynced, refreshUnsyncedCount]); // NO sessionId/shareCode deps — uses refs
+    }, [fetchWithRetry, protectKey, releaseKey, markUnsynced, clearUnsynced, refreshUnsyncedCount, setScores]); // NO sessionId/shareCode deps — uses refs
 
     // ── Track server schedule hash to detect changes ──────────
     const serverScheduleHashRef = useRef<string>('');
@@ -565,6 +588,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 `${API_URL}/collab_get_scores.php?share_code=${code}&since=0&user_id=${userId}`
             );
             const data = await res.json();
+            noteSeq(data);
 
             if (data.status === 'success') {
                 // Check if the match was finished by another device
@@ -860,6 +884,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 })
             });
             const data = await res.json();
+            noteSeq(data);
 
             if (data.status === 'success') {
                 const code = data.share_code;
@@ -903,6 +928,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 `${API_URL}/collab_get_scores.php?share_code=${code}&since=0&user_id=${userId}`
             );
             const data = await res.json();
+            noteSeq(data);
 
             if (!data || data.status !== 'success') {
                 if (data && /not found|expired/i.test(data.message || '')) {
@@ -991,6 +1017,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 `${API_URL}/collab_get_scores.php?share_code=${code}&since=0&user_id=${userId}`
             );
             const data = await res.json();
+            noteSeq(data);
             if (data.status !== 'success') {
                 if (/not found|expired/i.test(data.message || '')) {
                     sessionOverRef.current = true;
