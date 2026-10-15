@@ -229,6 +229,37 @@ export default function GameScreen() {
       markServerPulled, scoresStorageKey
   } = useSmartScoring(groupName, schedule, onAllScoresCompleteCb, shareCode);
 
+  // Score entry on a phone: while the number pad is up, the header controls
+  // and ADD PLAYER fold away (the screen was down to one half-visible game),
+  // and the game being scored is scrolled so both teams sit in full view.
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+      if (Platform.OS === 'web') return;
+      const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+      const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+      const a = Keyboard.addListener(showEvt, () => setKeyboardOpen(true));
+      const b = Keyboard.addListener(hideEvt, () => setKeyboardOpen(false));
+      return () => { a.remove(); b.remove(); };
+  }, []);
+  const listBoxRef = React.useRef<View | null>(null);
+  const gameRowRefs = React.useRef<Record<string, View | null>>({});
+  const listScrollY = React.useRef(0);
+  const bringGameIntoView = React.useCallback((rIdx: number, gIdx: number) => {
+      if (Platform.OS === 'web') return;
+      // Wait for the keyboard and the folded header to settle, then measure.
+      setTimeout(() => {
+          const row = gameRowRefs.current[`${rIdx}_${gIdx}`];
+          const box = listBoxRef.current;
+          if (!row || !box) return;
+          box.measureInWindow((_bx, boxY) => {
+              row.measureInWindow((_rx, rowY) => {
+                  const offset = Math.max(0, listScrollY.current + (rowY - boxY) - 12);
+                  flatListRef.current?.scrollToOffset({ offset, animated: true });
+              });
+          });
+      }, 350);
+  }, []);
+
   // STANDINGS button: who is winning right now, from the scores entered so
   // far. Recomputed from live state, so it updates while open (including
   // scores arriving from other phones in a shared match).
@@ -1194,7 +1225,7 @@ export default function GameScreen() {
           // A long name shrinks to fit its tile on the phones (large text
           // settings used to cut "Kathleen S" to "Kathl..."). The web has no
           // shrink-to-fit, so there it may use a second line instead.
-          <Text style={[styles.pText, { color: txt }]}
+          <Text style={[styles.pText, { color: txt, width: '100%', textAlign: 'center' }]}
             numberOfLines={Platform.OS === 'web' ? 2 : 1}
             adjustsFontSizeToFit minimumFontScale={0.5}>{player.first_name}</Text>
         )}
@@ -1210,13 +1241,14 @@ export default function GameScreen() {
         if (game.team2.length === 2) { const key = [game.team2[0].id, game.team2[1].id].sort().join('-'); if ((partnerCounts[key] || 0) > 1) t2Conflict = true; }
     }
     return (
-      <View key={gIdx} style={styles.gameRow}>
+      <View key={gIdx} style={styles.gameRow} ref={(el) => { gameRowRefs.current[`${rIdx}_${gIdx}`] = el; }} collapsable={false}>
         {isMatchScored && (
             <View style={styles.sideScoreContainer}>
                 <TextInput ref={(el) => { inputRefs.current[`${rIdx}_${gIdx}_t1`] = el as TextInput | null; }}
                     style={styles.scoreInput} keyboardType="numeric" placeholder="-"
                     placeholderTextColor={colors.textMuted}
                     value={scores[`${rIdx}_${gIdx}_t1`] || ''}
+                    onFocus={() => bringGameIntoView(rIdx, gIdx)}
                     onChangeText={(t) => syncHandlerRef.current(rIdx, gIdx, 't1', t)} returnKeyType="next" />
             </View>
         )}
@@ -1238,6 +1270,7 @@ export default function GameScreen() {
                     style={styles.scoreInput} keyboardType="numeric" placeholder="-"
                     placeholderTextColor={colors.textMuted}
                     value={scores[`${rIdx}_${gIdx}_t2`] || ''}
+                    onFocus={() => bringGameIntoView(rIdx, gIdx)}
                     onChangeText={(t) => syncHandlerRef.current(rIdx, gIdx, 't2', t)} returnKeyType="next" />
             </View>
         )}
@@ -1273,7 +1306,7 @@ export default function GameScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.controlsRow}>
+          {!keyboardOpen && <View style={styles.controlsRow}>
               <View style={styles.wtsContainer}>
                   <Text style={styles.wtsLabel}>PLAY TO:</Text>
                   {/* UAT C-L5: edits are held locally and only applied once the
@@ -1323,9 +1356,9 @@ export default function GameScreen() {
                       <Text style={[styles.controlLabel, isMatchScored && { color: colors.accent }]}>SCORE</Text>
                   </View>
               </View>
-          </View>
+          </View>}
           {/* Tournament toggle — visible when scoring is on */}
-          {isMatchScored && tournamentPhase === 'round-robin' && (
+          {!keyboardOpen && isMatchScored && tournamentPhase === 'round-robin' && (
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 16, gap: 8 }}>
                   <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 12, color: isTournament ? colors.accent : colors.textMuted }}>TOURNAMENT</Text>
                   <Switch value={isTournament} onValueChange={setIsTournament}
@@ -1333,7 +1366,7 @@ export default function GameScreen() {
                     style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }} />
               </View>
           )}
-          {isMatchScored && (
+          {!keyboardOpen && isMatchScored && (
               <TouchableOpacity
                   onPress={() => setStandingsVisible(true)}
                   style={styles.standingsBtn}
@@ -1370,14 +1403,21 @@ export default function GameScreen() {
           )}
         </View>
 
-        <View style={styles.subHeaderAction}>
+        {!keyboardOpen && <View style={styles.subHeaderAction}>
             <TouchableOpacity onPress={() => { if (!canEditSchedule) { hostOnlyAlert(); return; } setModalVisible(true); }} style={styles.addPlayerBtn}>
                 <BrandedIcon name="person-add" size={16} color={colors.text} /><Text style={styles.addPlayerText}>ADD PLAYER</Text>
             </TouchableOpacity>
-        </View>
+        </View>}
 
+        <View ref={listBoxRef} style={{ flex: 1 }} collapsable={false}>
         <FlatList ref={flatListRef} data={schedule} keyExtractor={(item) => item.id}
           extraData={scores}
+          onScroll={(e) => { listScrollY.current = e.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={16}
+          // The number pad has no Done key: dragging the list puts it away
+          // (and brings the header controls back). Taps still reach the score boxes.
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
           alwaysBounceHorizontal={false}
           contentContainerStyle={styles.listContent}
           onScrollToIndexFailed={(info) => { setTimeout(() => flatListRef.current?.scrollToIndex({ index: info.index, animated: true }), 500); }}
@@ -1397,13 +1437,20 @@ export default function GameScreen() {
                 <View style={styles.separator} />
                 {item.games.map((game: any, gIdx: number) => renderGame(game, index, gIdx))}
                 {item.byes.length > 0 && (
-                    <View style={styles.byeRow}><Text style={styles.byeLabel}>BYES:</Text>
-                        {item.byes.map((p: { id: string; first_name: string }) => (<Text key={p.id} style={styles.byeName}>{p.first_name} </Text>))}
+                    <View style={styles.byeRow}>
+                        {/* One run of text, so it always wraps to as many lines as it
+                            needs. A non-breaking space inside each name keeps "Ed M"
+                            from splitting across two lines. */}
+                        <Text style={styles.byeName}>
+                            <Text style={styles.byeLabel}>BYES:   </Text>
+                            {item.byes.map((p: { id: string; first_name: string }) => String(p.first_name || '').replace(/ /g, '\u00A0')).join('    ')}
+                        </Text>
                     </View>
                 )}
             </View>
           )}
         />
+        </View>
 
         <View style={styles.footer}>
             <TouchableOpacity style={[styles.actionBtn, styles.textBtn]} onPress={handleTextMatchPress} activeOpacity={0.8}>
