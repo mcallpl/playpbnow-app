@@ -288,6 +288,41 @@ production before its fix and passing after; treat each as a regression test.
   the same `u:<id>` fallback as `pbnow_collab_identity()`; without it the LIVE
   bar counted every person twice.
 
+## Connected scoring, Android pass — locked 2026-10-15
+
+Found by a live UAT with a release build of 1.4.5 on the Android emulator
+(Android 16) scoring alongside three browser users, as helper and as host.
+
+- **Tapping a filled score box selects its number** (`selectTextOnFocus` on
+  both score inputs in `game.tsx`). On Android the cursor landed in front of
+  the old number, Backspace removed nothing, and a correction from 6 to 9
+  saved "96" on every screen.
+- **A reused live code never brings back the old match's scores.** The server
+  reuses a group's active code for a NEW match (different pairings) and wipes
+  its scores; it now says `reset: true`. The app saves each match's scores
+  under its share code, so without that flag the host reloaded the old
+  match's saved copy and pushed 13 old scores onto the new pairings two
+  seconds after the wipe. On `reset: true` the app overwrites that saved copy
+  with what is on screen (`createCollabSession`). Verified by planting 48 old
+  scores: none came back.
+- Verified working on Android, no change needed: number pad folds the header
+  and keeps both teams in view; dragging closes it; natural typing moves box
+  to box by itself; erase stays erased; same-box conflict converges; close and
+  reopen resumes from the LIVE tab; reinstall rejoins by code with every
+  score; offline scoring shows "N not synced / RECONNECTING" and pushes
+  everything on reconnect (up to ~30 s, retry backoff); STANDINGS identical
+  to the web; simultaneous FINISH from Android + web saves ONE session with
+  all 24 games exact.
+- **A local Android build cannot receive OTA updates** unless
+  `expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY` carries
+  `{"expo-channel-name":"production"}`; EAS builds inject it, `expo prebuild`
+  does not (u.expo.dev answers 400 without it). Store phones are unaffected.
+- Open, not changed (it predates today and the event was hours away): the
+  sign-in screen's KeyboardAvoidingView (`behavior="height"` on Android) hit
+  "Maximum update depth exceeded" once in three Android sign-ins. "Try Again"
+  recovered and the user was already signed in. Also the Android gesture bar
+  draws over the tab labels (edge-to-edge bottom inset).
+
 ## Known item awaiting Chip's decision
 
 `app/\(tabs\)/help.tsx` — a directory whose name is literally `\(tabs\)`,
