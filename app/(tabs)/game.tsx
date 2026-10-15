@@ -1422,7 +1422,10 @@ export default function GameScreen() {
           scrollEventThrottle={16}
           // The number pad has no Done key: dragging the list puts it away
           // (and brings the header controls back). Taps still reach the score boxes.
-          keyboardDismissMode="on-drag"
+          // Phones only: react-native-web treats EVERY scroll as a drag, so on
+          // the website the app's own scroll-into-view blurred the box right
+          // after the first digit and "11" was saved as "1" (UAT 2026-10-15).
+          keyboardDismissMode={Platform.OS === 'web' ? 'none' : 'on-drag'}
           keyboardShouldPersistTaps="handled"
           alwaysBounceHorizontal={false}
           contentContainerStyle={styles.listContent}
