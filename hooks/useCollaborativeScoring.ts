@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { scoresCacheKey } from './useSmartScoring';
 
 const API_URL = 'https://playpbnow.com/api';
 const POLL_INTERVAL = 2000;
@@ -924,6 +925,18 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             if (data.status === 'success') {
                 const code = data.share_code;
                 const sid = data.session_id.toString();
+
+                // UAT 2026-10-15: the server reuses a group's live code for a NEW
+                // match (different pairings) and wipes its scores, saying so with
+                // reset:true. This device still has the OLD match's scores saved
+                // under that same code, and the screen loads that copy as soon as
+                // the code arrives, then pushed them back onto the new pairings.
+                // Overwrite the saved copy with what is on screen first.
+                if (data.reset === true && groupName) {
+                    try {
+                        await AsyncStorage.setItem(scoresCacheKey(groupName, code), JSON.stringify(scoresRef.current || {}));
+                    } catch (e) {}
+                }
 
                 // Push all current scores to the server
                 await pushAllScoresToServer(code, sid, scoresRef.current);
