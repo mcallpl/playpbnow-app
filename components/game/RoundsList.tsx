@@ -219,6 +219,7 @@ const styles = StyleSheet.create({
     },
     byeRow: { 
         flexDirection: 'row', 
+        flexWrap: 'wrap', 
         marginTop: 15, 
         alignItems: 'center', 
         gap: 5, 

@@ -1191,7 +1191,12 @@ export default function GameScreen() {
             value={player.first_name} onChangeText={(name) => handlePlayerNameChange(rIdx, gIdx, tIdx, pIdx, name)}
             onBlur={() => setEditingPlayer(null)} autoFocus selectTextOnFocus />
         ) : (
-          <Text style={[styles.pText, { color: txt }]} numberOfLines={1}>{player.first_name}</Text>
+          // A long name shrinks to fit its tile on the phones (large text
+          // settings used to cut "Kathleen S" to "Kathl..."). The web has no
+          // shrink-to-fit, so there it may use a second line instead.
+          <Text style={[styles.pText, { color: txt }]}
+            numberOfLines={Platform.OS === 'web' ? 2 : 1}
+            adjustsFontSizeToFit minimumFontScale={0.5}>{player.first_name}</Text>
         )}
       </TouchableOpacity>
     );
@@ -1631,14 +1636,15 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   teamWrapper: { flex: 1, height: '100%', borderColor: c.border, borderWidth: 1, borderRadius: 8, padding: 2, marginHorizontal: 2 },
   teamContainer: { flex: 1, flexDirection: 'column', justifyContent: 'space-between', gap: 2 },
   centerVS: { width: 40, justifyContent: 'center', alignItems: 'center' },
-  playerBox: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 8 },
+  playerBox: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 8, paddingHorizontal: 3 },
   selectedBox: { borderWidth: 3, borderColor: c.accent },
   emptyBox: { flex: 1, backgroundColor: c.surfaceLight, borderRadius: 8 },
   pText: { fontFamily: FONT_BODY_BOLD, fontSize: 14 },
   vsText: { color: c.textMuted, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16 },
   crtText: { fontFamily: FONT_BODY_BOLD, color: c.textMuted, fontSize: 12, marginTop: 4 },
   scoreInput: { width: 48, height: 48, backgroundColor: c.inputBg, borderRadius: 8, textAlign: 'center', fontSize: 16, fontFamily: FONT_BODY_BOLD, color: c.inputText, borderWidth: 1, borderColor: c.border, elevation: 2 },
-  byeRow: { flexDirection: 'row', marginTop: 12, alignItems: 'center', gap: 8, paddingTop: 12, borderTopWidth: 1, borderColor: c.border },
+  // Wraps onto more lines so every player sitting out is visible, however many there are.
+  byeRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, alignItems: 'center', gap: 8, rowGap: 4, paddingTop: 12, borderTopWidth: 1, borderColor: c.border },
   byeLabel: { color: c.textSoft, fontSize: 12, fontFamily: FONT_BODY_BOLD },
   byeName: { color: c.text, fontSize: 12, fontFamily: FONT_BODY_BOLD },
   footer: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 16, gap: 12, backgroundColor: c.bg, position: 'absolute', bottom: 0, width: '100%' },
