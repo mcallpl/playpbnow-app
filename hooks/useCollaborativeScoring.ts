@@ -494,7 +494,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     }, [setScores, notifyServerPull]);
 
     // ── PUSH ONE GAME: Uses REFS — works even from stale closures ──
-    const syncScoreToServer = useCallback(async (
+    const sendScoreNow = useCallback(async (
         roundIdx: number, gameIdx: number, s1Val: string, s2Val: string
     ) => {
         // Read from REFS, not closure — immune to stale FlatList cells
@@ -550,6 +550,27 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             lastSyncedAtRef.current = Date.now();
         }
     }, [fetchWithRetry, protectKey, releaseKey, markUnsynced, clearUnsynced, refreshUnsyncedCount, setScores]); // NO sessionId/shareCode deps — uses refs
+
+    // One game's writes go out ONE AT A TIME, in the order they were typed.
+    // Every write carries both scores of the game, so when "11 - (blank)" and
+    // then "11 - 6" were in flight together and the first one landed second,
+    // it blanked the 6 on every screen, the typist's included (UAT 2026-10-15:
+    // 2 of 4 runs of four people typing fast). Chaining per game guarantees
+    // the last thing typed is the last thing the server receives.
+    const gameQueueRef = useRef<Map<string, Promise<void>>>(new Map());
+    const syncScoreToServer = useCallback((
+        roundIdx: number, gameIdx: number, s1Val: string, s2Val: string
+    ): Promise<void> => {
+        const gameKey = `${roundIdx}_${gameIdx}`;
+        // Mark pending at once so self-heal never re-pushes a queued game.
+        pendingRef.current.add(`${gameKey}_t1`);
+        pendingRef.current.add(`${gameKey}_t2`);
+        const prev = gameQueueRef.current.get(gameKey) || Promise.resolve();
+        const next = prev.catch(() => {}).then(() => sendScoreNow(roundIdx, gameIdx, s1Val, s2Val));
+        gameQueueRef.current.set(gameKey, next);
+        next.finally(() => { if (gameQueueRef.current.get(gameKey) === next) gameQueueRef.current.delete(gameKey); });
+        return next;
+    }, [sendScoreNow]);
 
     // ── Track server schedule hash to detect changes ──────────
     const serverScheduleHashRef = useRef<string>('');
