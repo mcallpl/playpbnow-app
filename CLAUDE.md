@@ -259,6 +259,35 @@ accounts scoring concurrently. Regression suite:
   storage if anything is unsynced. Silent failure is what turned every bug
   above from recoverable into lost data.
 
+## Connected scoring, second pass — locked 2026-10-15
+
+Found by a live five-person UAT on playpbnow.com (real app, separate browser
+sessions, scripts in the session scratchpad). Every item was failing in
+production before its fix and passing after; treat each as a regression test.
+
+- **The app sends `last_seen_seq` with every score write** and adopts the
+  server's value when the reply says `superseded`. The server guard existed
+  since 2026-09-04 but the client never sent the field, so an old, delayed
+  6 overwrote a corrected 8.
+- **One game's writes go out one at a time, in typed order**
+  (`gameQueueRef` in `useCollaborativeScoring`). Every write carries both
+  scores; two in flight could land reversed and blank the second score on
+  every screen, the typist's included.
+- **Every keystroke in a live match is sent**, including the digits smart
+  scoring holds back (a lone "1" with PLAY TO 11). Held digits were never
+  sent and reached the others only through the catch-up push.
+- **Pending clears when the server acknowledges the game's latest write**,
+  not only when a later poll shows our exact value. Otherwise a second
+  scorer changing the same game first left this screen stuck on the old
+  value for the rest of the match.
+- **On the web, scrolling must never close the score box.**
+  `keyboardDismissMode="on-drag"` is phones only: react-native-web treats
+  every scroll as a drag, so the app's own scroll-into-view blurred the box
+  after the first digit and 11 was saved as 1.
+- **One phone is one participant.** `pbnow_collab_touch_participant()` applies
+  the same `u:<id>` fallback as `pbnow_collab_identity()`; without it the LIVE
+  bar counted every person twice.
+
 ## Known item awaiting Chip's decision
 
 `app/\(tabs\)/help.tsx` — a directory whose name is literally `\(tabs\)`,
