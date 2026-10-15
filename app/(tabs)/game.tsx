@@ -1022,7 +1022,13 @@ export default function GameScreen() {
       // cap. Refreshes the window rather than stacking timers.
       if (sessionId) markLocalEdit(rIdx, gIdx);
       const result = handleScoreChange(rIdx, gIdx, team, value);
-      if (sessionId && result && result.changed) {
+      // In a live match every keystroke is sent, including the ones the smart
+      // scoring holds back while it waits for a second digit (a lone "1" with
+      // PLAY TO 11). Holding those back meant an 11-1 game reached the other
+      // phones only when the catch-up push noticed it, about 4 seconds later
+      // (UAT 2026-10-15). Writes for one game go out in typed order, so "1"
+      // then "11" always lands as 11.
+      if (sessionId && result) {
           syncScoreToServer(result.roundIdx, result.gameIdx, result.s1, result.s2);
       }
   };
