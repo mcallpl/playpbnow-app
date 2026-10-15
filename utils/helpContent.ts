@@ -46,7 +46,7 @@ export const HELP_TOPICS: HelpTopic[] = [
 
 4. **Tap CREATE MATCH**
    - The **MATCH SETUP** window opens
-   - Rotating Partners: set **ROUNDS** with the − / + buttons, then pick a type for each round — **MIXED** (each team is one man and one woman), **GENDER** (men play men, women play women) or **MIXER** (anyone with anyone). The window also shows how many courts the round uses; if fewer courts are free, lower the count and extra players sit that round.
+   - Rotating Partners: set **ROUNDS** with the − / + buttons, then pick a type for each round — **MIXED** (each team is one man and one woman), **GENDER** (men play men, women play women) or **MIXER** (anyone with anyone). The window also shows how many courts the round uses; if fewer courts are free, lower the count and extra players sit that round. Sitting out is always shared as evenly as possible: nobody sits more than one round more than anyone else. So when a group has more men than women (or more women than men), a Mixed round may include a pair of men (or women) playing a man and a woman. Two men never play two women.
    - Fixed Teams: the window lists the team pairings and how many rounds and games the round-robin will take
 
 5. **Tap GENERATE MATCH**

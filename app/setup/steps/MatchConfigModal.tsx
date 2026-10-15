@@ -146,7 +146,7 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
   };
 
   const ROUND_TYPE_LEGEND =
-    'Mixed = a man + a woman on each team  ·  Gender = men vs men, women vs women  ·  Mixer = anyone with anyone';
+    'Mixed = a man + a woman on each team  ·  Gender = men vs men, women vs women  ·  Mixer = anyone with anyone  ·  Everyone sits out about equally, so with more men than women (or the reverse) a Mixed round may have a pair of men playing a man and a woman';
 
   return (
     <Modal visible={state.configModalVisible} transparent animationType="slide">

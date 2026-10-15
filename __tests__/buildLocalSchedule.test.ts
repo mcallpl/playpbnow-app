@@ -156,4 +156,36 @@ describe('buildLocalSchedule', () => {
       );
     });
   });
+
+  // Chip, 2026-10-15: "the byes outweigh the other rules because we don't want
+  // people sitting out unequally." 18 men and 11 women on 4 courts used to
+  // mean 10 men and 3 women sat every Mixed round.
+  describe('uneven groups: byes first, then as mixed as possible', () => {
+    const isF = (p: Player) => (p.gender || '').startsWith('f');
+    const cases: [number, number, number, number][] = [[29, 18, 4, 8], [29, 11, 4, 8], [17, 12, 3, 6], [13, 9, 2, 6]];
+    cases.forEach(([n, males, courts, rds]) => {
+      it(`${n} players (${males}M) on ${courts} courts: byes stay within 1, never two men vs two women`, () => {
+        for (let rep = 0; rep < 10; rep++) {
+          const players = makePlayers(n, males);
+          const schedule = buildLocalSchedule(players, rounds(rds, 'mixed'), courts);
+          const counts: Record<string, number> = {};
+          players.forEach(p => (counts[p.id] = 0));
+          schedule.forEach(round => {
+            round.byes.forEach(p => counts[p.id]++);
+            const vals = Object.values(counts);
+            expect(Math.max(...vals) - Math.min(...vals)).toBeLessThanOrEqual(1);
+            let mixedTeams = 0, sameTeams = 0, sameVsSame = 0;
+            round.games.forEach(g => {
+              const f1 = g.team1.filter(isF).length, f2 = g.team2.filter(isF).length;
+              expect([f1, f2].sort().join()).not.toBe('0,2');
+              [f1, f2].forEach(f => (f === 1 ? mixedTeams++ : sameTeams++));
+              if (f1 !== 1 && f2 !== 1) sameVsSame++;
+            });
+            // Two same-gender teams meet only when there are more of them than mixed teams.
+            if (sameTeams <= mixedTeams) expect(sameVsSame).toBe(0);
+          });
+        }
+      });
+    });
+  });
 });

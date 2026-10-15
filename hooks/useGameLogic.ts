@@ -96,7 +96,7 @@ export const buildLocalSchedule = (
     const markSat = (p: Player) => sitCounts.set(p.id, sitCountOf(p) + 1);
 
     // Pick who sits this round: fewest sit-outs first, random among ties.
-    const chooseSitters = (pool: Player[], sitN: number): { active: Player[]; sitters: Player[] } => {
+    const chooseSitters = (pool: Player[], sitN: number, shareByGender = false): { active: Player[]; sitters: Player[] } => {
         if (sitN <= 0) return { active: [...pool], sitters: [] };
         const shuffled = [...pool].sort(() => Math.random() - 0.5);
         // Stable sort keeps the random order among equal counts
@@ -104,7 +104,31 @@ export const buildLocalSchedule = (
             .map((p, i) => ({ p, i, c: sitCountOf(p) }))
             .sort((a, b) => a.c - b.c || a.i - b.i)
             .map(x => x.p);
-        const sitters = ranked.slice(0, sitN);
+        let sitters = ranked.slice(0, sitN);
+        if (shareByGender && sitters.length > 0) {
+            // Mixed rounds (Chip, 2026-10-15): byes come first, so the fewest
+            // sits still sit first. Among players TIED on sits, the seats are
+            // shared between men and women in proportion to how many of each
+            // there are, so every round's court has about the same mix.
+            // Mirrors chooseSittersFairMixed() in generate_schedule.php.
+            const cut = sitCountOf(sitters[sitters.length - 1]);
+            const must = ranked.filter(p => sitCountOf(p) < cut);
+            const tied = { m: ranked.filter(p => sitCountOf(p) === cut && !isFemale(p)), f: ranked.filter(p => sitCountOf(p) === cut && isFemale(p)) };
+            const size = { m: pool.filter(p => !isFemale(p)).length, f: pool.filter(isFemale).length };
+            const sat = { m: 0, f: 0 };
+            pool.forEach(p => { sat[isFemale(p) ? 'f' : 'm'] += sitCountOf(p); });
+            must.forEach(p => { sat[isFemale(p) ? 'f' : 'm'] += 1; });
+            const picked = [...must];
+            const rate = (g: 'm' | 'f') => (size[g] ? (sat[g] + 1) / size[g] : Infinity);
+            while (picked.length < sitN) {
+                let g: 'm' | 'f' = rate('m') <= rate('f') ? 'm' : 'f';
+                if (tied[g].length === 0) g = g === 'm' ? 'f' : 'm';
+                if (tied[g].length === 0) break;
+                picked.push(tied[g].shift()!);
+                sat[g] += 1;
+            }
+            if (picked.length === sitN) sitters = picked;
+        }
         const sitIds = new Set(sitters.map(p => p.id));
         return { active: pool.filter(p => !sitIds.has(p.id)), sitters };
     };
@@ -189,7 +213,7 @@ export const buildLocalSchedule = (
         const maxGames = Math.floor(n / 4);
         const gamesThisRound = courts && courts > 0 ? Math.min(maxGames, Math.floor(courts)) : maxGames;
         const sitN = n - 4 * gamesThisRound;
-        const { active: roundPlayers, sitters: plannedSitters } = chooseSitters(allPlayers, sitN);
+        const { active: roundPlayers, sitters: plannedSitters } = chooseSitters(allPlayers, sitN, config.type === 'mixed');
 
         if (config.type === 'gender') {
             const men   = roundPlayers.filter(isMale);
@@ -210,7 +234,39 @@ export const buildLocalSchedule = (
             let bestGames: GameData[] = [];
             let bestByes: Player[] = [...roundPlayers];
 
-            for (let attempt = 0; attempt < 200; attempt++) {
+            // Uneven court (byes come first): make every man+woman team
+            // possible, pair the extra players of the larger gender together,
+            // and put each of those teams against a man+woman team. Two men vs
+            // a man and a woman is fine; two men vs two women never is.
+            let unevenDone = false;
+            if (men.length !== women.length && roundPlayers.length % 4 === 0) {
+                for (let attempt = 0; attempt < 300 && !unevenDone; attempt++) {
+                    const mCopy = [...men].sort(() => Math.random() - 0.5);
+                    const wCopy = [...women].sort(() => Math.random() - 0.5);
+                    const mf: Player[][] = [];
+                    while (mCopy.length && wCopy.length) mf.push([mCopy.pop()!, wCopy.pop()!]);
+                    const rest = [...mCopy, ...wCopy];
+                    const same: Player[][] = [];
+                    while (rest.length >= 2) same.push([rest.pop()!, rest.pop()!]);
+                    if ([...mf, ...same].some(t => getPairCount(t[0], t[1]) >= 1)) continue;
+                    const games: GameData[] = [];
+                    const sameQ = [...same]; const mfQ = [...mf];
+                    while (sameQ.length && mfQ.length) {
+                        const x = sameQ.shift()!; const y = mfQ.shift()!;
+                        games.push({ id: Math.random().toString(36).substr(2, 9), team1: x, team2: y, score_team1: 0, score_team2: 0 });
+                    }
+                    const teams = [...mfQ, ...sameQ];
+                    let ok = true;
+                    while (teams.length >= 2) {
+                        const x = teams.shift()!; const y = teams.shift()!;
+                        if (isGenderIllegal(x, y)) { ok = false; break; }
+                        games.push({ id: Math.random().toString(36).substr(2, 9), team1: x, team2: y, score_team1: 0, score_team2: 0 });
+                    }
+                    if (ok) { bestGames = games; bestByes = []; unevenDone = true; }
+                }
+            }
+
+            for (let attempt = 0; attempt < 200 && !unevenDone; attempt++) {
                 const mCopy = [...men].sort(() => Math.random() - 0.5);
                 const wCopy = [...women].sort(() => Math.random() - 0.5);
                 const games: GameData[] = [];

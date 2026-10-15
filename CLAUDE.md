@@ -92,6 +92,22 @@ the store build of the same version — that is what closes the window.
   a balanced court there would pin that gender on court every round and make
   the other gender absorb every sit-out (the H2 unfairness). Covered by the
   regression test.
+  **AMENDED BY CHIP 2026-10-15: byes come first.** *"In the case of there
+  being an unequal number of players and there being byes, the byes outweigh
+  the other rules because we don't want people sitting out unequally. We
+  will try to keep it so that two men never play two women, but we can feel
+  very comfortable with two men playing a man and a woman when the men
+  outweigh the women, and two women playing a man and a woman when women
+  outweigh the men."* So, for a group with UNEQUAL numbers of men and women,
+  a Mixed round now picks sitters by fewest sits first
+  (`chooseSittersFairMixed()`, ties shared between the genders in
+  proportion), makes every man+woman team it can, and puts each leftover
+  same-gender team against a man+woman team. Two men vs two women: still
+  never. A group with EQUAL numbers keeps the strict rule above unchanged
+  (`chooseSittersForMixed()`, every team 1 man + 1 woman), because there even
+  byes and strict mixing already agree. Same logic in the phone Shuffle
+  (`buildLocalSchedule`). Covered by the "uneven groups" checks in
+  `schedule_balance_test.php` and `__tests__/buildLocalSchedule.test.ts`.
 - `round_configs` accepts **both** `{"type":"mixed"}` and a bare `"mixed"`
   string. A string used to fall through to "mixer" silently, so the round was
   labelled Mixed while same-gender teams were allowed.
