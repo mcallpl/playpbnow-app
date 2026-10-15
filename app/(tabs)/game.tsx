@@ -1255,6 +1255,7 @@ export default function GameScreen() {
                     placeholderTextColor={colors.textMuted}
                     value={scores[`${rIdx}_${gIdx}_t1`] || ''}
                     onFocus={() => bringGameIntoView(rIdx, gIdx)}
+                    selectTextOnFocus
                     onChangeText={(t) => syncHandlerRef.current(rIdx, gIdx, 't1', t)} returnKeyType="next" />
             </View>
         )}
@@ -1277,6 +1278,7 @@ export default function GameScreen() {
                     placeholderTextColor={colors.textMuted}
                     value={scores[`${rIdx}_${gIdx}_t2`] || ''}
                     onFocus={() => bringGameIntoView(rIdx, gIdx)}
+                    selectTextOnFocus
                     onChangeText={(t) => syncHandlerRef.current(rIdx, gIdx, 't2', t)} returnKeyType="next" />
             </View>
         )}
