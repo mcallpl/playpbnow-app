@@ -340,6 +340,28 @@ way forward that the keyboard cannot hide:
   6 Male / 4 Female, DONE TYPING closes the keyboard and the normal NEXT is
   on screen.
 
+## Court pickers are quick, locked 2026-10-15
+
+Chip, choosing a group's location: *"It takes far too long to scroll down to
+get to any of these court names... It almost took my finger off."* The
+Groups picker and the player Home Court picker listed all 1,300+ courts A to
+Z in one plain ScrollView. Both now use `components/CourtPickerList.tsx`
+(logic in `utils/courtSearch.ts`, tests in `__tests__/courtSearch.test.ts`):
+
+- A search box: every typed word must appear in the name, city or state, any
+  order, partial words fine ("anderson redondo", "cox ladera", "st marys").
+- YOUR COURTS first: the courts the user's groups already use, plus the
+  current choice.
+- Then nearest first when location is allowed (read silently if already
+  granted). Otherwise A to Z with a "Show nearest first" button that asks in
+  the picker's own words (the shared prompt talks about beacons).
+- Only visible rows are drawn (FlatList), so it opens instantly.
+- The Play Now picker already had search and distance and was left as is.
+
+Verified on the iPhone simulator (search, select, Your Courts, location
+granted, never asked, and denied), the Android emulator (both pickers), and
+playpbnow.com.
+
 ## Known item awaiting Chip's decision
 
 `app/\(tabs\)/help.tsx` — a directory whose name is literally `\(tabs\)`,
