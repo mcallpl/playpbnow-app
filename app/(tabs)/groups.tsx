@@ -41,6 +41,7 @@ import {
 } from '../../constants/theme';
 import { haptic } from '../../utils/haptics';
 import { ImportPlayersPanel } from '../../components/ImportPlayersPanel';
+import { CourtPickerList } from '../../components/CourtPickerList';
 import { addRowsToGroup, ImportGender } from '../../utils/playerImport';
 
 interface Court {
@@ -48,6 +49,8 @@ interface Court {
   name: string;
   city: string | null;
   state: string | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 interface Group {
@@ -617,22 +620,13 @@ export default function HomeScreen() {
           {loadingCourts ? (
             <ActivityIndicator size="large" color={colors.accent} style={{ marginVertical: 30 }} />
           ) : (
-            <ScrollView style={{ maxHeight: 400 }}>
-              {courts.map((court, idx) => (
-                <TouchableOpacity key={`court-${court.id}-${idx}`}
-                  style={[styles.courtOption, selectedCourtId === court.id ? styles.courtOptionSelected : null]}
-                  onPress={() => { setSelectedCourtId(court.id); setModalView('form'); }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.courtNameText, selectedCourtId === court.id ? { color: colors.accent, fontFamily: FONT_DISPLAY_EXTRABOLD } : null]}>
-                      {court.name}
-                    </Text>
-                    {court.city ? <Text style={styles.courtCity}>{court.city}{court.state ? `, ${court.state}` : ''}</Text> : null}
-                  </View>
-                  {selectedCourtId === court.id ? <BrandedIcon name="confirm" size={24} color={colors.accent} /> : null}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <CourtPickerList
+              courts={courts}
+              selectedId={selectedCourtId}
+              myCourtIds={groups.map(g => g.court_id)}
+              onSelect={(court) => { setSelectedCourtId(court.id); setModalView('form'); }}
+              maxHeight={400}
+            />
           )}
 
           <TouchableOpacity style={styles.addCourtBtn} onPress={() => {

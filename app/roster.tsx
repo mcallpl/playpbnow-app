@@ -1,4 +1,5 @@
 import { BrandedIcon } from '../components/BrandedIcon';
+import { CourtPickerList } from '../components/CourtPickerList';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { storeNavData } from '../utils/navData';
@@ -1023,42 +1024,31 @@ export default function RosterScreen() {
                                         <Text style={styles.courtPickerTitle}>Select Court</Text>
                                     </View>
 
-                                    {/* No court option */}
-                                    <TouchableOpacity
-                                        style={[styles.courtOption, !homeCourtId && styles.courtOptionSelected]}
-                                        onPress={() => {
-                                            setHomeCourtId(null);
-                                            setHomeCourtName('');
-                                            setShowCourtPicker(false);
-                                        }}
-                                    >
-                                        <BrandedIcon name="close" size={20} color={colors.textSoft} />
-                                        <Text style={styles.courtOptionText}>No Court</Text>
-                                        {!homeCourtId && <BrandedIcon name="checkmark" size={20} color={colors.accent} />}
-                                    </TouchableOpacity>
-
-                                    {courts.map((court) => (
+                                    <CourtPickerList
+                                        courts={courts}
+                                        selectedId={homeCourtId}
+                                        myCourtIds={groups.map((g: any) => g.court_id)}
+                                        maxHeight={420}
+                                        header={
                                         <TouchableOpacity
-                                            key={court.id}
-                                            style={[styles.courtOption, homeCourtId === court.id && styles.courtOptionSelected]}
+                                            style={[styles.courtOption, !homeCourtId && styles.courtOptionSelected]}
                                             onPress={() => {
-                                                setHomeCourtId(court.id);
-                                                setHomeCourtName(court.name);
+                                                setHomeCourtId(null);
+                                                setHomeCourtName('');
                                                 setShowCourtPicker(false);
                                             }}
                                         >
-                                            <BrandedIcon name="location" size={20} color={colors.secondary} />
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.courtOptionText}>{court.name}</Text>
-                                                {(court.city || court.state) && (
-                                                    <Text style={styles.courtOptionSub}>
-                                                        {[court.city, court.state].filter(Boolean).join(', ')}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                            {homeCourtId === court.id && <BrandedIcon name="checkmark" size={20} color={colors.accent} />}
+                                            <BrandedIcon name="close" size={20} color={colors.textSoft} />
+                                            <Text style={styles.courtOptionText}>No Court</Text>
+                                            {!homeCourtId && <BrandedIcon name="checkmark" size={20} color={colors.accent} />}
                                         </TouchableOpacity>
-                                    ))}
+                                        }
+                                        onSelect={(court) => {
+                                            setHomeCourtId(court.id);
+                                            setHomeCourtName(court.name);
+                                            setShowCourtPicker(false);
+                                        }}
+                                    />
 
                                     <View style={{ height: 40 }} />
                                 </>
