@@ -116,11 +116,7 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
   if (stage === 'input') {
     return (
       <View style={s.shell}>
-        <ScrollView style={s.shell} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <Text style={s.title}>IMPORT PLAYERS</Text>
-        <Text style={s.help}>
-          Paste your list with one player on each line. To include gender, put it after a comma: Jane Smith, F. You can also copy the Name and Gender columns straight out of a spreadsheet and paste them here.
-        </Text>
+        {/* Pinned above the scrolling part, so a small screen can't scroll it away. */}
         {keyboardUp && (
           <View style={s.typingBar}>
             <TouchableOpacity style={s.typingDone} onPress={() => Keyboard.dismiss()}>
@@ -131,6 +127,11 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
             </TouchableOpacity>
           </View>
         )}
+        <ScrollView style={s.shell} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {!keyboardUp && <Text style={s.title}>IMPORT PLAYERS</Text>}
+        {!keyboardUp && <Text style={s.help}>
+          Paste your list with one player on each line. To include gender, put it after a comma: Jane Smith, F. You can also copy the Name and Gender columns straight out of a spreadsheet and paste them here.
+        </Text>}
         <TextInput
           style={[s.paste, keyboardUp && s.pasteTyping]}
           inputAccessoryViewID={Platform.OS === 'ios' ? ACCESSORY_ID : undefined}
