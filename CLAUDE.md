@@ -323,6 +323,23 @@ Found by a live UAT with a release build of 1.4.5 on the Android emulator
   recovered and the user was already signed in. Also the Android gesture bar
   draws over the tab labels (edge-to-edge bottom inset).
 
+## Import players on a phone, locked 2026-10-15
+
+Chip typed a list into IMPORT PLAYERS on his iPhone and could not get past
+it: the keyboard covered NEXT, the card did not scroll, and Return in a
+multi-line box only adds a line. A paste box on a phone must always have a
+way forward that the keyboard cannot hide:
+
+- While the keyboard is up, `ImportPlayersPanel` shows **DONE TYPING** and
+  **NEXT** pinned ABOVE the scrolling part (not inside it: on Android the
+  keyboard shrinks the card so far that a bar inside the scroll scrolled out
+  of view), shortens the box and hides the long instructions.
+- iPhone also gets a Done / Next bar on the keyboard (InputAccessoryView).
+- Verified on the iPhone simulator and the Android emulator with a 10-name
+  list: both buttons visible while typing, NEXT reaches CHECK YOUR LIST with
+  6 Male / 4 Female, DONE TYPING closes the keyboard and the normal NEXT is
+  on screen.
+
 ## Known item awaiting Chip's decision
 
 `app/\(tabs\)/help.tsx` — a directory whose name is literally `\(tabs\)`,
