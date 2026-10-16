@@ -6,8 +6,8 @@
  * This is a plain View, not a Modal, so the Groups tab can show it inside its
  * existing New Group modal and the group screen can wrap it in its own.
  */
-import React, { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, InputAccessoryView, Keyboard, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { BrandedIcon } from './BrandedIcon';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -21,6 +21,7 @@ import { ImportGender, ImportRow, parseGrid, parsePlayerText, shortNames } from 
 import { readSpreadsheetFile } from '../utils/readSpreadsheetFile';
 
 const MAX_ROWS = 200;
+const ACCESSORY_ID = 'importPlayersBar';
 
 interface Props {
   /** Names already in the target group; those rows are skipped, not duplicated. */
@@ -46,6 +47,16 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
   // "Chip M" (first name + last initial) is the default; "Chip McAllister" keeps the full name.
   const [useShort, setUseShort] = useState(true);
   const fileRef = useRef<any>(null);
+  // While the keyboard is up the paste box gets shorter and the panel scrolls,
+  // so NEXT is never trapped under the keyboard. (On a phone, Return in this
+  // box only starts a new line, so it can never be the way forward.)
+  const [keyboardUp, setKeyboardUp] = useState(false);
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardUp(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardUp(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const shorts = useMemo(() => shortNames(rows.map(r => r.name), existingNames), [rows, existingNames]);
   const finalName = (i: number) => (useShort ? shorts[i] : rows[i].name);
 
@@ -79,7 +90,7 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
     setStage('review');
   };
 
-  const readPasted = () => takeResult(parsePlayerText(text));
+  const readPasted = () => { Keyboard.dismiss(); takeResult(parsePlayerText(text)); };
 
   const onFilePicked = async (e: any) => {
     const file: File | undefined = e?.target?.files?.[0];
@@ -104,13 +115,25 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
 
   if (stage === 'input') {
     return (
-      <View>
+      <View style={s.shell}>
+        <ScrollView style={s.shell} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Text style={s.title}>IMPORT PLAYERS</Text>
         <Text style={s.help}>
           Paste your list with one player on each line. To include gender, put it after a comma: Jane Smith, F. You can also copy the Name and Gender columns straight out of a spreadsheet and paste them here.
         </Text>
+        {keyboardUp && (
+          <View style={s.typingBar}>
+            <TouchableOpacity style={s.typingDone} onPress={() => Keyboard.dismiss()}>
+              <Text style={s.typingDoneText}>DONE TYPING</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.typingNext, !text.trim() && { opacity: 0.5 }]} onPress={readPasted} disabled={!text.trim()}>
+              <Text style={s.goText}>NEXT</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <TextInput
-          style={s.paste}
+          style={[s.paste, keyboardUp && s.pasteTyping]}
+          inputAccessoryViewID={Platform.OS === 'ios' ? ACCESSORY_ID : undefined}
           multiline
           value={text}
           onChangeText={t => { setText(t); if (error) setError(''); }}
@@ -146,6 +169,20 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
           </TouchableOpacity>
         </View>
         {!text.trim() && <Text style={s.why}>Paste a list{Platform.OS === 'web' ? ' or choose a file' : ''} to continue.</Text>}
+        </ScrollView>
+        {Platform.OS === 'ios' && (
+          <InputAccessoryView nativeID={ACCESSORY_ID}>
+            <View style={s.accessoryBar}>
+              <TouchableOpacity style={s.accessoryBtn} onPress={() => Keyboard.dismiss()}>
+                <Text style={s.accessoryDone}>Done</Text>
+              </TouchableOpacity>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity style={s.accessoryBtn} onPress={readPasted} disabled={!text.trim()}>
+                <Text style={[s.accessoryNext, !text.trim() && { opacity: 0.4 }]}>Next</Text>
+              </TouchableOpacity>
+            </View>
+          </InputAccessoryView>
+        )}
       </View>
     );
   }
@@ -225,6 +262,16 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
 const createStyles = (c: ThemeColors) => StyleSheet.create({
   title: { fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 20, color: c.text, marginBottom: 6, textAlign: 'center' },
   help: { fontFamily: FONT_BODY_REGULAR, fontSize: 13, color: c.textSoft, lineHeight: 19, marginBottom: 12, textAlign: 'center' },
+  shell: { flexShrink: 1, flexGrow: 0 },
+  pasteTyping: { minHeight: 110, maxHeight: 150 },
+  typingBar: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  typingDone: { flex: 1, padding: 12, borderRadius: 12, alignItems: 'center', backgroundColor: c.inputBg, borderWidth: 1, borderColor: c.inputBorder },
+  typingDoneText: { fontFamily: FONT_BODY_BOLD, fontSize: 14, color: c.text },
+  typingNext: { flex: 1, padding: 12, borderRadius: 12, alignItems: 'center', backgroundColor: c.accent },
+  accessoryBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, backgroundColor: '#d1d4da', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#a3a7ae' },
+  accessoryBtn: { paddingVertical: 10, paddingHorizontal: 14 },
+  accessoryDone: { fontFamily: FONT_BODY_SEMIBOLD, fontSize: 16, color: '#007aff' },
+  accessoryNext: { fontFamily: FONT_BODY_BOLD, fontSize: 16, color: '#007aff' },
   paste: {
     minHeight: 160, maxHeight: 260, borderRadius: 12, padding: 12, backgroundColor: c.inputBg,
     borderWidth: 1, borderColor: c.inputBorder, color: c.text, fontFamily: FONT_BODY_REGULAR, fontSize: 15,

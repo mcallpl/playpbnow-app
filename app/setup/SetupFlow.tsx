@@ -336,7 +336,7 @@ export default function SetupFlow() {
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 16 }}
             >
-              <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, maxWidth: 520, width: '100%', alignSelf: 'center' }}>
+              <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, maxWidth: 520, width: '100%', maxHeight: '100%', alignSelf: 'center' }}>
                 <ImportPlayersPanel
                   existingNames={state.players.map((p) => [p.first_name, p.last_name].filter(Boolean).join(' '))
                     .concat(state.players.map((p) => p.first_name))}
