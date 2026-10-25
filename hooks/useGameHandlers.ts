@@ -62,8 +62,8 @@ export function useGameHandlers(props: any) {
     }
     const Share = require('react-native').Share;
     await Share.share({
-      message: `Match Schedule for ${reportTitle}:\n${generatedImageUrl}`,
-      url: generatedImageUrl
+      // Link once, inside the message: a separate `url` sends it twice on iOS.
+      message: `Match Schedule for ${reportTitle}:\n${generatedImageUrl}`
     });
     setReportModalVisible(false);
   };

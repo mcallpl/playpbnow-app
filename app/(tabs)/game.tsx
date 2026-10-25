@@ -665,7 +665,9 @@ export default function GameScreen() {
           } else {
               // Native: Share the URL directly so message text is included
               if (Platform.OS === 'ios') {
-                  await Share.share({ message: shareMessage, url: shareUrl });
+                  // The link is already inside shareMessage. Passing it again as
+                  // `url` made Messages send the lineup twice (two preview cards).
+                  await Share.share({ message: shareMessage });
               } else {
                   // Android: Download image to local cache and share the actual image
                   const filename = shareUrl.split('/').pop() || 'match_report.png';
@@ -686,7 +688,8 @@ export default function GameScreen() {
                   window.open(shareUrl, '_blank');
               }
           } else {
-              await Share.share({ message: `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtFallback}\n${shareUrl}`, url: shareUrl });
+              // Link once, inside the message: a separate `url` sends it twice on iOS.
+              await Share.share({ message: `${dateLabel} ${timeLabel} Match Schedule for ${reportTitle}${courtFallback}\n${shareUrl}` });
           }
       }
       // Save the match snapshot so the LIVE tab can restore it
