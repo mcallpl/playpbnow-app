@@ -10,7 +10,7 @@ import { ThemeColors } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 // Theme-aware styles (Audit E M7). The palette used to be a hard-coded light
-// grey set, which drew a white loading panel on the dark theme's navy screen.
+// gray set, which drew a white loading panel on the dark theme's navy screen.
 function useBoundaryStyles() {
   const { colors } = useTheme();
   return useMemo(() => createStyles(colors), [colors]);

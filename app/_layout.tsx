@@ -63,7 +63,7 @@ function PhoneGate({ children }: { children: React.ReactNode }) {
       setNeedsPhone(null);
       return;
     }
-    // Honour a recent "Skip for now" before asking the server at all.
+    // Honor a recent "Skip for now" before asking the server at all.
     try {
       const stamp = await AsyncStorage.getItem(PHONE_GATE_SKIP_PREFIX + userId);
       if (stamp && Date.now() - Number(stamp) < PHONE_GATE_SKIP_MS) {

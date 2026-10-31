@@ -78,7 +78,7 @@ function BeaconProviderComponent({ children }: { children: React.ReactNode }) {
   // Background beacon check — runs immediately on app load so we know
   // about active beacons before the user navigates to Play Now
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
 
     const checkBeacons = async () => {
       try {
@@ -96,7 +96,7 @@ function BeaconProviderComponent({ children }: { children: React.ReactNode }) {
           includeHistory: false,
         });
 
-        if (!cancelled && merged.ok) {
+        if (!canceled && merged.ok) {
           // H6: never clobber a live report from the Play Now tab.
           if (tabHasReportedRef.current) {
             setInitialCheckDone(true);
@@ -127,7 +127,7 @@ function BeaconProviderComponent({ children }: { children: React.ReactNode }) {
     const interval = setInterval(checkBeacons, 30000);
 
     return () => {
-      cancelled = true;
+      canceled = true;
       clearInterval(interval);
     };
   }, [location?.latitude, location?.longitude]);

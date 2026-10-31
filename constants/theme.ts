@@ -8,9 +8,9 @@ export const Colors = {
     card: '#1e3a5f',
     cardHover: '#254570',
     accent: '#87ca37',
-    // Text/icon colour for content sitting ON an accent background. 13 call
+    // Text/icon color for content sitting ON an accent background. 13 call
     // sites across 6 screens already referenced `accentText`; the key was never
-    // added, so every one of them rendered with an undefined colour. Deliberately
+    // added, so every one of them rendered with an undefined color. Deliberately
     // dark in BOTH themes: the accent is a mid-green in each, so dark text gives
     // ~9:1 contrast while a light value would give roughly 2.6:1 and fail.
     accentText: '#0f1b2d',

@@ -123,11 +123,11 @@ function ErrorFallback({
   const [storedTheme, setStoredTheme] = useState<'dark' | 'light' | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     (async () => {
       try {
         const stored = await AsyncStorage.getItem(THEME_PREF_KEY);
-        if (!cancelled && (stored === 'light' || stored === 'dark')) {
+        if (!canceled && (stored === 'light' || stored === 'dark')) {
           setStoredTheme(stored);
         }
       } catch {
@@ -135,7 +135,7 @@ function ErrorFallback({
       }
     })();
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, []);
 

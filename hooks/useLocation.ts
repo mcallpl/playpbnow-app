@@ -12,7 +12,7 @@ export interface UseLocationOptions {
   /**
    * M10: the permission prompt used to fire on mount — i.e. at app launch, on
    * the login screen, before the user had any idea why the app wanted their
-   * location. Defaults to the original behaviour so existing callers are
+   * location. Defaults to the original behavior so existing callers are
    * unchanged; BeaconContext passes `false` and Play Now asks on its first
    * focus instead (see app/(tabs)/playnow.tsx).
    */

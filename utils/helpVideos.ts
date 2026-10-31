@@ -1,5 +1,5 @@
 /**
- * How-to video catalogue for the Help tab.
+ * How-to video catalog for the Help tab.
  *
  * Files live on the server at /var/www/html/PlayPBNow/videos/ and are served
  * as static assets. NOTE: anything missing there falls through to the nginx SPA
@@ -77,6 +77,12 @@ export const HELP_VIDEOS: HelpVideo[] = [
     title: 'Beacons',
     blurb: 'Play Now: post a beacon and fill your court',
     seconds: 112,
+  },
+  {
+    slug: 'm12-name-your-courts',
+    title: 'Name Your Courts',
+    blurb: 'CRT D, E, F instead of 1, 2, 3, and the same courts next week',
+    seconds: 25,
   },
   {
     slug: 'm11-share-and-text',

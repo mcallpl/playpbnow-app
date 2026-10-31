@@ -1286,7 +1286,7 @@ export default function GameScreen() {
     // Gender designation: pink for women, blue for men. The fill used to be 15%
     // opacity, which read as the same dark navy as the card — the distinction was
     // effectively invisible. Stronger fill + a solid border in the full-strength
-    // colour makes it legible at a glance without washing out the white label.
+    // color makes it legible at a glance without washing out the white label.
     let bg = isFemale ? 'rgba(247,140,162,0.38)' : 'rgba(79,172,254,0.38)';
     let bd = isFemale ? '#f78ca2' : '#4facfe';
     let txt = colors.text;

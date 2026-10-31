@@ -29,7 +29,14 @@ export function CourtNamesModal({ visible, courtCount, labels, onCancel, onSave 
 
     useEffect(() => {
         if (!visible) return;
-        setDraft(Array.from({ length: courtCount }, (_, i) => courtLabelAt(labels, i)));
+        // A court still on its default number shows that number as a gray hint,
+        // not as text: tapping the box and typing just types (on the web the
+        // first box can already have focus, so "select it first" is not
+        // reliable, and "1" + "D" became "1D").
+        setDraft(Array.from({ length: courtCount }, (_, i) => {
+            const v = courtLabelAt(labels, i);
+            return v === String(i + 1) ? '' : v;
+        }));
         setManual(Array.from({ length: courtCount }, () => false));
     }, [visible, courtCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -37,7 +44,7 @@ export function CourtNamesModal({ visible, courtCount, labels, onCancel, onSave 
         // The box shows exactly what was typed; later courts that were not
         // typed by hand follow on from it.
         const r = applyCourtLabelEdit(draft, manual, i, text, courtCount);
-        const shown = [...r.labels];
+        const shown = r.labels.map((l, j) => (j !== i && !r.manual[j] && l === String(j + 1) ? '' : l));
         shown[i] = text.slice(0, COURT_LABEL_MAX + 6);
         setDraft(shown);
         setManual(r.manual);
@@ -66,7 +73,7 @@ export function CourtNamesModal({ visible, courtCount, labels, onCancel, onSave 
                 </ScrollView>
                 <TouchableOpacity accessibilityRole="button" style={{ alignItems: 'center', paddingVertical: 10 }}
                     onPress={() => {
-                        setDraft(Array.from({ length: courtCount }, (_, i) => String(i + 1)));
+                        setDraft(Array.from({ length: courtCount }, () => ''));
                         setManual(Array.from({ length: courtCount }, () => false));
                     }}>
                     <Text style={s.reset}>Back to 1, 2, 3...</Text>

@@ -14,7 +14,7 @@ const SHARED_BEACON_URL = 'https://playpbnow.com/shared/beacon/api';
 // The PHP API returns DATETIMEs as 'YYYY-MM-DD HH:MM:SS' in America/Los_Angeles
 // wall-clock time. `new Date('2026-09-04 18:30:00')` is Invalid Date on
 // Safari/WebKit, and on every other engine it is parsed in the DEVICE zone —
-// so beacons vanished on web Safari and ran early/late for travellers.
+// so beacons vanished on web Safari and ran early/late for travelers.
 // Every endpoint now also sends `<field>_iso` (ISO-8601 with offset) and
 // `expires_in_sec`; these helpers prefer those and fall back to treating the
 // bare string as LA time. They never return NaN for a well-formed input.
@@ -595,7 +595,7 @@ export function useBeacon() {
             return false;
           }
         } catch (e) {
-          // Shared API unreachable — a structured beacon can still be cancelled locally
+          // Shared API unreachable — a structured beacon can still be canceled locally
           if (beaconType === 'casual') throw e;
         }
       }
@@ -754,7 +754,7 @@ export function useBeacon() {
   }, []);
 
   // --- Leave Lobby (PlayPBNow only) — C3 ---
-  // member -> marked 'left'; host -> lobby + beacon cancelled (server cascades).
+  // member -> marked 'left'; host -> lobby + beacon canceled (server cascades).
   const leaveLobby = useCallback(async (lobbyId: number) => {
     try {
       const userId = await getUserId();
@@ -853,7 +853,7 @@ export function useBeacon() {
 
   // --- Respond to casual beacon (SHARED API) ---
   // M1: `beaconType` routes directly when known; untyped calls keep the
-  // original shared-then-local behaviour.
+  // original shared-then-local behavior.
   const respondToBeacon = useCallback(async (beaconId: number, responseType: string = 'on_my_way', beaconType?: 'casual' | 'structured') => {
     try {
       const { userId, userName } = await getUserInfo();

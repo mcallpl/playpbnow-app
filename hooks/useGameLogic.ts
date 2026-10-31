@@ -357,7 +357,7 @@ export const useGameLogic = (
     groupName: string,
     isFixedTeams: boolean = false,
     // UAT C-M3: number of courts available. undefined = one court per 4
-    // players (the historical behaviour). Fewer courts = more players sit
+    // players (the historical behavior). Fewer courts = more players sit
     // each round, balanced by buildLocalSchedule's sit-out tracking.
     courts?: number
 ) => {

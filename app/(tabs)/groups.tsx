@@ -1361,7 +1361,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   identityContact: { color: c.textMuted, fontSize: 13, fontFamily: FONT_BODY_REGULAR, marginTop: 2 },
   passwordInput: { backgroundColor: c.bg, borderRadius: 8, padding: 12, fontSize: 14, fontFamily: FONT_BODY_REGULAR, color: c.text, marginBottom: 12, height: 48 },
   tierBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
-  // Colour is set inline per badge (dark ink on the green PRO badge, white on
+  // Color is set inline per badge (dark ink on the green PRO badge, white on
   // the purple TRIAL / orange FREE badges) — see tierTextColor.
   tierBadgeText: { color: 'white', fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 12, letterSpacing: 1 },
   upgradeBtn: { backgroundColor: c.secondary, padding: 12, borderRadius: 8, alignItems: 'center', marginVertical: 8 },

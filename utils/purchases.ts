@@ -74,7 +74,7 @@ export async function getOfferings(): Promise<PurchasesOfferings> {
 
 /**
  * Purchase a specific package (monthly or annual).
- * Returns customer info on success, null if user cancelled.
+ * Returns customer info on success, null if user canceled.
  */
 export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo | null> {
   if (isExpoGo) return null;

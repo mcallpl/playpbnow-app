@@ -954,7 +954,7 @@ async function loadPlayerCount() {
 
 // Invite Response (if ?code=XXX in URL)
 // Current invite state for the RSVP view (spots, my answer) so the buttons
-// can be relabelled honestly ("Join Waitlist" when full) and the page can
+// can be relabeled honestly ("Join Waitlist" when full) and the page can
 // say "Change your answer" instead of pretending it's a blank slate.
 window._inviteState = { spotsLeft: 0, maxSpots: 0, waitlisted: 0, yourStatus: null, yourPosition: null };
 
@@ -1106,7 +1106,7 @@ async function checkInviteCode() {
         showAlert('invite-alert', 'To RSVP, open the link from your text message — it identifies you so we can record your answer.', 'success');
       }
     } else {
-      // Invalid / cancelled code: "You're Invited!" over an error is misleading.
+      // Invalid / canceled code: "You're Invited!" over an error is misleading.
       hideInviteHeader();
       showAlert('invite-alert', data.message || 'Invite not found.', 'error');
     }

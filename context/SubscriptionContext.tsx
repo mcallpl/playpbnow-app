@@ -24,7 +24,7 @@ const isWeb = Platform.OS === 'web';
 
 // Canonical host (same-origin on web, so the Bearer header never trips CORS).
 // The legacy peoplestar.com/PlayPBNow/api path still serves the same PHP tree
-// and utils/apiClient recognises both, so nothing else has to move.
+// and utils/apiClient recognizes both, so nothing else has to move.
 const API_URL = 'https://playpbnow.com/api';
 const STORAGE_KEY = 'subscription_data';
 
@@ -149,7 +149,7 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
                     expiryDate: data.subscription.expiryDate,
                     trialStartDate: data.subscription.trialStartDate,
                     // Older API builds omit this; absent means "already started",
-                    // which keeps the previous behaviour rather than showing every
+                    // which keeps the previous behavior rather than showing every
                     // existing trial as unstarted.
                     trialStarted: data.subscription.trialStarted ?? true,
                     trialDaysRemaining: data.subscription.trialDaysRemaining,
@@ -277,7 +277,7 @@ const SubscriptionProviderComponent: React.FC<{ children: React.ReactNode }> = (
         try {
             const customerInfo = await purchasePackage(pkg);
             if (!customerInfo) {
-                // User cancelled
+                // User canceled
                 setPurchaseLoading(false);
                 return false;
             }

@@ -99,14 +99,14 @@ export default function LandingScreen() {
   // (Audit A M6): send them straight to Groups. The screen itself is kept —
   // it is still reachable when there is no session.
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     (async () => {
       try {
         const [token, uid] = await Promise.all([
           AsyncStorage.getItem('session_token'),
           AsyncStorage.getItem('user_id'),
         ]);
-        if (!cancelled && token && uid) {
+        if (!canceled && token && uid) {
           router.replace('/(tabs)/groups');
         }
       } catch {
@@ -114,7 +114,7 @@ export default function LandingScreen() {
       }
     })();
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, []);
 

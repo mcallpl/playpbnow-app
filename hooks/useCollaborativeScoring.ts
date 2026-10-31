@@ -46,7 +46,7 @@ export const JOINED_SESSION_PREFIX = 'collab_joined_';
  *       and re-pushes local-only values. Genuine first joins still replace.
  * - #6  A host schedule edit only wipes the collaborator's scores when the
  *       server reports a NEW scores_reset_at; otherwise it merges and falls
- *       through to self-heal. Absent field = V5 behaviour.
+ *       through to self-heal. Absent field = V5 behavior.
  * - #13 The initial sync retries with backoff, and a disconnected session is
  *       surfaced (connectionState) instead of silently never polling.
  * - #21 Unsynced scores are counted and surfaced (unsyncedCount / lastSyncedAt)
@@ -171,19 +171,19 @@ export const computeGamesToHeal = (
  * Only a real shuffle clears scores server-side, and the server signals that
  * with a fresh `scores_reset_at`. A swap / rename / added playoff round must
  * NOT destroy local work. Older servers do not send the field at all — then we
- * fall back to the previous (destructive) behaviour rather than break.
+ * fall back to the previous (destructive) behavior rather than break.
  */
 export const shouldReplaceScoresOnScheduleChange = (
     hasResetField: boolean,
     serverResetAt: string | number | null | undefined,
     lastSeenResetAt: string | null
 ): boolean => {
-    if (!hasResetField) return true;                 // older server → V5 behaviour
+    if (!hasResetField) return true;                 // older server → V5 behavior
     if (serverResetAt === null || serverResetAt === undefined || serverResetAt === '') return false;
     return String(serverResetAt) !== String(lastSeenResetAt ?? '');
 };
 
-/** Same normalisation the poll uses, so join/resume/poll all agree. */
+/** Same normalization the poll uses, so join/resume/poll all agree. */
 export const normalizeSchedule = (parsed: any[]): any[] =>
     parsed.map((round: any, rIdx: number) => ({
         ...round,
@@ -651,7 +651,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
 
                 // ── #6: has the server WIPED the scores since we last looked? ──
                 // Only a real shuffle does that, and only then may we destroy
-                // local work. Fields absent (older API) → V5 behaviour.
+                // local work. Fields absent (older API) → V5 behavior.
                 const hasResetField = Object.prototype.hasOwnProperty.call(data, 'scores_reset_at');
                 let resetIsNew = false;
                 if (hasResetField) {
@@ -826,19 +826,19 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             return;
         }
 
-        let cancelled = false;
+        let canceled = false;
         pollFailuresRef.current = 0;
         sessionOverRef.current = false; // fresh session — polling allowed
         setSessionExpired(false);
 
         const scheduleNext = () => {
-            if (cancelled || sessionOverRef.current) return; // finished/expired = stop for good
+            if (canceled || sessionOverRef.current) return; // finished/expired = stop for good
             const delay = Math.min(
                 POLL_INTERVAL * Math.pow(2, pollFailuresRef.current),
                 MAX_POLL_INTERVAL
             );
             pollIntervalRef.current = setTimeout(async () => {
-                if (cancelled) return;
+                if (canceled) return;
                 try { await pollForUpdatesRef.current(); } catch (e) { console.error('Poll loop error:', e); }
                 scheduleNext();
             }, delay);
@@ -846,7 +846,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         scheduleNext();
 
         return () => {
-            cancelled = true;
+            canceled = true;
             if (pollIntervalRef.current) {
                 clearTimeout(pollIntervalRef.current);
                 pollIntervalRef.current = null;

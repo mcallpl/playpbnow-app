@@ -275,7 +275,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     },
     // Referenced by the "Match not found" empty state but never defined, so that
     // View was being handed `undefined` and the message rendered top-left
-    // instead of centred.
+    // instead of centered.
     center: {
         flex: 1,
         alignItems: 'center',

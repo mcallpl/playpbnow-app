@@ -189,7 +189,7 @@ export default function InvitesScreen() {
   const [error, setError] = useState('');
 
   // Calculate unresponded invites count for badge. Only ACTIVE, UPCOMING
-  // invites count (audit M6) — a cancelled or last-month invite's pending
+  // invites count (audit M6) — a canceled or last-month invite's pending
   // players are not something the organizer can still act on.
   const unrespondedCount = useMemo(() => {
     const today = todayISO();
@@ -224,7 +224,7 @@ export default function InvitesScreen() {
       return () => clearTimeout(t);
     }
     if (flag === 'cancel') {
-      Alert.alert('Checkout cancelled', 'No charge was made. You can buy credits any time from this tab.');
+      Alert.alert('Checkout canceled', 'No charge was made. You can buy credits any time from this tab.');
       if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history?.replaceState) {
         try { window.history.replaceState(null, '', window.location.pathname); } catch { /* ignore */ }
       }
@@ -541,7 +541,7 @@ export default function InvitesScreen() {
           closeInviteDetail();
           await loadInvites();
           Alert.alert(
-            'Invite cancelled',
+            'Invite canceled',
             n > 0
               ? `${n} confirmed/wait-listed player${n === 1 ? ' was' : 's were'} texted that the match is off.`
               : 'No confirmed or wait-listed players needed to be notified.',
@@ -556,7 +556,7 @@ export default function InvitesScreen() {
     };
     Alert.alert(
       'Cancel this invite?',
-      `${formatDate(inv.match_date)} at ${formatTime(inv.match_time)} — ${inv.court_name}.\n\nConfirmed and wait-listed players will be texted that the match is cancelled. This cannot be undone.`,
+      `${formatDate(inv.match_date)} at ${formatTime(inv.match_time)} — ${inv.court_name}.\n\nConfirmed and wait-listed players will be texted that the match is canceled. This cannot be undone.`,
       [
         { text: 'Keep it', style: 'cancel' },
         { text: 'Cancel invite', style: 'destructive', onPress: doCancel },
@@ -1896,7 +1896,7 @@ export default function InvitesScreen() {
                     )}
                     {selectedInvite.status === 'cancelled' && (
                       <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 13, color: colors.danger, textAlign: 'center', marginTop: 24 }}>
-                        This invite has been cancelled.
+                        This invite has been canceled.
                       </Text>
                     )}
                   </ScrollView>

@@ -83,7 +83,7 @@ export function calculateTeamStandings(
  * Head-to-head comparison, expressed as a sort comparator rather than a score:
  * NEGATIVE if teamA won the meeting (so A sorts ahead), positive if B did,
  * 0 if they split or never met. The comment here used to claim the opposite
- * sign; the behaviour was right, the description was not.
+ * sign; the behavior was right, the description was not.
  */
 function getHeadToHead(
     teamAKey: string,

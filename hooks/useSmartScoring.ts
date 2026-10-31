@@ -85,12 +85,12 @@ export const useSmartScoring = (
     // freshly pulled live ones — which self-heal then pushed to the server.
     useEffect(() => {
         if (!groupName) return;
-        let cancelled = false;
+        let canceled = false;
         const load = async () => {
             try {
                 if (serverPulledRef.current) return; // server already won
                 const saved = await AsyncStorage.getItem(storageKey);
-                if (cancelled || serverPulledRef.current) return; // pull landed while we waited
+                if (canceled || serverPulledRef.current) return; // pull landed while we waited
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     if (parsed && typeof parsed === 'object') {
@@ -109,11 +109,11 @@ export const useSmartScoring = (
                     }
                 }
                 const savedWts = await AsyncStorage.getItem(`wts_${groupName}`);
-                if (!cancelled && savedWts) setWinningScore(parseInt(savedWts));
+                if (!canceled && savedWts) setWinningScore(parseInt(savedWts));
             } catch (e) {}
         };
         load();
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [groupName, storageKey]);
 
     // #17: when the cache key becomes match-scoped (a share code arrives after

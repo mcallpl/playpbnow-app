@@ -851,10 +851,10 @@ export default function PlayNowTab() {
       // C4: resume an open lobby. Polling is stopped on blur, and before this
       // the lobby id lived only in React state — so a tab switch or a restart
       // silently abandoned the lobby while other players kept waiting.
-      let resumeCancelled = false;
+      let resumeCanceled = false;
       (async () => {
         const saved = await loadLobbySession();
-        if (resumeCancelled || !saved) return;
+        if (resumeCanceled || !saved) return;
         if (viewRef.current === 'lobby' || viewRef.current === 'locked') {
           // Same session, just refocused — restart the poll we stopped on blur.
           resumePolling();
@@ -870,7 +870,7 @@ export default function PlayNowTab() {
         fetchFeedWithLocation();
       }, 15000);
       return () => {
-        resumeCancelled = true;
+        resumeCanceled = true;
         clearInterval(refreshInterval);
         stopPolling();
         stopChatPolling();
@@ -1349,9 +1349,9 @@ export default function PlayNowTab() {
                 </TouchableOpacity>
 
                 {historyExpanded && history.map((item) => {
-                  const isCancelled = item.status === 'cancelled';
+                  const isCanceled = item.status === 'cancelled';
                   // L3: a beacon whose match actually got underway was being
-                  // labelled "Expired" — the one outcome that is a success.
+                  // labeled "Expired" — the one outcome that is a success.
                   const wasStarted = !!item.was_started
                     || item.lobby_status === 'started'
                     || item.lobby_status === 'completed';
@@ -1361,9 +1361,9 @@ export default function PlayNowTab() {
                     <View key={`hist-${beaconUid(item)}`} style={styles.historyCard}>
                       <View style={styles.historyCardTop}>
                         <Text style={styles.historyCreator}>{item.creator_name}</Text>
-                        <View style={[styles.historyBadge, isCancelled ? styles.historyBadgeCancelled : styles.historyBadgeCompleted]}>
-                          <Text style={[styles.historyBadgeText, isCancelled ? styles.historyBadgeTextCancelled : styles.historyBadgeTextCompleted]}>
-                            {isCancelled ? 'Cancelled' : wasStarted ? 'Started' : isExpired ? 'Expired' : 'Completed'}
+                        <View style={[styles.historyBadge, isCanceled ? styles.historyBadgeCanceled : styles.historyBadgeCompleted]}>
+                          <Text style={[styles.historyBadgeText, isCanceled ? styles.historyBadgeTextCanceled : styles.historyBadgeTextCompleted]}>
+                            {isCanceled ? 'Canceled' : wasStarted ? 'Started' : isExpired ? 'Expired' : 'Completed'}
                           </Text>
                         </View>
                       </View>
@@ -3782,7 +3782,7 @@ const createStyles = (c: ThemeColors) =>
     historyBadgeCompleted: {
       backgroundColor: 'rgba(135,202,55,0.15)',
     },
-    historyBadgeCancelled: {
+    historyBadgeCanceled: {
       backgroundColor: 'rgba(255,59,48,0.15)',
     },
     historyBadgeText: {
@@ -3792,7 +3792,7 @@ const createStyles = (c: ThemeColors) =>
     historyBadgeTextCompleted: {
       color: c.accent,
     },
-    historyBadgeTextCancelled: {
+    historyBadgeTextCanceled: {
       color: c.danger,
     },
     historyCardDetails: {
