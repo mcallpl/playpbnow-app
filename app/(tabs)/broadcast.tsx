@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Alert } from '@/utils/crossAlert';
+import { Alert, useBrowserPopups } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -231,20 +231,20 @@ export default function AdminDashboard() {
           const msg = data.failed_count > 0
             ? `${data.sent_count} delivered, ${data.failed_count} failed.`
             : `${data.sent_count} message${data.sent_count !== 1 ? 's' : ''} delivered!`;
-          if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert(msg); } else { Alert.alert('Sent!', msg); }
+          if (useBrowserPopups()) { if (typeof window !== 'undefined') window.alert(msg); } else { Alert.alert('Sent!', msg); }
         } else {
           const failMsg = data.message || 'Failed to send';
           setError(failMsg);
-          if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert('Failed: ' + failMsg); } else { Alert.alert('Error', failMsg); }
+          if (useBrowserPopups()) { if (typeof window !== 'undefined') window.alert('Failed: ' + failMsg); } else { Alert.alert('Error', failMsg); }
         }
       } catch (e: any) {
         setError('Network error');
-        if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert('Network error'); } else { Alert.alert('Error', 'Network error'); }
+        if (useBrowserPopups()) { if (typeof window !== 'undefined') window.alert('Network error'); } else { Alert.alert('Error', 'Network error'); }
       }
       setQuickSending(false);
     };
 
-    if (Platform.OS === 'web') {
+    if (useBrowserPopups()) {
       if (typeof window !== 'undefined' && window.confirm(confirmMsg)) doSend();
     } else {
       Alert.alert('Send SMS', confirmMsg, [{ text: 'Cancel', style: 'cancel' }, { text: 'Send', onPress: doSend }]);
@@ -265,7 +265,7 @@ export default function AdminDashboard() {
     uploadFnRef.current = (file: File) => {
       const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm'];
       if (allowed.includes(file.type)) uploadFileToServer(file);
-      else alert('Unsupported file type. Use JPG, PNG, GIF, WebP, MP4, MOV, or WebM.');
+      else Alert.alert('Unsupported File', 'Use a JPG, PNG, GIF, WebP, MP4, MOV or WebM file.');
     };
   });
 
@@ -709,7 +709,7 @@ export default function AdminDashboard() {
 
         setBodyHtml(prev => prev + htmlSnippet);
         const mediaMsg = `${isVideo ? 'Video' : 'Image'} uploaded! It will be displayed prominently as the hero image on your landing page.${data.width ? ` (${data.width}×${data.height})` : ''}`;
-        if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert(mediaMsg); } else { Alert.alert('Media Added', mediaMsg); }
+        if (useBrowserPopups()) { if (typeof window !== 'undefined') window.alert(mediaMsg); } else { Alert.alert('Media Added', mediaMsg); }
       } else {
         setError(data.message || 'Upload failed');
       }
@@ -839,7 +839,7 @@ export default function AdminDashboard() {
     if (selectedPlayers.length === 0) { setError('Select at least one recipient'); return; }
     setError('');
 
-    if (Platform.OS === 'web') {
+    if (useBrowserPopups()) {
       const ok = typeof window !== 'undefined' && window.confirm(`Send SMS to ${selectedPlayers.length} player${selectedPlayers.length !== 1 ? 's' : ''}?\n\nSMS: "${smsText.substring(0, 80)}${smsText.length > 80 ? '...' : ''}"`);
       if (ok) doSendBroadcast();
     } else {
@@ -879,16 +879,16 @@ export default function AdminDashboard() {
           ? `${sendData.sent_count} delivered, ${sendData.failed_count} failed.\n\nDelivered to: ${(sendData.sent_names || []).join(', ')}\n\nFailed: ${(sendData.failed_names || []).join(', ')}`
           : `${sendData.sent_count} message${sendData.sent_count !== 1 ? 's' : ''} delivered successfully to: ${(sendData.sent_names || []).join(', ')}`;
         const title = sendData.failed_count > 0 ? 'Broadcast Sent (With Issues)' : 'Broadcast Sent!';
-        if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert(`${title}\n\n${msg}`); } else { Alert.alert(title, msg); }
+        if (useBrowserPopups()) { if (typeof window !== 'undefined') window.alert(`${title}\n\n${msg}`); } else { Alert.alert(title, msg); }
       } else {
         const failMsg = sendData.message || 'Failed to send broadcast. Please try again.';
         setError(failMsg);
-        if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert('Send Failed\n\n' + failMsg); } else { Alert.alert('Send Failed', failMsg); }
+        if (useBrowserPopups()) { if (typeof window !== 'undefined') window.alert('Send Failed\n\n' + failMsg); } else { Alert.alert('Send Failed', failMsg); }
       }
     } catch (e: any) {
       const errMsg = 'Network error: ' + (e.message || 'Could not reach server');
       setError(errMsg);
-      if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert('Send Failed\n\n' + errMsg); } else { Alert.alert('Send Failed', errMsg); }
+      if (useBrowserPopups()) { if (typeof window !== 'undefined') window.alert('Send Failed\n\n' + errMsg); } else { Alert.alert('Send Failed', errMsg); }
     }
     setSending(false);
   };
@@ -913,18 +913,18 @@ export default function AdminDashboard() {
         if (data.status === 'success') {
           haptic.confirm();
           const filesMsg = data.deleted_files?.length ? `\n\n${data.deleted_files.length} media file${data.deleted_files.length !== 1 ? 's' : ''} cleaned up.` : '';
-          if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert('Broadcast deleted.' + filesMsg); } else { Alert.alert('Deleted', 'Broadcast deleted.' + filesMsg); }
+          if (useBrowserPopups()) { if (typeof window !== 'undefined') window.alert('Broadcast deleted.' + filesMsg); } else { Alert.alert('Deleted', 'Broadcast deleted.' + filesMsg); }
           loadBroadcasts();
         } else {
           const errMsg = data.message || 'Delete failed';
-          if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert(errMsg); } else { Alert.alert('Error', errMsg); }
+          if (useBrowserPopups()) { if (typeof window !== 'undefined') window.alert(errMsg); } else { Alert.alert('Error', errMsg); }
         }
       } catch {
-        if (Platform.OS === 'web') { if (typeof window !== 'undefined') window.alert('Network error'); } else { Alert.alert('Error', 'Network error'); }
+        if (useBrowserPopups()) { if (typeof window !== 'undefined') window.alert('Network error'); } else { Alert.alert('Error', 'Network error'); }
       }
     };
 
-    if (Platform.OS === 'web') {
+    if (useBrowserPopups()) {
       if (typeof window !== 'undefined' && window.confirm(`Delete broadcast "${subject}"?\n\nThis will also delete all associated media files from the server.`)) doDelete();
     } else {
       Alert.alert('Delete Broadcast', `Delete "${subject}"?\n\nThis will also delete all associated media files.`, [

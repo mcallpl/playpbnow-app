@@ -77,7 +77,7 @@ const styles = (c: any) => StyleSheet.create({
   message: { fontFamily: FONT_BODY_REGULAR, fontSize: 15, lineHeight: 21, color: c.textMuted },
   buttons: { flexDirection: 'row', gap: 10, marginTop: 18 },
   buttonsStacked: { flexDirection: 'column' },
-  btn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  btn: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   btnStacked: { flex: 0 },
-  btnText: { fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15 },
+  btnText: { fontFamily: FONT_BODY_SEMIBOLD, fontSize: 15, textAlign: 'center' },
 });

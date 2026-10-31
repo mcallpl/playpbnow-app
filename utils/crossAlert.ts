@@ -21,6 +21,13 @@ import { Alert as RNAlert, Platform, AlertButton, AlertOptions } from 'react-nat
 export interface WebDialog { title: string; message?: string; buttons?: AlertButton[] }
 let alertHost: ((d: WebDialog) => void) | null = null;
 export function registerAlertHost(fn: ((d: WebDialog) => void) | null): void { alertHost = fn; }
+/**
+ * True only when a web screen must fall back to the browser's own popup:
+ * on the web with no in-app dialog mounted. Screens that used to call
+ * window.confirm / window.alert directly on the web now take their
+ * phone branch (Alert.alert with real button labels) whenever this is false.
+ */
+export function useBrowserPopups(): boolean { return Platform.OS === 'web' && !alertHost; }
 
 function webAlert(
   title: string,

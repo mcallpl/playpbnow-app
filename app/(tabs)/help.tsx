@@ -11,7 +11,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
-import { Alert } from '@/utils/crossAlert';
+import { Alert, useBrowserPopups } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { ThemeColors, FONT_DISPLAY_BOLD, FONT_DISPLAY_EXTRABOLD, FONT_BODY_REGULAR, FONT_BODY_MEDIUM, FONT_BODY_SEMIBOLD, FONT_BODY_BOLD } from '../../constants/theme';
@@ -246,7 +246,7 @@ export default function HelpScreen() {
       if (data.status === 'success') {
         setShowDeleteModal(false);
         await AsyncStorage.clear();
-        if (Platform.OS === 'web') {
+        if (useBrowserPopups()) {
           if (typeof window !== 'undefined') window.alert('Your account has been permanently deleted.');
         } else {
           Alert.alert('Account Deleted', 'Your account has been permanently deleted.');

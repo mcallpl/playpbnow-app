@@ -21,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Alert } from '@/utils/crossAlert';
+import { Alert, useBrowserPopups } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GroupSelector } from '../components/GroupSelector';
@@ -314,7 +314,7 @@ export default function RosterScreen() {
         });
 
         if (allPhones.length > 1) {
-            if (Platform.OS === 'web') {
+            if (useBrowserPopups()) {
                 // Web: use first phone and confirm
                 const usePhone = typeof window !== 'undefined' && window.confirm(`These "${group.name}" records have different phone numbers (${allPhones.join(', ')}). Use "${allPhones[0]}"?\n\nOK = use ${allPhones[0]}\nCancel = no phone`);
                 executeMerge(keepPlayer, mergeTargets, usePhone ? allPhones[0] : '', key);
@@ -335,7 +335,7 @@ export default function RosterScreen() {
             }
         } else {
             // 0 or 1 phone — straightforward merge
-            if (Platform.OS === 'web') {
+            if (useBrowserPopups()) {
                 if (typeof window !== 'undefined' && window.confirm(`Merge ${mergeTargets.length} record${mergeTargets.length !== 1 ? 's' : ''} into "${keepPlayer.first_name}"${keepPlayer.last_name ? ' ' + keepPlayer.last_name : ''}?\n\nMatch history and stats will be preserved.`)) {
                     executeMerge(keepPlayer, mergeTargets, null, key);
                 }
@@ -383,13 +383,13 @@ export default function RosterScreen() {
                 setIsMerging(false);
                 setMergeProgress('');
                 loadNotDuplicates();
-                if (Platform.OS === 'web') {
+                if (useBrowserPopups()) {
                     if (typeof window !== 'undefined') window.alert(`All "${group.name}" entries are now marked as different people.`);
                 }
                 else Alert.alert('Done', `All "${group.name}" entries are now marked as different people.`);
             };
 
-            if (Platform.OS === 'web') {
+            if (useBrowserPopups()) {
                 if (typeof window !== 'undefined' && window.confirm(`Mark all "${group.name}" entries as different people? This will stop showing them as duplicates.`)) doMarkAll();
             } else {
                 Alert.alert(
@@ -516,14 +516,14 @@ export default function RosterScreen() {
             setMergeProgress('');
             setSelectedMergeIds({});
             setMergeModalVisible(false);
-            if (Platform.OS === 'web') {
+            if (useBrowserPopups()) {
                 if (typeof window !== 'undefined') window.alert(`Merged ${totalMerged} duplicate player record${totalMerged !== 1 ? 's' : ''}.`);
             }
             else Alert.alert('All Done!', `Merged ${totalMerged} duplicate player record${totalMerged !== 1 ? 's' : ''}.`);
             loadPlayers();
         };
 
-        if (Platform.OS === 'web') {
+        if (useBrowserPopups()) {
             if (typeof window !== 'undefined' && window.confirm(`This will merge ${totalToMerge} duplicate record${totalToMerge !== 1 ? 's' : ''} across ${groupsToMerge.length} name${groupsToMerge.length !== 1 ? 's' : ''}. Continue?`)) {
                 doMergeAll();
             }

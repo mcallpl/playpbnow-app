@@ -22,7 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Alert } from '@/utils/crossAlert';
+import { Alert, useBrowserPopups } from '@/utils/crossAlert';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useActiveMatch } from '../../context/ActiveMatchContext';
@@ -677,7 +677,7 @@ export default function GameScreen() {
             }
         }).catch(() => { pendingScoreResetRef.current = null; });
     };
-    if (Platform.OS === 'web') {
+    if (useBrowserPopups()) {
         if (typeof window !== 'undefined' && window.confirm("Shuffle Matchups?\n\nThis will generate completely NEW matchups. Current scores will be cleared.")) {
             doShuffle();
         }
@@ -797,7 +797,7 @@ export default function GameScreen() {
           const suffix = (day === 1 || day === 21 || day === 31) ? 'st' : (day === 2 || day === 22) ? 'nd' : (day === 3 || day === 23) ? 'rd' : 'th';
           const displayDate = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + suffix;
           const displayTime = selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-          if (Platform.OS === 'web') {
+          if (useBrowserPopups()) {
               if (typeof window !== 'undefined' && window.confirm(`Just confirming: this report will tell players to show up on ${displayDate} at ${displayTime}.\n\nIs that the correct date and time?`)) {
                   doShareImage();
               }
@@ -818,7 +818,7 @@ export default function GameScreen() {
 
   const handleFinish = () => {
       if (!matchIsComplete) {
-          if (Platform.OS === 'web') {
+          if (useBrowserPopups()) {
               if (typeof window === 'undefined' || !window.confirm('⚠️ MATCH NOT COMPLETE\n\nNot all scores have been entered. Some games will not be recorded.\n\nFinish anyway?')) return;
               setSaveModalVisible(true);
           } else {
@@ -920,7 +920,7 @@ export default function GameScreen() {
         });
     });
     if (matchesToSave.length === 0) {
-        if (Platform.OS === 'web') {
+        if (useBrowserPopups()) {
             if (typeof window !== 'undefined') window.alert("Enter scores before finishing.");
         }
         else Alert.alert("No Scores", "Enter scores before finishing.");
@@ -944,7 +944,7 @@ export default function GameScreen() {
     }
     try {
         if (!groupName) {
-            if (Platform.OS === 'web') {
+            if (useBrowserPopups()) {
                 if (typeof window !== 'undefined') window.alert("Group Name Lost.");
             }
             else Alert.alert("Error", "Group Name Lost.");
@@ -986,7 +986,7 @@ export default function GameScreen() {
         const responseText = await res.text();
         let data;
         try { data = JSON.parse(responseText); } catch (parseError) {
-            if (Platform.OS === 'web') {
+            if (useBrowserPopups()) {
                 if (typeof window !== 'undefined') window.alert("Server returned invalid data");
             }
             else Alert.alert("Error", "Server returned invalid data");
@@ -1001,7 +1001,7 @@ export default function GameScreen() {
             // Live matches conclude smoothly: no blocking popup — the finisher
             // goes straight to the trophies (connected devices follow via poll).
             if (!wasLiveSession) {
-                if (Platform.OS === 'web') {
+                if (useBrowserPopups()) {
                     if (typeof window !== 'undefined') window.alert(data.message || "Match saved successfully!");
                 } else {
                     Alert.alert("Success!", data.message || "Match saved successfully!");
@@ -1050,14 +1050,14 @@ export default function GameScreen() {
                 router.replace({ pathname: '/(tabs)/leaderboard', params: {
                     groupName, forceGlobal: 'true', refresh: Date.now().toString(),
                 } });
-            } else if (Platform.OS === 'web') {
+            } else if (useBrowserPopups()) {
                 if (typeof window !== 'undefined') window.alert("This match has already been saved with identical scores. Nothing to update.");
             } else {
                 Alert.alert("Already Saved", "This match has already been saved with identical scores. Nothing to update.");
             }
         } else if (data.status === 'duplicate_diff_scores') {
             setSaveModalVisible(false);
-            if (Platform.OS === 'web') {
+            if (useBrowserPopups()) {
                 if (typeof window !== 'undefined' && window.confirm("A match with this title and date already exists but with different scores. Would you like to update it?")) {
                     executeSave(true, true);
                 }
@@ -1072,14 +1072,14 @@ export default function GameScreen() {
                 );
             }
         } else {
-            if (Platform.OS === 'web') {
+            if (useBrowserPopups()) {
                 if (typeof window !== 'undefined') window.alert(`Could not save scores: ${data.message || 'Unknown error'}`);
             } else {
                 Alert.alert("Error", `Could not save scores: ${data.message || 'Unknown error'}`);
             }
         }
     } catch (e: any) {
-        if (Platform.OS === 'web') {
+        if (useBrowserPopups()) {
             if (typeof window !== 'undefined') window.alert(`Network error: ${e.message || 'Unknown'}`);
         }
         else Alert.alert("Error", `Network error: ${e.message || 'Unknown'}`);
@@ -1217,7 +1217,7 @@ export default function GameScreen() {
           setTimeout(() => flatListRef.current?.scrollToIndex({ index: roundRobinCount, animated: true }), 400);
       };
 
-      if (Platform.OS === 'web') {
+      if (useBrowserPopups()) {
           if (typeof window !== 'undefined' && window.confirm(`STANDINGS\n\n${standingsText}\n\nSemifinal 1: #1 vs #4\nSemifinal 2: #2 vs #3\n\nStart playoffs?`)) startPlayoffs();
       } else {
           Alert.alert('Playoff Standings', `${standingsText}\n\nSemifinal 1: #1 vs #4\nSemifinal 2: #2 vs #3`, [

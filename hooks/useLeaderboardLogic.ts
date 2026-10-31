@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { Alert } from '@/utils/crossAlert';
+import { Alert, useBrowserPopups } from '@/utils/crossAlert';
 
 // Canonical, same-origin host. The auth interceptor in utils/apiClient.ts only
 // attaches the Bearer token to URLs matching 'playpbnow.com/api', so the legacy
@@ -312,7 +312,7 @@ export const useLeaderboardLogic = (
             finally { setLoading(false); }
         };
 
-        if (Platform.OS === 'web') {
+        if (useBrowserPopups()) {
             if (window.confirm("Delete Game?\n\nAre you sure?")) doDelete();
         } else {
             Alert.alert("Delete Game", "Are you sure?", [
@@ -354,7 +354,7 @@ export const useLeaderboardLogic = (
             finally { setLoading(false); }
         };
 
-        if (Platform.OS === 'web') {
+        if (useBrowserPopups()) {
             if (window.confirm("Delete Session?\n\nThis deletes ALL games in this session.")) doDeleteSession();
         } else {
             Alert.alert(

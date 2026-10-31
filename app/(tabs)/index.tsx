@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Alert } from '@/utils/crossAlert';
+import { Alert, useBrowserPopups } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Rect, Line, Circle, Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -202,7 +202,7 @@ export default function LandingScreen() {
         // The account (and its server sessions) are gone — drop the cached
         // Bearer and RevenueCat identity too, no server call needed.
         await signOut({ skipServer: true, navigate: false });
-        if (Platform.OS === 'web') {
+        if (useBrowserPopups()) {
           if (typeof window !== 'undefined') window.alert('Your account has been permanently deleted.');
         } else {
           Alert.alert('Account Deleted', 'Your account has been permanently deleted.');
