@@ -106,7 +106,7 @@ export default function HomeScreen() {
   const [newGroupName, setNewGroupName] = useState('');
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   // Players imported from a pasted list or spreadsheet, added right after the group is created.
-  const [importRows, setImportRows] = useState<{ name: string; gender: ImportGender }[]>([]);
+  const [importRows, setImportRows] = useState<{ name: string; gender: ImportGender; lastName?: string }[]>([]);
   const [importProgress, setImportProgress] = useState('');
 
   const [courts, setCourts] = useState<Court[]>([]);

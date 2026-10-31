@@ -1,3 +1,4 @@
+import { AlertHost } from '@/components/AlertHost';
 import { Stack, useRouter } from 'expo-router';
 import { ActivityIndicator, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Alert } from '@/utils/crossAlert';
@@ -345,6 +346,8 @@ export default function RootLayout() {
     >
       <ThemeProvider>
         <RootLayoutInner />
+        {/* Web alerts as in-app dialogs (2026-10-31); phones are unchanged. */}
+        <AlertHost />
       </ThemeProvider>
     </ErrorBoundary>
   );

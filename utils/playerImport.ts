@@ -17,6 +17,8 @@ export type ImportGender = 'male' | 'female';
 export interface ImportRow {
   name: string;
   gender: ImportGender | null;
+  /** The pasted last name, kept when the name shown is short ("Kevin B" -> "Brooks"). */
+  lastName?: string;
 }
 
 export interface ParseResult {
@@ -220,7 +222,7 @@ export interface AddResult {
 export async function addRowsToGroup(
   apiUrl: string,
   groupKey: string,
-  rows: { name: string; gender: ImportGender }[],
+  rows: { name: string; gender: ImportGender; lastName?: string }[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<AddResult> {
   let added = 0;
@@ -234,6 +236,9 @@ export async function addRowsToGroup(
         body: JSON.stringify({
           group_key: groupKey,
           first_name: r.name,
+          // 2026-10-31: the last name that was pasted, so EDIT PLAYER shows it.
+          // first_name stays the name shown on the court ("Kevin B").
+          ...(r.lastName ? { last_name: r.lastName } : {}),
           gender: r.gender,
           player_key: 'pk_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 9999),
         }),

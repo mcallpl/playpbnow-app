@@ -84,6 +84,11 @@ export function EditPlayerModal({ state, dispatch }: EditPlayerModalProps) {
               placeholder="First name"
               placeholderTextColor={colors.inputPlaceholder}
             />
+            {/* 2026-10-31: the first name is what shows in every match box, which
+                is why an imported "Kevin B" keeps its initial here. */}
+            <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, marginTop: -4, marginBottom: 10 }}>
+              This is the name shown in matches.
+            </Text>
 
             <Text style={styles.fieldLabel}>Last Name</Text>
             <TextInput
@@ -151,7 +156,7 @@ export function EditPlayerModal({ state, dispatch }: EditPlayerModalProps) {
               style={styles.modalInput}
               value={state.editDupr}
               onChangeText={(text) => dispatch({ type: 'SET_EDIT_DUPR', payload: text })}
-              placeholder="1.0 - 8.0 (optional)"
+              placeholder="1.0 to 8.0 (optional)"
               placeholderTextColor={colors.inputPlaceholder}
               keyboardType="decimal-pad"
             />

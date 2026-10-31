@@ -26,6 +26,7 @@ import { SaveRosterModal } from './steps/SaveRosterModal';
 import { MatchConfigModal } from './steps/MatchConfigModal';
 import { ImportPlayersPanel } from '@/components/ImportPlayersPanel';
 import { addRowsToGroup, ImportGender } from '@/utils/playerImport';
+import { fullName } from '@/utils/playerNames';
 
 const API_URL = 'https://playpbnow.com/api';
 
@@ -43,7 +44,7 @@ export default function SetupFlow() {
   // A Quick Match roster has no server group, so there is nothing to import into.
   const canImport = !!state.groupKey && !state.groupKey.startsWith('quick_');
 
-  const runImport = async (rows: { name: string; gender: ImportGender }[]) => {
+  const runImport = async (rows: { name: string; gender: ImportGender; lastName?: string }[]) => {
     const total = rows.length;
     setImportBusy(`Adding players: 0 of ${total}`);
     const result = await addRowsToGroup(API_URL, state.groupKey, rows,
@@ -339,7 +340,9 @@ export default function SetupFlow() {
               <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, maxWidth: 520, width: '100%', maxHeight: '100%', alignSelf: 'center' }}>
                 <ImportPlayersPanel
                   existingNames={state.players.map((p) => [p.first_name, p.last_name].filter(Boolean).join(' '))
-                    .concat(state.players.map((p) => p.first_name))}
+                    .concat(state.players.map((p) => p.first_name))
+                    // "Kevin B" + "Brooks" is also "Kevin Brooks" (2026-10-31)
+                    .concat(state.players.map((p) => fullName(p.first_name, p.last_name)))}
                   confirmLabel={(n) => `ADD ${n} PLAYER${n === 1 ? '' : 'S'}`}
                   onCancel={() => setImportVisible(false)}
                   onConfirm={runImport}

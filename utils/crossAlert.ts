@@ -13,12 +13,22 @@
  */
 import { Alert as RNAlert, Platform, AlertButton, AlertOptions } from 'react-native';
 
+// In-app dialog for the web (2026-10-31): components/AlertHost registers
+// itself here at the app root. While it is mounted every web alert is drawn
+// as a PlayPBNow dialog with its real button labels; if it is not mounted
+// (very early in startup, or a page outside the app) the browser popups
+// below are still used, so an alert is never lost.
+export interface WebDialog { title: string; message?: string; buttons?: AlertButton[] }
+let alertHost: ((d: WebDialog) => void) | null = null;
+export function registerAlertHost(fn: ((d: WebDialog) => void) | null): void { alertHost = fn; }
+
 function webAlert(
   title: string,
   message?: string,
   buttons?: AlertButton[],
   _options?: AlertOptions
 ): void {
+  if (alertHost) { alertHost({ title, message, buttons }); return; }
   const body = [title, message].filter(Boolean).join('\n\n');
 
   // No buttons, or a single "OK"-style button: informational alert.

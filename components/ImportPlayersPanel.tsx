@@ -18,6 +18,7 @@ import {
   FONT_BODY_BOLD,
 } from '../constants/theme';
 import { ImportGender, ImportRow, parseGrid, parsePlayerText, shortNames } from '../utils/playerImport';
+import { importedLastName } from '../utils/playerNames';
 import { readSpreadsheetFile } from '../utils/readSpreadsheetFile';
 
 const MAX_ROWS = 200;
@@ -28,7 +29,7 @@ interface Props {
   existingNames?: string[];
   /** Button label for the final step, given the number of players. */
   confirmLabel: (count: number) => string;
-  onConfirm: (rows: { name: string; gender: ImportGender }[]) => void;
+  onConfirm: (rows: { name: string; gender: ImportGender; lastName?: string }[]) => void;
   onCancel: () => void;
   /** Rows to start the review with (reopening an import that was already set up). */
   initialRows?: ImportRow[];
@@ -248,7 +249,10 @@ export function ImportPlayersPanel({ existingNames = [], confirmLabel, onConfirm
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.btn, s.goBtn, (!!blockReason || busy) && { opacity: 0.5 }]}
-          onPress={() => onConfirm(rows.map((r, i) => ({ name: finalName(i), gender: r.gender as ImportGender })))}
+          onPress={() => onConfirm(rows.map((r, i) => {
+            const lastName = r.lastName || importedLastName(finalName(i), r.name);
+            return { name: finalName(i), gender: r.gender as ImportGender, ...(lastName ? { lastName } : {}) };
+          }))}
           disabled={!!blockReason || busy}
         >
           {busy ? <ActivityIndicator color={colors.accentText} /> : <Text style={s.goText}>{confirmLabel(rows.length)}</Text>}

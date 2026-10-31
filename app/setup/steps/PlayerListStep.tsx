@@ -1,3 +1,4 @@
+import { fullName } from '@/utils/playerNames';
 import React, { useMemo } from 'react';
 import {
   View,
@@ -109,8 +110,7 @@ export function PlayerListStep({
             <View style={{ marginLeft: 12, flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={styles.playerName}>
-                  {item.first_name}
-                  {item.last_name ? ` ${item.last_name}` : ''}
+                  {fullName(item.first_name, item.last_name)}
                 </Text>
                 {item.is_verified && <BrandedIcon name="confirm" size={14} color={colors.accent} />}
               </View>
@@ -124,7 +124,8 @@ export function PlayerListStep({
             </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <TouchableOpacity onPress={() => onEditPlayer(item)}>
+            <TouchableOpacity onPress={() => onEditPlayer(item)} accessibilityRole="button"
+              accessibilityLabel={`Edit ${fullName(item.first_name, item.last_name)}`}>
               <BrandedIcon name="edit" size={18} color={colors.textMuted} />
             </TouchableOpacity>
             {/* UAT C-L2: this only takes the player out of THIS match (their

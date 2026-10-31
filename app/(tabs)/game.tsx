@@ -50,6 +50,7 @@ import { signOut } from '../../hooks/useAuth';
 import { courtLabelAt, isDefaultCourtLabels, courtLabelsFromSchedule, stampCourtLabels, courtCountOf, fitCourtLabels, describeCourtLabels } from '../../utils/courtLabels';
 import { loadGroupCourtLabels, rememberGroupCourtLabels, shouldShowCourtNamesNew, markCourtNamesUsed } from '../../utils/groupCourtLabels';
 import { CourtNamesModal } from '../../components/CourtNamesModal';
+import { fullName } from '../../utils/playerNames';
 
 const API_URL = 'https://playpbnow.com/api';
 
@@ -67,7 +68,7 @@ interface SearchResult {
 }
 const searchResultKey = (r: SearchResult): string => r.player_key || String(r.id);
 const searchResultName = (r: SearchResult): string =>
-    (r.first_name ? `${r.first_name} ${r.last_name || ''}` : (r.name || '')).trim();
+    (r.first_name ? fullName(r.first_name, r.last_name) : (r.name || '')).trim();
 
 export default function GameScreen() {
   const params = useLocalSearchParams();
