@@ -73,10 +73,10 @@ export const HELP_VIDEOS: HelpVideo[] = [
     seconds: 78,
   },
   {
-    slug: 'm9-rankings',
+    slug: 'm9-rankings-v2',
     title: 'Rankings',
-    blurb: 'Leaderboards, podiums and badges',
-    seconds: 116,
+    blurb: 'Leaderboards, badges, head to head and single nights',
+    seconds: 70,
   },
   {
     slug: 'm10-beacon',
