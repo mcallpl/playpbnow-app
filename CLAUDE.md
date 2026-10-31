@@ -402,3 +402,41 @@ centered, and the letter or number or name of the court centered below."*
 - Logic and tests: `utils/courtLabels.ts`, `__tests__/courtLabels.test.ts`.
 - Not changed: saved match history still reads "1st Court" from `court_num`
   (the matches table has no court name column).
+
+## Mixed rounds, repeats, Help and videos, locked 2026-10-31
+
+Found while filming the Quick Start; every item was failing in production
+before its fix.
+
+- **An equal group stays strictly man+woman, and repeats a pair instead.**
+  4 men + 4 women with the default 6 Mixed rounds got men-only and
+  women-only teams in rounds 5 and 6 (labeled MIXED DOUBLES): after 4 rounds
+  every man+woman pair had played, and the generator fell back to
+  anyone-with-anyone BEFORE trying a repeat partner. The fallback now waits
+  until repeats have been tried (`generate_schedule.php`), and the phone
+  SHUFFLE (`buildLocalSchedule`) keeps every team mixed with the fewest
+  repeats. Tests: "small groups, 6 mixed rounds" in
+  `schedule_balance_test.php`, "equal groups stay strictly mixed" in
+  `__tests__/buildLocalSchedule.test.ts`.
+- **When partners must repeat, the fewest repeats win.** Every successful
+  run at a cap above 1 is a candidate; the one with the fewest repeat
+  (orange) team slots is kept. 4M/4F over 6 rounds always lands on the
+  minimum of 16 orange team slots (16 possible pairs, 24 slots).
+- **Court naming boxes:** a court on its default number shows the number as
+  a gray hint, not text, so tapping the first box and typing never makes
+  "1D" on the web (the first box can already have focus there).
+- **Help matches the app** (all 31 articles checked against the code, six
+  added). Help text has no em dashes and only American spelling.
+- **American spelling is enforced:** `__tests__/americanSpelling.test.ts`
+  fails the build on a British spelling anywhere we write. Allowed on
+  purpose: the stored status value `'cancelled'` (database rows and the
+  wire; renaming it is a migration for Chip to decide), RevenueCat's
+  `userCancelled`, the API key `lobbies_cancelled`, "Centre Pointe Pkwy",
+  and third-party code (`playpbnow-api/vendor`, `public/qrcode.js`).
+- **Videos:** new `m0-quick-start` (first in Help) and
+  `m12-name-your-courts`. `playpbnow.com/videos.html` is the public page
+  for coordinators; it lists only videos filmed against today's app, and
+  `__tests__/publicVideosPage.test.ts` keeps it in step with
+  `utils/helpVideos.ts`. Videos are filmed with Playwright against the
+  local web build with a stand-in API (nothing written to production);
+  schedules come from the real generator.
