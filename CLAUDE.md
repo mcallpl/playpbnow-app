@@ -377,3 +377,28 @@ Three synthetic testers were created during this pass and **all three were
 deleted afterwards through the app's own `delete_account.php`**, which also
 verified that flow end to end (Apple and Google both require it to work).
 No test data was left in production.
+
+## Court names for one match, locked 2026-10-31
+
+Chip: *"we need to be able to name the courts for this particular match
+somewhere. And when we name the first court, CRT D, let the others in that
+round default to CRT E, CRT F... Even though they can be instantly changed."*
+Then: *"have the court show up in the cell with both the CRT on the top line,
+centered, and the letter or number or name of the court centered below."*
+
+- Default stays **CRT 1, CRT 2, CRT 3...** Nothing changes until someone names them.
+- **One place:** NAME COURTS (beside ADD PLAYER), or tap any CRT label in a round.
+- Naming a court fills every later court the user did NOT type by hand with the
+  next in sequence (D to E, F; 34 to 35, 36; 1A to 1B). A word with no sequence
+  ("Pool") leaves the rest alone. Any court can still be changed on its own;
+  "Back to 1, 2, 3..." is the undo. A typed "CRT" or "Court" prefix is dropped.
+- The cell shows **CRT on the top line and the name centered below it.**
+- Names live on the schedule as `court_labels` on every round, so they survive
+  refresh, shuffle and added playoff rounds (the host re-stamps them), reach
+  live collaborators with the matchups (host only may change them), and print
+  as COURT D on the texted lineup image (`generate_report_image.php`).
+- `scheduleSignature` includes the names only when present, so a schedule
+  without names signs exactly as before.
+- Logic and tests: `utils/courtLabels.ts`, `__tests__/courtLabels.test.ts`.
+- Not changed: saved match history still reads "1st Court" from `court_num`
+  (the matches table has no court name column).
