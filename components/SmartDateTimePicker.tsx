@@ -1,6 +1,8 @@
 import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BrandedIcon } from './BrandedIcon';
+import { useTheme } from '@/context/ThemeContext';
+import { FONT_BODY_BOLD, Fonts } from '@/constants/theme';
 
 /**
  * Cross-platform date + time picker.
@@ -27,6 +29,7 @@ interface Props {
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 
 export function SmartDateTimePicker({ date, onChange, colors }: Props) {
+  const { isDark } = useTheme();
   if (Platform.OS === 'web') {
     const dateVal = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
     const timeVal = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -42,8 +45,12 @@ export function SmartDateTimePicker({ date, onChange, colors }: Props) {
       padding: '14px 12px',
       fontSize: 16,
       fontWeight: 700,
-      fontFamily: 'inherit',
-      colorScheme: 'dark',
+      // 2026-10-31: was 'inherit', but nothing above these raw inputs names a
+      // font, so the browser fell back to Times (no serifs, ever). Name the
+      // app's face and end the stack in sans-serif. The color scheme follows
+      // the theme, so the calendar icon is visible in light mode too.
+      fontFamily: `${FONT_BODY_BOLD}, ${(Fonts as any).sans || 'system-ui, sans-serif'}`,
+      colorScheme: isDark ? 'dark' : 'light',
       outline: 'none',
       cursor: 'pointer',
     };
