@@ -1317,7 +1317,9 @@ export default function GameScreen() {
              <Text style={styles.vsText}>VS</Text>
              <TouchableOpacity onPress={openCourtNames} accessibilityRole="button"
                  accessibilityLabel={`Court ${courtLabelAt(courtLabels, gIdx)}. Tap to name the courts`}>
-                 <Text style={[styles.crtText, { textAlign: 'center' }]} numberOfLines={Platform.OS === 'web' ? 2 : 1} adjustsFontSizeToFit minimumFontScale={0.6}>CRT {courtLabelAt(courtLabels, gIdx)}</Text>
+                 {/* Two lines, both centered: CRT on top, the court's name below (Chip, 2026-10-31). */}
+                 <Text style={[styles.crtText, { textAlign: 'center' }]}>CRT</Text>
+                 <Text style={[styles.crtText, styles.crtLabel]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{courtLabelAt(courtLabels, gIdx)}</Text>
              </TouchableOpacity>
         </View>
         <View style={styles.teamWrapper}><View style={styles.teamContainer}>
@@ -1788,6 +1790,7 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   pText: { fontFamily: FONT_BODY_BOLD, fontSize: 14 },
   vsText: { color: c.textMuted, fontFamily: FONT_DISPLAY_EXTRABOLD, fontSize: 16 },
   crtText: { fontFamily: FONT_BODY_BOLD, color: c.textMuted, fontSize: 12, marginTop: 4 },
+  crtLabel: { textAlign: 'center', marginTop: 0, fontSize: 13, color: c.textSoft, width: 44 },
   scoreInput: { width: 48, height: 48, backgroundColor: c.inputBg, borderRadius: 8, textAlign: 'center', fontSize: 16, fontFamily: FONT_BODY_BOLD, color: c.inputText, borderWidth: 1, borderColor: c.border, elevation: 2 },
   // Wraps onto more lines so every player sitting out is visible, however many there are.
   byeRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, alignItems: 'center', gap: 8, rowGap: 4, paddingTop: 12, borderTopWidth: 1, borderColor: c.border },
