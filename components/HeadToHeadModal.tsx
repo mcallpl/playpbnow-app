@@ -89,7 +89,7 @@ export default function HeadToHeadModal({
                     removed GLOBAL mode. The group being compared is what matters. */}
                 {!!groupName && (
                     <Text style={styles.subtitle}>
-                        {groupName.toUpperCase()}
+                        {groupName.toUpperCase()} · ALL TIME
                     </Text>
                 )}
 

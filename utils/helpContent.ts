@@ -271,7 +271,7 @@ See "Collaborative Scoring (Real-Time)" for how to start or join a live match.`,
 - The **LIVE** tab appears at the bottom, so you can get back to this match quickly
 
 **Free vs Pro**
-- Free accounts get a "FREE: Reports include watermark" badge on the report
+- Free accounts get a "FREE: Reports include a watermark" badge on the report
 - Pro and trial accounts get a clean, watermark-free report
 
 **Tip:** Send the report before play starts so everyone knows their court and partner, then send it again with the scores after you save.`,
@@ -805,13 +805,21 @@ For a game today, post a **PLAY NOW** beacon. It has its own player list and cha
 
 **The podium**: the top three players get the gold, silver and bronze pedestals with their W-L, Diff, DUPR (if entered) and win %. Everyone else is listed below in rank order. In a **Fixed Teams** session the podium shows teams, and tournament placements show as Gold / Silver / Bronze badges.
 
+**Badges** next to a name:
+- 💠 **Platinum**: won every game.
+- 💎 **Diamond**: lost exactly one game, with more wins than losses.
+- 🔥 **Fire**: won three or more games.
+- 🦃 **Turkey**: was held to zero in a game. It can show up next to any other badge.
+A player gets at most one of Platinum, Diamond and Fire, in that order.
+
 **ALL TIME or one session**
 - The gray bar under the sort buttons names what you are looking at: **ALL TIME ▾** to start with. Tap it to pick something else.
 - **ALL TIME** combines every saved match
-- Or pick one saved session. The standings switch to that day's games, the **GAME HISTORY** window opens, and the bar changes to that session's name.
+- Or tap a saved session's name. The standings switch to that day's games and the bar changes to that session's name.
+- Tap the **pencil** beside a session to open its **GAME HISTORY**.
 - Coming straight from a match you just scored, the bar reads **CURRENT SESSION**
 
-**Game history** (open it by picking a session)
+**Game history** (tap the pencil beside a session in the session list)
 - Every game is listed with the two teams and the score, winner highlighted
 - **Pencil**: edit that game's scores, then tap the check mark to save. Rankings update.
 - **Trash**: delete one game
@@ -825,6 +833,8 @@ For a game today, post a **PLAY NOW** beacon. It has its own player list and cha
 **Head to head**
 - Tap the **people icon** (top right)
 - Select two players to see their record against each other
+- It always counts every saved game between them (ALL TIME), even when the standings show a single session
+- Tap the games line to see each game they played against each other
 
 **Empty list?** Rankings only include saved matches with scores. Turn on **SCORE**, enter scores, tap FINISH MATCH and CONFIRM SAVE.`,
   },

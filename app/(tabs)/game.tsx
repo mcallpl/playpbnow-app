@@ -1312,7 +1312,11 @@ export default function GameScreen() {
         onLongPress={() => { if (!canEditSchedule) { hostOnlyAlert(); return; } setSwapSource(null); setEditingPlayer({ r: rIdx, g: gIdx, t: tIdx, p: pIdx }); }} activeOpacity={0.7}>
         {isEditing ? (
           <TextInput style={[styles.pText, { color: txt, width: '100%', textAlign: 'center', padding: 2 }]}
-            value={player.first_name} onChangeText={(name) => handlePlayerNameChange(rIdx, gIdx, tIdx, pIdx, name)}
+            value={player.first_name} onChangeText={(name) => {
+                handlePlayerNameChange(rIdx, gIdx, tIdx, pIdx, name);
+                // the roster too, so a shuffle keeps the new name (2026-10-31)
+                setCurrentRoster(prev => prev.map(p => (p.id === player.id ? { ...p, first_name: name } : p)));
+            }}
             onBlur={() => setEditingPlayer(null)} autoFocus selectTextOnFocus />
         ) : (
           // A long name shrinks to fit its tile on the phones (large text

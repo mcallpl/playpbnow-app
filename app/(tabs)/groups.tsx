@@ -814,12 +814,22 @@ export default function HomeScreen() {
           <Text style={styles.headerTitle}>Your Groups</Text>
           <Text style={styles.headerSub}>{userName ? `${userName} · ` : ''}{groups.length} group{groups.length === 1 ? '' : 's'} · {totalPlayers} player{totalPlayers === 1 ? '' : 's'}</Text>
         </View>
-        <TouchableOpacity onPress={() => setJoinModalVisible(true)} style={styles.headerBtn}>
-          <BrandedIcon name="flash" size={18} color={colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setSettingsVisible(true)} style={styles.headerBtn}>
-          <BrandedIcon name="settings" size={18} color={colors.text} />
-        </TouchableOpacity>
+        {/* Labeled like the match screen's LIVE / SHUFFLE / SCORE (2026-10-31):
+            the lightning bolt alone did not say it joins a live match. */}
+        <View style={styles.headerBtnWrap}>
+          <TouchableOpacity onPress={() => setJoinModalVisible(true)} style={[styles.headerBtn, { marginLeft: 0 }]}
+            accessibilityRole="button" accessibilityLabel="Join a live match with a code">
+            <BrandedIcon name="flash" size={18} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerBtnLabel}>JOIN</Text>
+        </View>
+        <View style={styles.headerBtnWrap}>
+          <TouchableOpacity onPress={() => setSettingsVisible(true)} style={[styles.headerBtn, { marginLeft: 0 }]}
+            accessibilityRole="button" accessibilityLabel="Settings">
+            <BrandedIcon name="settings" size={18} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerBtnLabel}>SETTINGS</Text>
+        </View>
       </View>
 
       {loading && groups.length === 0 && (
@@ -1217,6 +1227,8 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 16,
   },
+  headerBtnWrap: { alignItems: 'center', marginLeft: 12, minWidth: 48 },
+  headerBtnLabel: { color: c.textMuted, fontSize: 9, fontFamily: FONT_BODY_BOLD, letterSpacing: 1, marginTop: 3 },
   loadingContainer: { alignItems: 'center', marginTop: 40 },
   listContent: { paddingHorizontal: 16, paddingBottom: 150 },
 

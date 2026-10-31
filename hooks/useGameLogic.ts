@@ -522,10 +522,24 @@ export const useGameLogic = (
     const handlePlayerNameChange = (rIdx: number, gIdx: number, tIdx: number, pIdx: number, newName: string) => {
         const newSchedule = JSON.parse(JSON.stringify(schedule));
         const round = newSchedule[rIdx];
+        const target = (tIdx === 1 ? round.games[gIdx].team1 : round.games[gIdx].team2)[pIdx];
         if (tIdx === 1) {
             round.games[gIdx].team1[pIdx].first_name = newName;
         } else {
             round.games[gIdx].team2[pIdx].first_name = newName;
+        }
+        // 2026-10-31: renaming changed only this one box; the same person kept
+        // the old name in every other round, and a shuffle (built from the
+        // roster) brought it back here too. Rename the PLAYER (by id) in every
+        // round and in the byes; game.tsx updates the roster the same way.
+        const id = target?.id;
+        if (id !== undefined && id !== null && id !== '') {
+            for (const r of newSchedule) {
+                for (const g of r.games || []) {
+                    for (const p of [...(g.team1 || []), ...(g.team2 || [])]) if (p && p.id === id) p.first_name = newName;
+                }
+                for (const p of r.byes || []) if (p && p.id === id) p.first_name = newName;
+            }
         }
         setSchedule(newSchedule);
     };

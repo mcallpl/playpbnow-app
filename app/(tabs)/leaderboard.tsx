@@ -174,6 +174,28 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
 
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [compareModalVisible, setCompareModalVisible] = useState(false);
+  // Head to Head is a rivalry record, so it is ALWAYS all time (2026-10-31).
+  // It used to get whatever the screen showed, so with one night picked it
+  // quietly counted only that night. With a single session selected, it
+  // loads the group's full history itself; the standings stay as they are.
+  const [h2hAll, setH2hAll] = useState<{ history: any[]; roster: any[] } | null>(null);
+  useEffect(() => {
+      if (!compareModalVisible) return;
+      if (selectedBatchId === 'all' || !groupName) { setH2hAll(null); return; }
+      let live = true;
+      fetch(`https://playpbnow.com/api/get_leaderboard.php?group=${encodeURIComponent(groupName)}&batch_id=all&user_id=${encodeURIComponent(deviceId)}`)
+          .then(r => r.json())
+          .then(d => {
+              if (!live || d?.status !== 'success') return;
+              const hist = (d.history || []).map((h: any) => {
+                  const id = h.match_id || h.id || h._id;
+                  return { ...h, id: id ? String(id) : '', match_id: id ? String(id) : '', group: h._source_group || h.group || groupName };
+              });
+              setH2hAll({ history: hist, roster: (d.roster || []).filter((x: any) => x.name !== 'Unknown') });
+          })
+          .catch(() => {});
+      return () => { live = false; };
+  }, [compareModalVisible, selectedBatchId, groupName, deviceId]);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
 
   // MINE/GLOBAL preference removed — rankings are always scoped to the
@@ -356,7 +378,7 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           const badges = p.badges?.join(' ') || '';
           return (
               <>
-                  <Text style={styles.podiumName} numberOfLines={1}>{p.name} <Text style={{fontSize:10}}>{badges}</Text></Text>
+                  <Text style={styles.podiumName} numberOfLines={1}>{p.name} <Text style={{fontSize:14}}>{badges}</Text></Text>
                   <Text style={styles.podiumStat}>{p.w}W - {p.l}L</Text>
                   <Text style={[styles.podiumStat, {fontSize:9, opacity:0.8}]}>{p.diff > 0 ? '+' : ''}{p.diff} Diff</Text>
                   {p.dupr && <Text style={[styles.podiumStat, {fontSize:9, color: colors.accent}]}>DUPR {Number(p.dupr).toFixed(2)}</Text>}
@@ -545,8 +567,8 @@ export default function LeaderboardScreen({ localHistory, localRoster }: { local
           visible={compareModalVisible}
           onClose={() => setCompareModalVisible(false)}
           groupName={groupName}
-          history={history}
-          roster={roster}
+          history={h2hAll ? h2hAll.history : history}
+          roster={h2hAll ? h2hAll.roster : roster}
           deviceId={deviceId}
       />
 

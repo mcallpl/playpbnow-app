@@ -604,6 +604,11 @@ export default function PlayNowTab() {
       if (!stillActive && !selectedBeaconExpired) {
         setSelectedBeaconExpired(true);
       }
+      // 2026-10-31: the open card kept the copy taken when it was tapped, so
+      // "On My Way!" never turned into "I'm Going!" (and counts went stale).
+      // Keep it in step with each feed refresh.
+      const fresh = beacons.find((b) => beaconUid(b) === uid);
+      if (fresh && fresh !== selectedBeacon) setSelectedBeacon(fresh);
     }
   }, [beacons, selectedBeacon?.id, selectedBeacon?.beacon_type]);
 
@@ -1445,6 +1450,13 @@ export default function PlayNowTab() {
                           {selectedBeacon.beacon_type === 'casual' ? (selectedBeacon.is_mine ? 'My Beacon' : 'Come Play') : 'Spot To Fill'}
                         </Text>
                       </View>
+                      {/* 2026-10-31: the host's skill level was saved but never shown
+                          anywhere (Help promised it). */}
+                      {!!(selectedBeacon as any).skill_level && String((selectedBeacon as any).skill_level).trim() !== '' && (
+                        <View style={[styles.timeBadge, { borderColor: colors.border }]}>
+                          <Text style={styles.timeText}>Skill {String((selectedBeacon as any).skill_level).trim()}</Text>
+                        </View>
+                      )}
                     </View>
 
                     {/* Get Directions */}
@@ -1554,6 +1566,7 @@ export default function PlayNowTab() {
                               // out loud rather than leaving the button green
                               // and pretending the tap did something.
                               unrespondToBeacon(selectedBeacon.id, selectedBeacon.beacon_type).then((ok) => {
+                                if (ok) setSelectedBeacon((prev) => (prev && prev.id === selectedBeacon.id ? { ...prev, user_responded: false } : prev));
                                 if (!ok) {
                                   Alert.alert(
                                     "Can't Undo Yet",
@@ -1564,6 +1577,8 @@ export default function PlayNowTab() {
                             } else {
                               respondToBeacon(selectedBeacon.id, 'on_my_way', selectedBeacon.beacon_type).then((success) => {
                                 if (success) {
+                                  // show it at once, before the next feed refresh
+                                  setSelectedBeacon((prev) => (prev && prev.id === selectedBeacon.id ? { ...prev, user_responded: true } : prev));
                                   const name = `${playerInfo.first_name} ${playerInfo.last_name}`.trim();
                                   // Best-effort announcement — the response itself already succeeded
                                   sendChatMessage(selectedBeacon.id, userId, name, "I'll join you!").catch(() => {});
@@ -2629,6 +2644,15 @@ export default function PlayNowTab() {
 // ========================
 // STYLES
 // ========================
+// 2026-10-31: the Spot To Fill badge was bright yellow (#FFD23F) on a pale
+// yellow tint: fine on the dark theme, nearly invisible on white. On the
+// light theme it now uses a deep amber with a stronger tint.
+const isLightBg = (hex: string): boolean => {
+  const h = (hex || '').replace('#', '');
+  if (h.length < 6) return false;
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.6;
+};
 const createStyles = (c: ThemeColors) =>
   StyleSheet.create({
     container: {
@@ -2808,7 +2832,7 @@ const createStyles = (c: ThemeColors) =>
       color: c.accent,
     },
     mapCardBadgeStructured: {
-      backgroundColor: 'rgba(255,210,63,0.15)',
+      backgroundColor: isLightBg(c.bg) ? 'rgba(255,190,0,0.28)' : 'rgba(255,210,63,0.15)',
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 8,
@@ -2816,7 +2840,7 @@ const createStyles = (c: ThemeColors) =>
     mapCardBadgeStructuredText: {
       fontFamily: FONT_BODY_BOLD,
       fontSize: 11,
-      color: '#FFD23F',
+      color: isLightBg(c.bg) ? '#7A5200' : '#FFD23F',
     },
     mapCardChatBadge: {
       flexDirection: 'row' as const,
@@ -4000,7 +4024,7 @@ const createStyles = (c: ThemeColors) =>
       color: c.accent,
     },
     structuredBadge: {
-      backgroundColor: 'rgba(255,210,63,0.15)',
+      backgroundColor: isLightBg(c.bg) ? 'rgba(255,190,0,0.28)' : 'rgba(255,210,63,0.15)',
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 8,
@@ -4008,7 +4032,7 @@ const createStyles = (c: ThemeColors) =>
     structuredBadgeText: {
       fontFamily: FONT_BODY_BOLD,
       fontSize: 11,
-      color: '#FFD23F',
+      color: isLightBg(c.bg) ? '#7A5200' : '#FFD23F',
     },
 
     // --- Card Type Variants ---
