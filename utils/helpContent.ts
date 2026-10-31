@@ -48,6 +48,7 @@ export const HELP_TOPICS: HelpTopic[] = [
    - The **MATCH SETUP** window opens
    - Rotating Partners: set **ROUNDS** with the − / + buttons, then pick a type for each round — **MIXED** (each team is one man and one woman), **GENDER** (men play men, women play women) or **MIXER** (anyone with anyone). The window also shows how many courts the round uses; if fewer courts are free, lower the count and extra players sit that round. Sitting out is always shared as evenly as possible: nobody sits more than one round more than anyone else. So when a group has more men than women (or more women than men), a Mixed round may include a pair of men (or women) playing a man and a woman. Two men never play two women.
    - Fixed Teams: the window lists the team pairings and how many rounds and games the round-robin will take
+   - **COURT NAMES** (optional): courts show as CRT 1, CRT 2, CRT 3 unless you name them. Tap **NAME COURTS** to use the courts you are really on, like CRT D, E, F or CRT 34, 35. If the group named its courts last time, the window asks "Same courts as last time?" with **USE THEM** and **NO THANKS** (see "How to Name the Courts")
 
 5. **Tap GENERATE MATCH**
    - The schedule screen opens with every round and every game laid out
@@ -56,6 +57,28 @@ export const HELP_TOPICS: HelpTopic[] = [
 **Quick Match without a group:** open **ALL PLAYERS**, tap **SELECT**, pick 4 or more players and tap **CREATE MATCH NOW**. The match is set up as "Quick Match".
 
 **Tip:** Not happy with the matchups? Tap the shuffle icon at the top of the schedule to generate a fresh set.`,
+  },
+
+  {
+    id: 'name-courts',
+    title: 'How to Name the Courts',
+    category: 'Match Management',
+    searchKeywords: ['court', 'courts', 'name', 'rename', 'court name', 'crt', 'letter', 'number', 'court number', 'court letter', 'label'],
+    content: `Every game shows its court as **CRT** with the court's name under it. The courts start as 1, 2, 3. If you are really on courts D, E and F (or 34, 35 and 17), name them once and every round uses those names.
+
+**Where to name them**
+- In the **MATCH SETUP** window, tap **NAME COURTS**, or
+- On the match screen, tap **NAME COURTS** (next to ADD PLAYER) or tap any **CRT** label in a round
+
+**How it works**
+1. Type the first court's name, for example **D**. The courts after it fill in by themselves: E, F, G. Type **34** and you get 35, 36.
+2. Change any court on its own. A court you typed yourself is never changed by the fill.
+3. Tap **SAVE**. Every round now shows the new names, and the texted lineup picture prints them too (COURT D, COURT E).
+4. Changed your mind? Open it again and tap **Back to 1, 2, 3...**
+
+**Same courts every week?** The app remembers the names your group used last. Next time it asks "Same courts as last time?" Tap **USE THEM** or **NO THANKS**. It never changes your courts without asking.
+
+**Playing live with others?** The host names the courts, and everyone scoring sees the same names.`,
   },
 
   {

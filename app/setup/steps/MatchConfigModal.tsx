@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -16,6 +16,9 @@ import { BrandedIcon } from '@/components/BrandedIcon';
 import { storeNavData } from '@/utils/navData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateFixedTeamsLocal } from '@/hooks/useGameLogic';
+import { CourtNamesModal } from '@/components/CourtNamesModal';
+import { courtLabelAt, courtCountOf, describeCourtLabels, fitCourtLabels, isDefaultCourtLabels, stampCourtLabels } from '@/utils/courtLabels';
+import { loadGroupCourtLabels, markCourtNamesUsed, rememberGroupCourtLabels } from '@/utils/groupCourtLabels';
 
 const API_URL = 'https://playpbnow.com/api';
 
@@ -37,6 +40,77 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
   const fixedRoundCount =
     teamCount > 1 ? (teamCount % 2 === 0 ? teamCount - 1 : teamCount) : 0;
   const fixedGameCount = (teamCount * (teamCount - 1)) / 2;
+
+  // Court names (2026-10-31): named here or on the match screen, same window.
+  // Courts in use: the stepper's count, or for fixed teams one per two teams.
+  const namingCourtCount = state.isFixedTeams ? Math.max(1, Math.floor(teamCount / 2)) : courtCount;
+  const [courtLabels, setCourtLabels] = useState<string[]>([]);
+  const [courtNamesVisible, setCourtNamesVisible] = useState(false);
+  // The group's names from last time are OFFERED, never applied without a tap.
+  const [courtOffer, setCourtOffer] = useState<string[] | null>(null);
+  const [courtOfferAnswer, setCourtOfferAnswer] = useState<'used' | 'declined' | null>(null);
+  useEffect(() => {
+    if (!state.configModalVisible || !state.groupKey) return;
+    let live = true;
+    loadGroupCourtLabels(state.groupKey).then((remembered) => {
+      if (live && !isDefaultCourtLabels(remembered)) setCourtOffer(remembered);
+    });
+    return () => { live = false; };
+  }, [state.configModalVisible, state.groupKey]);
+  // Adding a court after naming continues the run (D, E -> D, E, F).
+  const shownCourtLabels = isDefaultCourtLabels(courtLabels)
+    ? Array.from({ length: namingCourtCount }, (_, i) => courtLabelAt([], i))
+    : fitCourtLabels(courtLabels, namingCourtCount);
+  const offerFitted = courtOffer ? fitCourtLabels(courtOffer, namingCourtCount) : null;
+  const showOffer = !!offerFitted && !courtOfferAnswer && isDefaultCourtLabels(courtLabels) && !isDefaultCourtLabels(offerFitted);
+  const withCourtNames = (sched: any[]) => {
+    if (isDefaultCourtLabels(courtLabels)) return sched;
+    return stampCourtLabels(sched, fitCourtLabels(courtLabels, courtCountOf(sched)));
+  };
+  // A declined offer is not asked again on the match screen for this match.
+  const noteOfferAnswered = async (navId: string) => {
+    if (courtOfferAnswer) {
+      try { await AsyncStorage.setItem(`court_offer_done_${navId}`, courtOfferAnswer); } catch { /* ignore */ }
+    }
+  };
+
+  const courtNamesRow = (
+    <View style={{ marginVertical: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 10, gap: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.label}>COURT NAMES:</Text>
+          <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 13, color: colors.text, marginTop: 2 }}>
+            {describeCourtLabels(shownCourtLabels)}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={() => setCourtNamesVisible(true)} accessibilityRole="button"
+          accessibilityLabel="Name the courts for this match"
+          style={{ backgroundColor: colors.surfaceLight, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14 }}>
+          <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 12, color: colors.text }}>NAME COURTS</Text>
+        </TouchableOpacity>
+      </View>
+      {showOffer && offerFitted && (
+        <View style={{ gap: 6 }}>
+          <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 13, color: colors.text }}>
+            Same courts as last time? {describeCourtLabels(offerFitted)}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity accessibilityRole="button" onPress={() => { setCourtLabels(offerFitted); setCourtOfferAnswer('used'); }}
+              style={{ backgroundColor: colors.accent, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14 }}>
+              <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 12, color: colors.accentText }}>USE THEM</Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" onPress={() => setCourtOfferAnswer('declined')}
+              style={{ backgroundColor: colors.surfaceLight, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14 }}>
+              <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 12, color: colors.text }}>NO THANKS</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 11, color: colors.textMuted }}>
+        Optional. You can also change them later on the match screen.
+      </Text>
+    </View>
+  );
 
   const generateSchedule = async () => {
     try {
@@ -72,11 +146,12 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
           return;
         }
         const navId = await storeNavData({
-          schedule: localSchedule,
+          schedule: withCourtNames(localSchedule),
           players: state.players,
           isFixedTeams: true,
           teams: teamsPayload,
         });
+        await noteOfferAnswered(navId);
         router.push({
           pathname: '/(tabs)/game',
           params: {
@@ -120,12 +195,13 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
       }
       if (data.status === 'success') {
         const navId = await storeNavData({
-          schedule: data.schedule,
+          schedule: withCourtNames(data.schedule),
           players: state.players,
           isFixedTeams: state.isFixedTeams,
           teams: teamsPayload,
           courts: courtCount,
         });
+        await noteOfferAnswered(navId);
         router.push({
           pathname: '/(tabs)/game',
           params: {
@@ -213,6 +289,7 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
                     Reorder players on the roster to change pairings
                   </Text>
                 </View>
+                {courtNamesRow}
               </>
             ) : (
               <>
@@ -239,6 +316,7 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
                     </TouchableOpacity>
                   </View>
                 </View>
+                {courtNamesRow}
                 <View style={styles.counterRow}>
                   <Text style={styles.label}>ROUNDS:</Text>
                   <View style={styles.roundControls}>
@@ -327,6 +405,15 @@ export function MatchConfigModal({ state, dispatch }: MatchConfigModalProps) {
           </ScrollView>
         </View>
       </View>
+      <CourtNamesModal visible={courtNamesVisible} courtCount={namingCourtCount} labels={shownCourtLabels}
+        onCancel={() => setCourtNamesVisible(false)}
+        onSave={(labels) => {
+          setCourtLabels(isDefaultCourtLabels(labels) ? [] : labels);
+          setCourtNamesVisible(false);
+          setCourtOfferAnswer((a) => a || 'declined');
+          markCourtNamesUsed();
+          if (state.groupKey) rememberGroupCourtLabels(state.groupKey, labels);
+        }} />
     </Modal>
   );
 }

@@ -25,6 +25,7 @@ import { Alert } from '@/utils/crossAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { JoinMatchModal } from '../../components/JoinMatchModal';
 import { TrialBanner } from '../../components/TrialBanner';
+import { WhatsNewCard } from '../../components/WhatsNewCard';
 import { useSubscription, WEB_PURCHASE_MESSAGE } from '../../context/SubscriptionContext';
 import { useTheme } from '../../context/ThemeContext';
 import { signOut } from '../../hooks/useAuth';
@@ -785,6 +786,12 @@ export default function HomeScreen() {
       )}
 
       <TrialBanner />
+
+      {/* One-time note about court names (2026-10-31). */}
+      <WhatsNewCard id="court_names_2026_10"
+        title="Name your courts"
+        body="Playing on courts D, E and F, or 34 and 35? Tap NAME COURTS in Match Setup or on the match screen. Name the first one and the rest fill in."
+        onShowMe={() => router.push({ pathname: '/(tabs)/help', params: { topic: 'name-courts' } })} />
 
       {isFree && !isAdmin && (
         <Text style={styles.groupCountLabel}>{groups.length}/{features.maxGroups} Groups</Text>

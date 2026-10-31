@@ -1,0 +1,5 @@
+What's new
+
+Name your courts. Courts show as CRT 1, CRT 2, CRT 3 until you name them. Playing on courts D, E and F, or 34 and 35? Tap NAME COURTS in Match Setup or on the match screen, name the first court, and the rest fill in. Change any court on its own. The texted lineup prints the names too.
+
+Same courts every week? Your group remembers them, and the next match asks "Same courts as last time?" One tap to use them.

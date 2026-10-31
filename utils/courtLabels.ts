@@ -127,3 +127,23 @@ export const stampCourtLabels = (schedule: any[], labels: string[]): any[] => {
 /** How many courts the match uses: the most games in any round. */
 export const courtCountOf = (schedule: any[] | null | undefined): number =>
     Array.isArray(schedule) ? schedule.reduce((m, r) => Math.max(m, (r?.games || []).length), 0) : 0;
+
+/**
+ * Fit a group's remembered names to this match's court count. Extra names are
+ * dropped; missing ones continue the sequence (D, E -> D, E, F) or fall back
+ * to the court's number.
+ */
+export const fitCourtLabels = (labels: string[] | null | undefined, count: number): string[] => {
+    const out: string[] = [];
+    for (let i = 0; i < count; i++) {
+        const v = Array.isArray(labels) ? cleanCourtLabel(labels[i] ?? '') : '';
+        if (v) { out.push(v); continue; }
+        const prev = i > 0 ? nextCourtLabel(out[i - 1]) : null;
+        out.push(prev || defaultCourtLabel(i));
+    }
+    return out;
+};
+
+/** "CRT D, E, F" for an offer line. */
+export const describeCourtLabels = (labels: string[]): string =>
+    labels.length ? `CRT ${labels.join(', ')}` : '';

@@ -75,3 +75,21 @@ describe('court names for one match', () => {
         expect(stampCourtLabels(stamped, ['D', 'E', 'F'])).toBe(stamped);
     });
 });
+
+import { fitCourtLabels, describeCourtLabels } from '../utils/courtLabels';
+
+describe('a group\'s remembered court names fit this match', () => {
+    test('more courts than remembered: the sequence continues', () => {
+        expect(fitCourtLabels(['D', 'E'], 3)).toEqual(['D', 'E', 'F']);
+        expect(fitCourtLabels(['34'], 3)).toEqual(['34', '35', '36']);
+    });
+    test('fewer courts than remembered: extras are dropped', () => {
+        expect(fitCourtLabels(['D', 'E', 'F'], 2)).toEqual(['D', 'E']);
+    });
+    test('a word with no sequence falls back to the number', () => {
+        expect(fitCourtLabels(['Pool'], 2)).toEqual(['Pool', '2']);
+    });
+    test('offer text', () => {
+        expect(describeCourtLabels(['D', 'E', 'F'])).toBe('CRT D, E, F');
+    });
+});

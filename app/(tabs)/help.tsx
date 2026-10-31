@@ -20,7 +20,7 @@ import { HelpVideoStrip } from '../../components/HelpVideoStrip';
 import { HELP_TOPICS, HelpTopic } from '../../utils/helpContent';
 import { useAuth } from '../../hooks/useAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 // Same-origin API, matching every other screen (groups.tsx uses the identical
 // host for delete_account.php). The old relative '/api/auth/delete-account'
@@ -144,6 +144,13 @@ export default function HelpScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState<HelpTopic | null>(null);
+  // Open straight to one article when linked with ?topic=<id> (2026-10-31).
+  const helpParams = useLocalSearchParams();
+  React.useEffect(() => {
+      const id = typeof helpParams.topic === 'string' ? helpParams.topic : '';
+      const t = id ? HELP_TOPICS.find(x => x.id === id) : undefined;
+      if (t) setSelectedTopic(t);
+  }, [helpParams.topic]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Getting Started', 'Match Management', 'Beacons']));
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');

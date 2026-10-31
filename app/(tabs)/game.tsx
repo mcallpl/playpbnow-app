@@ -47,7 +47,9 @@ import {
 } from '../../constants/theme';
 import { haptic } from '../../utils/haptics';
 import { signOut } from '../../hooks/useAuth';
-import { courtLabelAt, applyCourtLabelEdit, isDefaultCourtLabels, courtLabelsFromSchedule, stampCourtLabels, courtCountOf, COURT_LABEL_MAX } from '../../utils/courtLabels';
+import { courtLabelAt, isDefaultCourtLabels, courtLabelsFromSchedule, stampCourtLabels, courtCountOf, fitCourtLabels, describeCourtLabels } from '../../utils/courtLabels';
+import { loadGroupCourtLabels, rememberGroupCourtLabels, shouldShowCourtNamesNew, markCourtNamesUsed } from '../../utils/groupCourtLabels';
+import { CourtNamesModal } from '../../components/CourtNamesModal';
 
 const API_URL = 'https://playpbnow.com/api';
 
@@ -324,33 +326,54 @@ export default function GameScreen() {
   }, [schedule, canEditSchedule]);
   const courtCount = courtCountOf(schedule);
   const [courtNamesVisible, setCourtNamesVisible] = useState(false);
-  const [courtDraft, setCourtDraft] = useState<string[]>([]);
-  const [courtDraftManual, setCourtDraftManual] = useState<boolean[]>([]);
   const openCourtNames = () => {
       if (!canEditSchedule) {
           Alert.alert('Host Only', 'Only the match host can name the courts. Ask the host to change them.');
           return;
       }
-      setCourtDraft(Array.from({ length: courtCount }, (_, i) => courtLabelAt(courtLabels, i)));
-      setCourtDraftManual(Array.from({ length: courtCount }, () => false));
       setCourtNamesVisible(true);
   };
-  const editCourtDraft = (i: number, text: string) => {
-      // Typing in a box shows exactly what was typed; the following courts
-      // that were not typed by hand follow on from it (D -> E, F).
-      const r = applyCourtLabelEdit(courtDraft, courtDraftManual, i, text, courtCount);
-      const shown = [...r.labels];
-      shown[i] = text.slice(0, COURT_LABEL_MAX + 6);
-      setCourtDraft(shown);
-      setCourtDraftManual(r.manual);
-  };
-  const saveCourtNames = () => {
-      const labels = Array.from({ length: courtCount }, (_, i) => courtLabelAt(courtDraft, i));
+  const applyCourtNames = (labels: string[]) => {
       const toStore = isDefaultCourtLabels(labels) ? [] : labels;
       courtLabelsRef.current = toStore;
-      setSchedule(stampCourtLabels(schedule, toStore));
+      setSchedule(stampCourtLabels(scheduleRef.current, toStore));
       setGeneratedImageUrl(null); setGeneratedImageShareUrl(null);
+  };
+  const saveCourtNames = (labels: string[]) => {
+      applyCourtNames(labels);
       setCourtNamesVisible(false);
+      setCourtOffer(null);
+      setCourtNamesNew(false);
+      markCourtNamesUsed();
+      // Remembered for the group, to OFFER next time (never applied by itself).
+      if (groupKey) rememberGroupCourtLabels(groupKey, labels);
+  };
+
+  // NEW tag on NAME COURTS for the first few matches, until it has been used.
+  const [courtNamesNew, setCourtNamesNew] = useState(false);
+  useEffect(() => { shouldShowCourtNamesNew().then(setCourtNamesNew); }, []);
+
+  // "Same courts as last time?" The group's remembered names are OFFERED once
+  // per match, only to the host, only when this match has no names yet.
+  const [courtOffer, setCourtOffer] = useState<string[] | null>(null);
+  const courtOfferKey = `court_offer_done_${(params.navId as string) || groupKey || 'match'}`;
+  const courtOfferCheckedRef = React.useRef(false);
+  useEffect(() => {
+      if (courtOfferCheckedRef.current || !navDataLoaded || !canEditSchedule || !groupKey || courtCount === 0) return;
+      courtOfferCheckedRef.current = true;
+      if (!isDefaultCourtLabels(courtLabelsFromSchedule(schedule))) return;
+      (async () => {
+          try { if (await AsyncStorage.getItem(courtOfferKey)) return; } catch { /* ignore */ }
+          const remembered = await loadGroupCourtLabels(groupKey);
+          if (isDefaultCourtLabels(remembered)) return;
+          const fitted = fitCourtLabels(remembered, courtCountOf(scheduleRef.current));
+          if (!isDefaultCourtLabels(fitted)) setCourtOffer(fitted);
+      })();
+  }, [navDataLoaded, canEditSchedule, groupKey, courtCount]);
+  const answerCourtOffer = (use: boolean) => {
+      if (use && courtOffer) applyCourtNames(courtOffer);
+      setCourtOffer(null);
+      AsyncStorage.setItem(courtOfferKey, use ? 'used' : 'declined').catch(() => {});
   };
 
   const { activeMatch, setActiveMatch, clearActiveMatch } = useActiveMatch();
@@ -1473,9 +1496,28 @@ export default function GameScreen() {
             {courtCount > 0 && (
                 <TouchableOpacity onPress={openCourtNames} style={styles.addPlayerBtn} accessibilityRole="button" accessibilityLabel="Name the courts for this match">
                     <Text style={styles.addPlayerText}>NAME COURTS</Text>
+                    {courtNamesNew && (
+                        <View style={{ backgroundColor: colors.accent, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 }}>
+                            <Text style={{ color: colors.accentText, fontFamily: FONT_BODY_BOLD, fontSize: 9, letterSpacing: 0.5 }}>NEW</Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
             )}
         </View>}
+
+        {!keyboardOpen && courtOffer && (
+            <View style={styles.courtOfferBar}>
+                <Text style={styles.courtOfferText}>Same courts as last time? {describeCourtLabels(courtOffer)}</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity onPress={() => answerCourtOffer(true)} style={[styles.courtOfferBtn, { backgroundColor: colors.accent }]} accessibilityRole="button">
+                        <Text style={[styles.courtOfferBtnText, { color: colors.accentText }]}>USE THEM</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => answerCourtOffer(false)} style={[styles.courtOfferBtn, { backgroundColor: colors.surfaceLight }]} accessibilityRole="button">
+                        <Text style={styles.courtOfferBtnText}>NO THANKS</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        )}
 
         <View ref={listBoxRef} style={{ flex: 1 }} collapsable={false}>
         <FlatList ref={flatListRef} data={schedule} keyExtractor={(item) => item.id}
@@ -1713,35 +1755,8 @@ export default function GameScreen() {
             </View></View>
         </Modal>
 
-        <Modal visible={courtNamesVisible} transparent animationType="fade" onRequestClose={() => setCourtNamesVisible(false)}>
-            <View style={styles.modalOverlay}><View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>NAME THE COURTS</Text>
-                <Text style={[styles.label, { textAlign: 'center' }]}>
-                    For this match only. Name the first court and the rest follow (D, E, F or 34, 35, 36). Change any court on its own.
-                </Text>
-                <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
-                    {courtDraft.map((v, i) => (
-                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                            <Text style={[styles.label, { marginBottom: 0, width: 72 }]}>COURT {i + 1}</Text>
-                            <Text style={{ fontFamily: FONT_BODY_BOLD, fontSize: 14, color: colors.textMuted }}>CRT</Text>
-                            <TextInput style={[styles.modalInput, { flex: 1, marginBottom: 0 }]} value={v}
-                                onChangeText={(t) => editCourtDraft(i, t)} selectTextOnFocus
-                                autoCapitalize="characters" autoCorrect={false}
-                                placeholder={String(i + 1)} placeholderTextColor={colors.inputPlaceholder}
-                                accessibilityLabel={`Name for court ${i + 1}`} />
-                        </View>
-                    ))}
-                </ScrollView>
-                <TouchableOpacity onPress={() => { setCourtDraft(Array.from({ length: courtCount }, (_, i) => String(i + 1))); setCourtDraftManual(Array.from({ length: courtCount }, () => false)); }}
-                    style={{ alignItems: 'center', paddingVertical: 10 }} accessibilityRole="button">
-                    <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 13, color: colors.accent }}>Back to 1, 2, 3...</Text>
-                </TouchableOpacity>
-                <View style={styles.modalButtons}>
-                    <TouchableOpacity onPress={() => setCourtNamesVisible(false)} style={[styles.modalBtn, styles.cancelBtn]}><Text style={styles.modalBtnText}>CANCEL</Text></TouchableOpacity>
-                    <TouchableOpacity onPress={saveCourtNames} style={[styles.modalBtn, styles.saveBtn]}><Text style={[styles.modalBtnText, { color: colors.text }]}>SAVE</Text></TouchableOpacity>
-                </View>
-            </View></View>
-        </Modal>
+        <CourtNamesModal visible={courtNamesVisible} courtCount={courtCount} labels={courtLabels}
+            onCancel={() => setCourtNamesVisible(false)} onSave={saveCourtNames} />
 
         <ShareMatchModal visible={shareModalVisible} onClose={() => setShareModalVisible(false)} shareCode={shareCode || ''} matchTitle={groupName} />
         <JoinMatchModal visible={joinModalVisible} onClose={() => setJoinModalVisible(false)} />
@@ -1771,6 +1786,10 @@ const createStyles = (c: ThemeColors, isDark: boolean) => StyleSheet.create({
   collabStatusBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderColor: c.border },
   collabStatusText: { color: c.accent, fontSize: 12, fontFamily: FONT_BODY_BOLD, letterSpacing: 0.5 },
   collabSyncText: { color: c.textMuted, fontSize: 10, fontFamily: FONT_BODY_MEDIUM, letterSpacing: 0.3, marginTop: 2 },
+  courtOfferBar: { marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.accent, alignItems: 'center', gap: 8 },
+  courtOfferText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 13, textAlign: 'center' },
+  courtOfferBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 },
+  courtOfferBtnText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 12 },
   subHeaderAction: { alignItems: 'center', marginVertical: 12, flexDirection: 'row', justifyContent: 'center', gap: 10 },
   addPlayerBtn: { flexDirection: 'row', backgroundColor: c.surfaceLight, padding: 8, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', gap: 8 },
   addPlayerText: { color: c.text, fontFamily: FONT_BODY_BOLD, fontSize: 12 },
