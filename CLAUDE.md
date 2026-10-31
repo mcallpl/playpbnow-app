@@ -440,3 +440,32 @@ before its fix.
   `utils/helpVideos.ts`. Videos are filmed with Playwright against the
   local web build with a stand-in API (nothing written to production);
   schedules come from the real generator.
+
+## How-to narration sounds like a person, locked 2026-10-31
+
+Chip: *"Pause naturally. Listen. Pause naturally. Emphasize naturally. Do not
+make it sound robotic. The voice sounds fine. It's just that the pausing and
+the lack of pausing are not good."*
+
+Measured on the first Quick Start: sentence ends averaged 0.32 s with some at
+0.00 to 0.09 s (run-ons), commas 0.07 s. His own storytelling (2026-10-13):
+sentence ends about 0.44 s varied 0.40 to 0.52, commas about 0.21 s, none
+mid-phrase. Every narration now goes through the same process:
+
+- **Script for speaking**: short sentences, contractions, commas only where a
+  person breathes, punch lines on their own, at most one "!".
+- **Pauses written in** as ElevenLabs break tags, set about 0.25 s BELOW the
+  target, because the voice adds its own pause around a tag (a 0.44 s tag
+  measured 0.70 s).
+- **Measured, not guessed**: every silence is found in the audio itself and
+  credited to the word whose end is nearest (whisper stretches words across
+  pauses, so its word times alone mis-measure).
+- **Shaped only inside silence**: too-long pauses trimmed, too-short ones
+  given a little more silence, 60 ms clear of every word, 10 ms fades, commas
+  and sentence ends varied, never all equal. Then re-transcribed: every word
+  must still match the script.
+- **Footage follows the voice**: every tap fires on the word that names it.
+- New cut = new file name (`-v2`), so nothing cached plays the old one.
+The tools live in the session scratchpad (voice.sh, narr.py, pauses.py,
+shape.py, filmlib.mjs); the method is in memory
+`howto-videos-refresh-2026-10-31`.
