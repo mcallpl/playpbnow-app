@@ -125,6 +125,28 @@ describe('computeGamesToHeal (local → server)', () => {
         )).toEqual([]);
     });
 
+    // 2026-10-31: a score that had synced (7) and was then corrected OFFLINE
+    // (8) is pending on this phone. The poll never overwrites a pending key,
+    // and this used to skip it too ("server has a different value"), so the 8
+    // never reached anyone and stayed "not synced" forever.
+    it('re-pushes our own pending correction when the server still holds the old value', () => {
+        expect(computeGamesToHeal(
+            { '0_0_t1': '8' }, { '0_0_t1': '7' }, S([]), S(['0_0_t1'])
+        )).toEqual(['0_0']);
+    });
+
+    it('still lets the server win for a value this phone is NOT waiting on', () => {
+        expect(computeGamesToHeal(
+            { '0_0_t1': '8' }, { '0_0_t1': '7' }, S([]), S([])
+        )).toEqual([]);
+    });
+
+    it('never re-pushes a pending correction that is in flight right now', () => {
+        expect(computeGamesToHeal(
+            { '0_0_t1': '8' }, { '0_0_t1': '7' }, S(['0_0_t1']), S(['0_0_t1'])
+        )).toEqual([]);
+    });
+
     it('skips a key that is in flight from this device', () => {
         expect(computeGamesToHeal(
             { '0_0_t1': '11' }, {}, S(['0_0_t1']), S([])

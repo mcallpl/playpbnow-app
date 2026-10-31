@@ -152,7 +152,14 @@ export const computeGamesToHeal = (
         if (!localVal || localVal === '') continue;
         if (localUpdateKeys.has(key)) continue;              // in-flight
         if ((serverState[key] ?? '') === localVal) continue; // server has it
-        if ((serverState[key] ?? '') !== '') continue;       // server has a DIFFERENT value — server wins
+        // Server has a DIFFERENT value: the server wins, unless this is our own
+        // unconfirmed write (2026-10-31). A score corrected offline (7 -> 8
+        // after the 7 had synced) is pending, so the poll never replaces it,
+        // and it used to be skipped here too, so it never reached anyone.
+        // Re-pushing it is safe: the push carries the sequence this phone had
+        // seen when the correction was TYPED, and the server rejects it
+        // (superseded) if another scorer changed the field after that.
+        if ((serverState[key] ?? '') !== '' && !pendingKeys.has(key)) continue;
         // The server HAS a record for this key and it is empty: somebody deleted
         // this score deliberately. Only re-push it if it is our own unconfirmed
         // typing; otherwise pushing would resurrect a score another scorer erased.
@@ -500,7 +507,8 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
 
     // ── PUSH ONE GAME: Uses REFS — works even from stale closures ──
     const sendScoreNow = useCallback(async (
-        roundIdx: number, gameIdx: number, s1Val: string, s2Val: string
+        roundIdx: number, gameIdx: number, s1Val: string, s2Val: string,
+        seenSeq?: number
     ) => {
         // Read from REFS, not closure — immune to stale FlatList cells
         const sid = sessionIdRef.current;
@@ -528,7 +536,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 game_idx: gameIdx,
                 s1_str: s1Val,
                 s2_str: s2Val,
-                last_seen_seq: lastSeenSeqRef.current,
+                last_seen_seq: seenSeq ?? lastSeenSeqRef.current,
                 updated_at: Date.now()
             })
         });
@@ -564,16 +572,26 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
     // 2 of 4 runs of four people typing fast). Chaining per game guarantees
     // the last thing typed is the last thing the server receives.
     const gameQueueRef = useRef<Map<string, Promise<void>>>(new Map());
+    // The server sequence this phone had seen when a game's latest write was
+    // TYPED (2026-10-31). A re-push after reconnecting carries this, not the
+    // newest sequence seen since, so a stale offline correction can never be
+    // passed off as newer than a score someone else entered meanwhile.
+    const typedSeenSeqRef = useRef<Map<string, number>>(new Map());
     const syncScoreToServer = useCallback((
-        roundIdx: number, gameIdx: number, s1Val: string, s2Val: string
+        roundIdx: number, gameIdx: number, s1Val: string, s2Val: string,
+        opts?: { heal?: boolean }
     ): Promise<void> => {
         const gameKey = `${roundIdx}_${gameIdx}`;
+        if (!opts?.heal || !typedSeenSeqRef.current.has(gameKey)) {
+            typedSeenSeqRef.current.set(gameKey, lastSeenSeqRef.current);
+        }
+        const seenSeq = typedSeenSeqRef.current.get(gameKey);
         // Mark pending at once so self-heal never re-pushes a queued game.
         pendingRef.current.add(`${gameKey}_t1`);
         pendingRef.current.add(`${gameKey}_t2`);
         const prev = gameQueueRef.current.get(gameKey) || Promise.resolve();
         const next: Promise<void> = prev.catch(() => {}).then(async () => {
-            const ok = await sendScoreNow(roundIdx, gameIdx, s1Val, s2Val);
+            const ok = await sendScoreNow(roundIdx, gameIdx, s1Val, s2Val, seenSeq);
             // The server has acknowledged this game's latest write, so it is no
             // longer "ours, in flight". Pending used to clear only when a later
             // poll showed the server holding exactly our value; if another
@@ -584,6 +602,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
             if (ok && gameQueueRef.current.get(gameKey) === next) {
                 pendingRef.current.delete(`${gameKey}_t1`);
                 pendingRef.current.delete(`${gameKey}_t2`);
+                typedSeenSeqRef.current.delete(gameKey);
             }
         });
         gameQueueRef.current.set(gameKey, next);
@@ -779,11 +798,13 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                     scoresRef.current, serverState, localUpdatesRef.current, pendingRef.current
                 );
                 for (const gameKey of gamesToHeal) {
+                    // Already queued or in flight from this phone: leave it.
+                    if (gameQueueRef.current.has(gameKey)) continue;
                     const [r, g] = gameKey.split('_').map(Number);
                     const s1 = scoresRef.current[`${r}_${g}_t1`] || '';
                     const s2 = scoresRef.current[`${r}_${g}_t2`] || '';
                     console.log(`🩹 Self-heal: re-pushing game ${gameKey} (${s1}-${s2})`);
-                    syncScoreToServer(r, g, s1, s2);
+                    syncScoreToServer(r, g, s1, s2, { heal: true });
                 }
                 refreshUnsyncedCount();
             } else if (/not found|expired/i.test(data.message || '')) {

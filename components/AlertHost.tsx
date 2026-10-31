@@ -44,7 +44,7 @@ export function AlertHost() {
         <View style={s.card} accessibilityRole="alert">
           <Text style={s.title}>{current.title}</Text>
           {!!current.message && (
-            <ScrollView style={{ maxHeight: 320 }}>
+            <ScrollView style={{ maxHeight: 320, flexGrow: 0 }}>
               <Text style={s.message}>{current.message}</Text>
             </ScrollView>
           )}
