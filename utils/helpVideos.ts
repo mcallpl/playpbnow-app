@@ -40,7 +40,7 @@ export const visibleHelpVideos = (): HelpVideo[] => HELP_VIDEOS.filter(v => !v.r
 
 export const HELP_VIDEOS: HelpVideo[] = [
   {
-    slug: 'm0-quick-start-v3',
+    slug: 'm0-quick-start-v4',
     title: 'Quick Start',
     blurb: 'Paste your names, build a Mixed match, name courts, text the lineup',
     seconds: 71,
@@ -87,7 +87,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
     seconds: 78,
   },
   {
-    slug: 'm9-rankings-v2',
+    slug: 'm9-rankings-v3',
     title: 'Rankings',
     blurb: 'Leaderboards, badges, head to head and single nights',
     seconds: 70,
