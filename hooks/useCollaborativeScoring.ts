@@ -214,6 +214,10 @@ export const scheduleSignature = (sched: any[] | null | undefined): string => {
             `${(g?.team1 || []).map(person).join('+')}v${(g?.team2 || []).map(person).join('+')}`
         ).join('|'),
         (r?.byes || []).map(person).join('+'),
+        // Court names (2026-10-31) count as part of the matchups, so a
+        // collaborator whose screen drifted re-adopts the host's names too.
+        // Only when present: a schedule without names signs exactly as before.
+        ...(Array.isArray(r?.court_labels) && r.court_labels.length ? [`@${r.court_labels.join(',')}`] : []),
     ].join('~')).join(';');
 };
 
