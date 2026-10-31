@@ -469,3 +469,33 @@ mid-phrase. Every narration now goes through the same process:
 The tools live in the session scratchpad (voice.sh, narr.py, pauses.py,
 shape.py, filmlib.mjs); the method is in memory
 `howto-videos-refresh-2026-10-31`.
+
+## Offline corrections, player gender, and the rest, locked 2026-10-31
+
+Found by the video helpers; each was failing before its fix and verified after.
+
+- **A score corrected offline reaches every phone.** A synced 7 corrected to
+  8 while offline was pending (so the poll never replaced it) and self-heal
+  skipped it (server held a different value): it never arrived, forever.
+  Self-heal now re-pushes this phone's own pending corrections, carrying the
+  server sequence seen when the correction was TYPED (`typedSeenSeqRef`), so
+  the server's ordering guard still lets a NEWER score from someone else win.
+  Two-phone test: old build never delivered the 8; fixed build in 2 s; a
+  newer helper 9 still beats a stale offline 6. Unit tests in
+  `__tests__/collabSync.test.ts`.
+- **Match screen ADD PLAYER requires Male or Female.** A missing gender is
+  treated as male everywhere, so Mixed rounds paired two men. Add New stays
+  off until one is chosen and says why under the button.
+- **Rename renames the player** (by id) in every round, the byes and the
+  roster, so a shuffle keeps it.
+- **Diamond badge** needs exactly one loss AND more wins than losses
+  (`get_leaderboard.php`).
+- **Head to Head is always all time**, labeled, even with one session picked.
+- **Beacons:** the host's skill level shows on the open card; the open card
+  follows the feed, so On My Way! becomes I'm Going!.
+- **Web dialogs:** every alert and confirm is a PlayPBNow dialog
+  (`components/AlertHost.tsx`); a bare `window.confirm/alert` fails
+  `__tests__/noBrowserPopups.test.ts`.
+- **Web date/time boxes** name a sans font (`__tests__/pickerFonts.test.ts`).
+- **Imported last names** are saved; the first name stays the name shown in
+  matches; `utils/playerNames.ts` never prints "Kevin B Brooks".
