@@ -31,6 +31,12 @@ export const formatDuration = (seconds: number) => {
 
 export const HELP_VIDEOS: HelpVideo[] = [
   {
+    slug: 'm0-quick-start',
+    title: 'Quick Start',
+    blurb: 'Paste your names, build a Mixed match, name courts, text the lineup',
+    seconds: 61,
+  },
+  {
     slug: 'm1-quick-tour-v2',
     title: 'Quick Tour',
     blurb: 'A fast walk through the whole app',
