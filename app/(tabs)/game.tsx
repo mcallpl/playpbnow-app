@@ -396,6 +396,10 @@ export default function GameScreen() {
   const [userId, setUserId] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState('');
+  // 2026-10-31: a player added here used to have NO gender, and everything
+  // treats a missing gender as male, so Mixed rounds paired two men. A new
+  // player now needs Male or Female before Add New works.
+  const [newPlayerGender, setNewPlayerGender] = useState<'male' | 'female' | null>(null);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [gatekeeperVisible, setGatekeeperVisible] = useState(false);
@@ -607,18 +611,27 @@ export default function GameScreen() {
       let newP: Player;
       if (existingPlayer) {
           // UAT C-H8: player_key is the id the rest of the app (and save_scores) keys on
+          const g = existingPlayer.gender || newPlayerGender;
+          if (!g) {
+              Alert.alert('Male or Female?', `Choose Male or Female for ${searchResultName(existingPlayer) || 'this player'} first, so Mixed rounds pair them correctly.`);
+              return;
+          }
           newP = {
               id: searchResultKey(existingPlayer),
               first_name: existingPlayer.first_name || existingPlayer.name || 'Unknown',
               last_name: existingPlayer.last_name || undefined,
-              gender: existingPlayer.gender || undefined,
+              gender: g,
           };
       }
       else {
           const trimmed = newPlayerName.trim();
           if (trimmed.toLowerCase() === 'unknown') { Alert.alert("Invalid Name", "You cannot name a player 'Unknown'."); return; }
+          if (!newPlayerGender) {
+              Alert.alert('Male or Female?', 'Choose Male or Female so Mixed rounds pair this player correctly.');
+              return;
+          }
           const capitalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-          newP = { id: Date.now().toString(), first_name: capitalized };
+          newP = { id: Date.now().toString(), first_name: capitalized, gender: newPlayerGender };
       }
       setCurrentRoster([...currentRoster, newP]);
       const saveRoster = async () => {
@@ -629,7 +642,7 @@ export default function GameScreen() {
       };
       saveRoster();
       Alert.alert("Added", `${newP.first_name} added to roster. Hit 'Shuffle' to include them in games.`);
-      setNewPlayerName(''); setSearchResults([]); setModalVisible(false);
+      setNewPlayerName(''); setNewPlayerGender(null); setSearchResults([]); setModalVisible(false);
   };
 
   // When the owner changes the schedule (shuffle/swap), push to server so Unit B stays synced
@@ -1732,6 +1745,21 @@ export default function GameScreen() {
             <View style={styles.modalOverlay}><View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>Add Player</Text>
                 <TextInput style={styles.modalInput} placeholder="Type name to search..." value={newPlayerName} onChangeText={(t) => setNewPlayerName(t.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '))} autoFocus autoCapitalize="words" placeholderTextColor={colors.inputPlaceholder} />
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                    {(['male', 'female'] as const).map((g) => {
+                        const on = newPlayerGender === g;
+                        const tint = g === 'female' ? '#f78ca2' : '#4facfe';
+                        return (
+                            <TouchableOpacity key={g} onPress={() => setNewPlayerGender(g)} accessibilityRole="button"
+                                accessibilityState={{ selected: on }} accessibilityLabel={g === 'male' ? 'Male' : 'Female'}
+                                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10,
+                                    borderWidth: 1.5, borderColor: on ? tint : colors.border, backgroundColor: on ? tint : 'transparent' }}>
+                                <BrandedIcon name={g === 'male' ? 'gender-male' : 'gender-female'} size={16} color={on ? '#ffffff' : tint} />
+                                <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: on ? '#ffffff' : colors.text }}>{g === 'male' ? 'Male' : 'Female'}</Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
                 {isSearching && <ActivityIndicator color={colors.accent} />}
                 {searchResults.length > 0 && (
                     <View style={styles.searchResultsContainer}><Text style={styles.searchLabel}>Found Global Players:</Text>
@@ -1750,9 +1778,15 @@ export default function GameScreen() {
                     </View>
                 )}
                 <View style={styles.modalButtons}>
-                    <TouchableOpacity onPress={() => setModalVisible(false)} style={[styles.modalBtn, styles.cancelBtn]}><Text style={styles.modalBtnText}>Cancel</Text></TouchableOpacity>
-                    <TouchableOpacity onPress={() => addNewPlayer()} style={[styles.modalBtn, styles.saveBtn]}><Text style={styles.modalBtnText}>Add New</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setModalVisible(false); setNewPlayerGender(null); }} style={[styles.modalBtn, styles.cancelBtn]}><Text style={styles.modalBtnText}>Cancel</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => addNewPlayer()} disabled={!newPlayerName.trim() || !newPlayerGender}
+                        style={[styles.modalBtn, styles.saveBtn, (!newPlayerName.trim() || !newPlayerGender) && { opacity: 0.5 }]}><Text style={styles.modalBtnText}>Add New</Text></TouchableOpacity>
                 </View>
+                {(!newPlayerName.trim() || !newPlayerGender) && (
+                    <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>
+                        {!newPlayerName.trim() ? 'Type a name to add a new player.' : 'Choose Male or Female to add them.'}
+                    </Text>
+                )}
             </View></View>
         </Modal>
 
