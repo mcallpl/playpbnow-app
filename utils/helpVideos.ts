@@ -31,10 +31,10 @@ export const formatDuration = (seconds: number) => {
 
 export const HELP_VIDEOS: HelpVideo[] = [
   {
-    slug: 'm0-quick-start',
+    slug: 'm0-quick-start-v2',
     title: 'Quick Start',
     blurb: 'Paste your names, build a Mixed match, name courts, text the lineup',
-    seconds: 61,
+    seconds: 71,
   },
   {
     slug: 'm1-quick-tour-v2',
@@ -85,10 +85,10 @@ export const HELP_VIDEOS: HelpVideo[] = [
     seconds: 112,
   },
   {
-    slug: 'm12-name-your-courts',
+    slug: 'm12-name-your-courts-v2',
     title: 'Name Your Courts',
     blurb: 'CRT D, E, F instead of 1, 2, 3, and the same courts next week',
-    seconds: 25,
+    seconds: 27,
   },
   {
     slug: 'm11-share-and-text',
