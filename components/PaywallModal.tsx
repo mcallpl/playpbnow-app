@@ -190,7 +190,7 @@ export const PaywallModal: React.FC = () => {
                                         </View>
                                         <Text style={styles.purchaseBtnTitle}>Annual</Text>
                                         <Text style={styles.purchaseBtnPrice}>{annualPrice}/year</Text>
-                                        <Text style={styles.purchaseBtnSub}>{annualMonthly} — Save 50%</Text>
+                                        <Text style={styles.purchaseBtnSub}>{annualMonthly} · Save 50%</Text>
                                     </>
                                 )}
                             </TouchableOpacity>

@@ -27,7 +27,7 @@ export const TrialBanner: React.FC = () => {
                 <View style={styles.bannerContent}>
                     <BrandedIcon name="star" size={18} color={onAccent} />
                     <Text style={[styles.bannerText, { color: onAccent }]}>
-                        {`Pro Trial \u2014 your ${trialDaysRemaining} days start with your first saved match`}
+                        {`Pro Trial: your ${trialDaysRemaining} days start with your first saved match`}
                     </Text>
                     <TouchableOpacity style={[styles.subscribeBtn, styles.subscribeBtnOnAccent]} onPress={() => showPaywall('Your Pro trial includes all premium features!')}>
                         <Text style={[styles.subscribeBtnText, { color: onAccent }]}>Learn More</Text>
@@ -51,7 +51,7 @@ export const TrialBanner: React.FC = () => {
                     <Text style={[styles.bannerText, { color: ink }]}>
                         {isUrgent
                             ? `Trial ending in ${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'}!`
-                            : `Pro Trial \u2014 ${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} remaining`}
+                            : `Pro Trial: ${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} remaining`}
                     </Text>
                     <TouchableOpacity style={[styles.subscribeBtn, !isUrgent && styles.subscribeBtnOnAccent]} onPress={() => showPaywall('Your Pro trial includes all premium features!')}>
                         <Text style={[styles.subscribeBtnText, { color: ink }]}>{isUrgent ? 'Subscribe' : 'Learn More'}</Text>

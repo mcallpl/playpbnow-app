@@ -515,7 +515,7 @@ export default function InvitesScreen() {
         }
       }
     } catch (e: any) {
-      setError((e?.message ? `${e.message} — ` : '') + 'Network error. Tap Send again to retry.');
+      setError((e?.message ? `${e.message}. ` : '') + 'Network error. Tap Send again to retry.');
     }
     setSendingInvites(false);
   };
@@ -556,7 +556,7 @@ export default function InvitesScreen() {
     };
     Alert.alert(
       'Cancel this invite?',
-      `${formatDate(inv.match_date)} at ${formatTime(inv.match_time)} — ${inv.court_name}.\n\nConfirmed and wait-listed players will be texted that the match is canceled. This cannot be undone.`,
+      `${formatDate(inv.match_date)} at ${formatTime(inv.match_time)}, ${inv.court_name}.\n\nConfirmed and wait-listed players will be texted that the match is canceled. This cannot be undone.`,
       [
         { text: 'Keep it', style: 'cancel' },
         { text: 'Cancel invite', style: 'destructive', onPress: doCancel },
@@ -600,7 +600,7 @@ export default function InvitesScreen() {
       const dd = String(d.getDate()).padStart(2, '0');
       const value = `${yyyy}-${mm}-${dd}`;
       const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      opts.push({ value, label: i === 0 ? `Today — ${label}` : i === 1 ? `Tomorrow — ${label}` : label });
+      opts.push({ value, label: i === 0 ? `Today, ${label}` : i === 1 ? `Tomorrow, ${label}` : label });
     }
     return opts;
   }, []);
@@ -1528,7 +1528,7 @@ export default function InvitesScreen() {
                   {selectedPlayerList
                     .map(p => (
                       <Text key={p.id} style={[styles.confirmValue, { marginTop: 2 }]}>
-                        {p.first_name} {p.last_name}{p.play_level ? ` — Lvl ${p.play_level}` : ''}
+                        {p.first_name} {p.last_name}{p.play_level ? `, Lvl ${p.play_level}` : ''}
                       </Text>
                     ))
                   }
@@ -1561,7 +1561,7 @@ export default function InvitesScreen() {
                     if (messagebody.trim()) {
                       previewText += `\n\n${messagebody.trim()}`;
                     }
-                    previewText += `\n\nWe'd love to have you on the court. Spots are limited, so don't wait!\n\nTap the link in my next message to RSVP.\n\n— Chip McAllister, Play PB Now`;
+                    previewText += `\n\nWe'd love to have you on the court. Spots are limited, so don't wait!\n\nTap the link in my next message to RSVP.`;
                   } else {
                     const shortDate = d ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : matchDate;
                     const shortTime = matchTime ? (() => { const [h, m] = matchTime.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${m}${hr >= 12 ? 'PM' : 'AM'}`; })() : matchTime;
@@ -1615,7 +1615,7 @@ export default function InvitesScreen() {
                       <>
                         <Text style={[styles.inputLabel, { marginTop: 16 }]}>Buy Credits to Continue</Text>
                         <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 13, color: colors.textMuted, marginBottom: 12 }}>
-                          {"Purchase credits below — you'll return right here to send your invites."}
+                          {"Purchase credits below. You'll come right back here to send your invites."}
                         </Text>
                         {CREDIT_PACKAGES.slice(0, 4).map(pkg => (
                           <TouchableOpacity
@@ -1699,7 +1699,7 @@ export default function InvitesScreen() {
                   </Text>
                   {sendResults.channel === 'imessage' && (
                     <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 13, color: colors.textMuted, textAlign: 'center', marginTop: 6, maxWidth: 300 }}>
-                      Queued for delivery by the iMessage sender. They go out as the sender drains the queue — not yet delivered.
+                      Queued for delivery by the iMessage sender. They go out as the sender drains the queue. Not delivered yet.
                     </Text>
                   )}
                 </View>

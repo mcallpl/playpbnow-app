@@ -946,7 +946,7 @@ export function useBeacon() {
       }
       setError(
         beaconType === 'casual'
-          ? "Can't undo yet — the shared beacon network doesn't support withdrawing a response. Let the host know in chat."
+          ? "Can't undo yet. The shared beacon network doesn't support withdrawing a response. Let the host know in chat."
           : (data.message || 'Failed to withdraw response')
       );
       return false;

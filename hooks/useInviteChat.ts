@@ -161,7 +161,7 @@ export function useInviteChat() {
       setSendError(data.message || 'Message not sent');
       return false;
     } catch (err) {
-      setSendError(err instanceof Error && err.message ? err.message : 'Network error — message not sent');
+      setSendError(err instanceof Error && err.message ? err.message : 'Network error. Message not sent.');
       return false;
     }
   }, []);

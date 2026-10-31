@@ -542,7 +542,7 @@ export default function GameScreen() {
       if (unsyncedCount > 0) {
           Alert.alert(
               'Match Finished Elsewhere',
-              `${unsyncedCount} score${unsyncedCount === 1 ? '' : 's'} you entered on this device never reached the server, so ${unsyncedCount === 1 ? 'it is' : 'they are'} not in the saved results. Note ${unsyncedCount === 1 ? 'it' : 'them'} now — this screen is about to close.`,
+              `${unsyncedCount} score${unsyncedCount === 1 ? '' : 's'} you entered on this device never reached the server, so ${unsyncedCount === 1 ? 'it is' : 'they are'} not in the saved results. Note ${unsyncedCount === 1 ? 'it' : 'them'} now. This screen is about to close.`,
               [{ text: 'Continue', onPress: concludeRemotely }]
           );
           return;
@@ -797,13 +797,13 @@ export default function GameScreen() {
           const displayDate = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + suffix;
           const displayTime = selectedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
           if (Platform.OS === 'web') {
-              if (typeof window !== 'undefined' && window.confirm(`Just confirming — this report will tell players to show up on ${displayDate} at ${displayTime}.\n\nIs that the correct date and time?`)) {
+              if (typeof window !== 'undefined' && window.confirm(`Just confirming: this report will tell players to show up on ${displayDate} at ${displayTime}.\n\nIs that the correct date and time?`)) {
                   doShareImage();
               }
           } else {
               Alert.alert(
                   'Confirm Date & Time',
-                  `Just confirming — this report will tell players to show up on ${displayDate} at ${displayTime}.\n\nIs that the correct date and time?`,
+                  `Just confirming: this report will tell players to show up on ${displayDate} at ${displayTime}.\n\nIs that the correct date and time?`,
                   [
                       { text: 'Let Me Fix It', style: 'cancel' },
                       { text: 'Yes, Send It', onPress: () => doShareImage() }
@@ -1131,7 +1131,7 @@ export default function GameScreen() {
       return `last synced ${Math.floor(secs / 60)}m ago`;
   }, [syncTick, shareCode, connectedUsers]);
   const connectionLabel = connectionState === 'offline'
-      ? 'NOT CONNECTED — retrying'
+      ? 'NOT CONNECTED, retrying'
       : connectionState === 'reconnecting'
           ? 'RECONNECTING'
           : connectionState === 'connecting'
@@ -1186,7 +1186,7 @@ export default function GameScreen() {
               return;
           }
           top4 = teamStandings.slice(0, 4);
-          standingsText = top4.map((s, i) => `#${i + 1} ${s.players.map(p => p.first_name).join(' & ')} — ${s.winPct}% (${s.wins}W-${s.losses}L, ${s.pointDiff > 0 ? '+' : ''}${s.pointDiff})`).join('\n');
+          standingsText = top4.map((s, i) => `#${i + 1} ${s.players.map(p => p.first_name).join(' & ')}: ${s.winPct}% (${s.wins}W-${s.losses}L, ${s.pointDiff > 0 ? '+' : ''}${s.pointDiff})`).join('\n');
       } else {
           // Rotating partners: rank individuals, pair top 8 into 4 teams
           const individualStandings = calculateIndividualStandings(schedule, scores, roundRobinCount);
@@ -1196,7 +1196,7 @@ export default function GameScreen() {
           }
           top4 = pairIndividualsIntoTeams(individualStandings);
           if (top4.length < 4) { Alert.alert('Error', 'Could not form 4 teams from standings.'); return; }
-          standingsText = individualStandings.slice(0, 8).map((s, i) => `#${i + 1} ${s.player.first_name} — ${s.winPct}% (${s.wins}W-${s.losses}L)`).join('\n')
+          standingsText = individualStandings.slice(0, 8).map((s, i) => `#${i + 1} ${s.player.first_name}: ${s.winPct}% (${s.wins}W-${s.losses}L)`).join('\n')
               + '\n\nPlayoff Teams:\n'
               + top4.map((t, i) => `Team ${i + 1}: ${t.players.map(p => p.first_name).join(' & ')}`).join('\n');
       }
@@ -1476,7 +1476,7 @@ export default function GameScreen() {
                   <BrandedIcon name="live" size={14} color={connectionLabel ? colors.danger : colors.accent} />
                   <View style={{ flex: 1 }}>
                       <Text style={[styles.collabStatusText, connectionLabel && { color: colors.danger }]}>
-                          LIVE — Code: {shareCode}{connectedUsers > 0 ? ` \u2022 ${connectedUsers} connected` : ''}
+                          LIVE CODE: {shareCode}{connectedUsers > 0 ? ` \u2022 ${connectedUsers} connected` : ''}
                           {unsyncedCount > 0 ? ` \u2022 ${unsyncedCount} not synced` : ''}
                       </Text>
                       {(connectionLabel || lastSyncedLabel) && (
@@ -1642,7 +1642,7 @@ export default function GameScreen() {
                         setTimeout(() => showPaywall('Upgrade to Pro for clean, watermark-free reports!'), 450);
                     }} style={styles.watermarkBadge}>
                         <BrandedIcon name="lock" size={12} color="#ff6b35" />
-                        <Text style={styles.watermarkBadgeText}>FREE — Reports include watermark</Text>
+                        <Text style={styles.watermarkBadgeText}>FREE: Reports include a watermark</Text>
                     </TouchableOpacity>
                 )}
                 <Text style={styles.label}>Match Title</Text>

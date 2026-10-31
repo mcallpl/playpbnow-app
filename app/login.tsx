@@ -59,6 +59,7 @@ export default function LoginScreen() {
     // Forgot password state
     const [resetStep, setResetStep] = useState<'none' | 'phone' | 'code' | 'newpass'>('none');
     const [resetPhone, setResetPhone] = useState('');
+    const [resetSentNote, setResetSentNote] = useState(''); // where the reset code went, from the server
     const [resetCode, setResetCode] = useState('');
     const [resetPassword, setResetPassword] = useState('');
     const [resetConfirm, setResetConfirm] = useState('');
@@ -199,6 +200,7 @@ export default function LoginScreen() {
     };
 
     const cancelReset = () => {
+        setResetSentNote('');
         setResetStep('none');
         setResetPhone('');
         setResetCode('');
@@ -233,6 +235,9 @@ export default function LoginScreen() {
             }
             const data = await res.json();
             if (data.status === 'success') {
+                // The server says where the code went ("phone ending in 1234",
+                // "We emailed you a reset code."). Show that, not a guess.
+                setResetSentNote(typeof data.message === 'string' ? data.message : '');
                 setResetStep('code');
             } else {
                 Alert.alert('Reset Password', data.message || "We couldn't send a code right now. Please try again.");
@@ -247,7 +252,7 @@ export default function LoginScreen() {
 
     const handleVerifyCode = async () => {
         if (resetCode.trim().length !== 6) {
-            Alert.alert('Enter Code', 'Please enter the 6-digit code we texted you.');
+            Alert.alert('Enter Code', 'Please enter the 6-digit code we sent you.');
             return;
         }
         setResetLoading(true);
@@ -469,7 +474,7 @@ export default function LoginScreen() {
 
                             {resetStep === 'phone' && (
                                 <>
-                                    <Text style={styles.resetHint}>{"Enter the phone number or email on your account and we'll text a 6-digit reset code to the phone on file."}</Text>
+                                    <Text style={styles.resetHint}>{"Enter the phone number or email on your account. We'll text a 6-digit reset code to the phone on file, or email it if the account has no phone."}</Text>
                                     <TextInput
                                         style={styles.input}
                                         placeholder="(555) 555-1234 or name@example.com"
@@ -494,7 +499,7 @@ export default function LoginScreen() {
 
                             {resetStep === 'code' && (
                                 <>
-                                    <Text style={styles.resetHint}>If that number or email is on an account, we've texted a 6-digit code to the phone on file. Enter it below.</Text>
+                                    <Text style={styles.resetHint}>{resetSentNote || "If that number or email is on an account, we've sent a 6-digit code. Enter it below."}</Text>
                                     <TextInput
                                         style={[styles.input, { textAlign: 'center', fontSize: 24, letterSpacing: 8 }]}
                                         placeholder="000000"

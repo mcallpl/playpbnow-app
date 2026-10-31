@@ -81,6 +81,12 @@ export default function HomeScreen() {
   const [joinModalVisible, setJoinModalVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [changePasswordVisible, setChangePasswordVisible] = useState(false);
+  // Settings > Phone Number (2026-10-31)
+  const [phoneEditVisible, setPhoneEditVisible] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneSaving, setPhoneSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+  const [phoneLast4, setPhoneLast4] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -444,6 +450,43 @@ export default function HomeScreen() {
         },
       },
     ]);
+  };
+
+  // Which number is on the account (last 4 only), read when Settings opens.
+  useEffect(() => {
+    if (!settingsVisible || !userId) return;
+    fetch(`${API_URL}/check_phone.php`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'check', user_id: userId }),
+    }).then(r => r.json()).then(d => {
+      if (d?.status === 'success') setPhoneLast4(d.has_phone ? (d.phone_last4 || '') || null : null);
+    }).catch(() => {});
+  }, [settingsVisible, userId]);
+
+  const savePhoneNumber = async () => {
+    const phone = phoneInput.trim();
+    if (!phone) { setPhoneError('Type a mobile number to save it.'); return; }
+    setPhoneSaving(true);
+    try {
+      const res = await fetch(`${API_URL}/check_phone.php`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set', user_id: userId, phone }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        haptic.save();
+        await AsyncStorage.setItem('user_phone', phone);
+        setPhoneLast4(phone.replace(/\D/g, '').slice(-4));
+        setPhoneEditVisible(false);
+        Alert.alert('Phone Number Saved', 'If you forget your password, we will text the reset code to this number.');
+      } else {
+        setPhoneError(data.message || "We couldn't save that number. Please check it and try again.");
+      }
+    } catch {
+      setPhoneError("We couldn't reach PlayPBNow. Please check your connection and try again.");
+    } finally {
+      setPhoneSaving(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -901,7 +944,7 @@ export default function HomeScreen() {
                   unstarted trial must not read "Trial Ends In 30 days". */}
               {isTrial && !trialStarted && (
                 <Text style={{ color: colors.secondary, fontSize: 13, fontFamily: FONT_BODY_MEDIUM, marginBottom: 8 }}>
-                  Pro Trial — your {trialDaysRemaining} days start with your first saved match
+                  Pro Trial: your {trialDaysRemaining} days start with your first saved match
                 </Text>
               )}
               {isTrial && trialStarted && trialDaysRemaining !== null && (
@@ -966,6 +1009,19 @@ export default function HomeScreen() {
                 <BrandedIcon name="lock" size={20} color={colors.text} />
                 <Text style={styles.settingsActionText}>Change Password</Text>
               </TouchableOpacity>
+              {/* Phone number (2026-10-31): the phone screen says "you can add it
+                  later in Settings", and password reset texts this number, so
+                  it has to be reachable here. */}
+              <TouchableOpacity style={styles.settingsActionRow} accessibilityRole="button" onPress={() => {
+                setSettingsVisible(false);
+                setPhoneInput(''); setPhoneError('');
+                setTimeout(() => setPhoneEditVisible(true), Platform.OS === 'web' ? 0 : 450);
+              }}>
+                <BrandedIcon name="phone" size={20} color={colors.text} />
+                <Text style={styles.settingsActionText}>
+                  {phoneLast4 ? `Phone Number (ending in ${phoneLast4})` : 'Add Phone Number'}
+                </Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.settingsActionRow} onPress={handleDeleteAccount}>
                 <BrandedIcon name="trash" size={20} color={colors.danger} />
                 <Text style={[styles.settingsActionText, { color: colors.danger }]}>Delete Account</Text>
@@ -977,6 +1033,47 @@ export default function HomeScreen() {
             </View>
 
             <Text style={styles.appVersion}>PlayPBNow v{appVersion}</Text>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal animationType="slide" transparent visible={phoneEditVisible} onRequestClose={() => setPhoneEditVisible(false)} hardwareAccelerated>
+        <View style={{ flex: 1, backgroundColor: colors.modalOverlay, justifyContent: 'center', padding: 16 }}>
+          <View style={{ backgroundColor: colors.modalBg, borderRadius: 16, padding: 24 }}>
+            <Text style={{ fontFamily: FONT_DISPLAY_BOLD, fontSize: 18, color: colors.text, marginBottom: 8 }}>{phoneLast4 ? 'Change Phone Number' : 'Add Phone Number'}</Text>
+            <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 14, color: colors.textMuted, marginBottom: 16 }}>
+              {phoneLast4 ? `The number on your account ends in ${phoneLast4}. ` : ''}If you ever forget your password, we text a reset code to this number.
+            </Text>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Mobile number"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="phone-pad"
+              textContentType="telephoneNumber"
+              autoComplete="tel"
+              value={phoneInput}
+              onChangeText={(t) => { setPhoneInput(t); setPhoneError(''); }}
+              accessibilityLabel="Mobile number"
+            />
+            {!!phoneError && <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 13, color: colors.danger, marginTop: 4 }}>{phoneError}</Text>}
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.border, alignItems: 'center' }}
+                onPress={() => setPhoneEditVisible(false)}
+              >
+                <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.text }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.accent, alignItems: 'center', opacity: phoneSaving || !phoneInput.trim() ? 0.6 : 1 }}
+                onPress={savePhoneNumber}
+                disabled={phoneSaving || !phoneInput.trim()}
+              >
+                {phoneSaving ? <ActivityIndicator color={colors.accentText} size="small" /> : (
+                  <Text style={{ fontFamily: FONT_BODY_SEMIBOLD, fontSize: 14, color: colors.accentText }}>Save Number</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+            {!phoneInput.trim() && <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.textMuted, marginTop: 8, textAlign: 'center' }}>Type a mobile number to save it.</Text>}
           </View>
         </View>
       </Modal>

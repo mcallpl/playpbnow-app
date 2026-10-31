@@ -1476,7 +1476,7 @@ export default function AdminDashboard() {
               <View style={s.wlBox}>
                 <Text style={[s.wlText, { color: colors.accent }]}>{p.wins}W</Text>
                 <Text style={[s.wlText, { color: colors.danger }]}>{p.losses}L</Text>
-                <Text style={s.wlPct}>{p.win_pct ? `${(p.win_pct * 100).toFixed(0)}%` : '—'}</Text>
+                <Text style={s.wlPct}>{p.win_pct ? `${(p.win_pct * 100).toFixed(0)}%` : '-'}</Text>
               </View>
             </View>
           ))}
@@ -1635,7 +1635,7 @@ export default function AdminDashboard() {
                       <View key={c.Field} style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
                         <Text style={{ fontFamily: FONT_BODY_MEDIUM, fontSize: 12, color: colors.textMuted, flex: 1 }}>{c.Field}</Text>
                         <Text style={{ fontFamily: FONT_BODY_REGULAR, fontSize: 12, color: colors.text, flex: 2, textAlign: 'right' }} numberOfLines={1}>
-                          {row[c.Field] != null ? String(row[c.Field]) : '—'}
+                          {row[c.Field] != null ? String(row[c.Field]) : '-'}
                         </Text>
                       </View>
                     ))}
@@ -1681,7 +1681,7 @@ export default function AdminDashboard() {
                     </TouchableOpacity>
                   </View>
                   <ScrollView contentContainerStyle={{ padding: 20 }}>
-                    <Text style={[s.sectionLabel, { marginTop: 0 }]}>{dbBrowseTable} — RECORD #{dbEditRecord.id}</Text>
+                    <Text style={[s.sectionLabel, { marginTop: 0 }]}>{dbBrowseTable} · RECORD #{dbEditRecord.id}</Text>
                     {dbColumns.filter(c => c.Field !== 'id').map(c => (
                       <View key={c.Field} style={{ marginBottom: 12 }}>
                         <Text style={{ fontFamily: FONT_BODY_BOLD, fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>
@@ -1800,7 +1800,7 @@ export default function AdminDashboard() {
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
             <Text style={s.inputLabel}>YOUR MESSAGE</Text>
             <Text style={s.inputHint}>
-              Type your freestyle message. No landing page — just a direct text.
+              Type your freestyle message. No landing page, just a direct text.
               {quickPersonalize ? ' First names auto-prepended.' : ''}
             </Text>
             <TextInput
@@ -2022,7 +2022,7 @@ export default function AdminDashboard() {
 
               <Text style={s.inputLabel}>SMS TEXT (SHORT & SWEET)</Text>
               <Text style={s.inputHint}>
-                Keep brief — link auto-appended. {smsCharCount}/160 chars ({smsSegments} segment{smsSegments > 1 ? 's' : ''})
+                Keep it brief. The link is added automatically. {smsCharCount}/160 chars ({smsSegments} segment{smsSegments > 1 ? 's' : ''})
               </Text>
               <TextInput style={[s.input, { minHeight: 70 }]} value={smsText} onChangeText={setSmsText}
                 placeholder="e.g. Exciting news from PlayPBNow! New tournament with prizes."

@@ -805,7 +805,7 @@ export default function RosterScreen() {
                                                 <View style={{ flex: 1 }}>
                                                     <Text style={styles.dupGroupName}>{`"${group.name}"`}</Text>
                                                     <Text style={styles.dupGroupCount}>
-                                                        {group.count} records — tap to select same person
+                                                        {group.count} records. Tap to select the same person
                                                     </Text>
                                                 </View>
                                             </View>

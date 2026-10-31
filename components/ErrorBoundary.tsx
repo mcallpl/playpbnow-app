@@ -143,7 +143,7 @@ function ErrorFallback({
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const contactSupport = () => {
-    const subject = encodeURIComponent('PlayPBNow — something went wrong');
+    const subject = encodeURIComponent('PlayPBNow: something went wrong');
     const body = encodeURIComponent(
       `What I was doing:\n\n\n---\nError: ${error?.message || 'unknown'}\nPlatform: ${Platform.OS}`
     );

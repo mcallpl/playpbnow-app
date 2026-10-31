@@ -363,7 +363,7 @@ function CourtPicker({
 
   const selected = courts.find((c) => c.id === selectedId);
   const selectedLabel = selected
-    ? (selected.city ? `${selected.name} — ${selected.city}` : selected.name)
+    ? (selected.city ? `${selected.name}, ${selected.city}` : selected.name)
     : 'Select a court';
 
   const rows = useMemo(() => {
@@ -451,7 +451,7 @@ function CourtPicker({
                       style={[styles.dropdownItemText, isSel && styles.dropdownItemTextSelected]}
                       numberOfLines={1}
                     >
-                      {court.city ? `${court.name} — ${court.city}` : court.name}
+                      {court.city ? `${court.name}, ${court.city}` : court.name}
                     </Text>
                     {item.dist != null && (
                       <Text style={styles.dropdownItemDistance}>{item.dist.toFixed(1)} mi away</Text>
@@ -1018,7 +1018,7 @@ export default function PlayNowTab() {
     Alert.alert(
       'Beacon is Live!',
       // M12: there is no push notification. Do not promise one.
-      'Your beacon is now active. Players who open Play Now nearby will see your beacon on the map.',
+      'Your beacon is now active. Everyone who opens Play Now sees it in the beacon list until it expires.',
       [{ text: 'Got it!' }]
     );
     startPolling(lobbyResult.id);
@@ -1057,7 +1057,7 @@ export default function PlayNowTab() {
     Alert.alert(
       'Beacon is Live!',
       // M12: no push notifications exist — say what actually happens.
-      'Your beacon is now active. Players who open Play Now nearby will see your beacon on the map.',
+      'Your beacon is now active. Everyone who opens Play Now sees it in the beacon list until it expires.',
       [{ text: 'Got it!' }]
     );
     setView('feed');
@@ -1278,7 +1278,7 @@ export default function PlayNowTab() {
             <BrandedIcon name="location" size={18} color={colors.gold} />
             <View style={{ flex: 1 }}>
               <Text style={styles.locationWarningTitle}>Location Services Disabled</Text>
-              <Text style={styles.locationWarningText}>Enable location to see beacons near you. Tap for instructions.</Text>
+              <Text style={styles.locationWarningText}>You'll still see every beacon. Turn location on to sort them by distance from you. Tap for instructions.</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -1831,7 +1831,7 @@ export default function PlayNowTab() {
           {/* Was "More Info", which named nothing — a person choosing a beacon
               type could not tell what this option did. It now says what it
               actually does, and matches the Help topic. (UAT 2026-09-04) */}
-          <Text style={styles.modeCardTitle}>{"I'm Here — Come Play!"}</Text>
+          <Text style={styles.modeCardTitle}>{"I'm Here, Come Play!"}</Text>
           <Text style={styles.modeCardSubtitle}>
             {"I'm already at the court. Looking for people to come play!"}
           </Text>
@@ -1943,7 +1943,7 @@ export default function PlayNowTab() {
           ) : (
             <>
               <BrandedIcon name="live" size={20} color="#ffffff" />
-              <Text style={styles.goLiveText}>{"I'm Here — Come Play!"}</Text>
+              <Text style={styles.goLiveText}>{"I'm Here, Come Play!"}</Text>
             </>
           )}
         </TouchableOpacity>

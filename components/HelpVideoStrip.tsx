@@ -66,7 +66,7 @@ export const HelpVideoStrip: React.FC = () => {
         <Text style={styles.count}>{HELP_VIDEOS.length}</Text>
       </View>
       <Text style={styles.subheading}>
-        Short walkthroughs — tap any one to watch
+        Short walkthroughs. Tap any one to watch.
       </Text>
 
       <ScrollView

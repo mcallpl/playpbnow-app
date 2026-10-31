@@ -167,7 +167,7 @@ function PhoneGate({ children }: { children: React.ReactNode }) {
                 textAlign: 'center',
                 marginBottom: 20,
                 lineHeight: 20,
-              }}>Add a phone number so you can recover your password by text if you ever forget it. It's optional — you can add it later in Settings.</Text>
+              }}>Add a phone number so you can recover your password by text if you ever forget it. It's optional. You can add it later in Settings.</Text>
               <TextInput
                 style={{
                   backgroundColor: colors.bg,

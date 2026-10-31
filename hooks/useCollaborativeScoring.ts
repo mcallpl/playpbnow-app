@@ -686,7 +686,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                         serverScheduleHashRef.current = serverScheduleStr;
                     } else if (serverScheduleStr !== serverScheduleHashRef.current) {
                         // Schedule changed on server — update local
-                        console.log('📋 Schedule updated from server — syncing player assignments');
+                        console.log('📋 Schedule updated from server, syncing player assignments');
                         serverScheduleHashRef.current = serverScheduleStr;
                         // Parse and set schedule with proper IDs (same logic as useGameLogic init)
                         setSchedule(normalizeSchedule(data.schedule));
@@ -705,7 +705,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 if (!scheduleAdoptedThisPoll && setSchedule && isCollaboratorRef.current
                     && Array.isArray(data.schedule) && data.schedule.length > 0) {
                     if (scheduleSignature(scheduleRef.current) !== scheduleSignature(data.schedule)) {
-                        console.log('📋 Collaborator matchups drifted from the host — re-adopting');
+                        console.log('📋 Collaborator matchups drifted from the host, re-adopting');
                         setSchedule(normalizeSchedule(data.schedule));
                     }
                 }
@@ -792,7 +792,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 console.warn('⌛ Live session expired');
                 sessionOverRef.current = true;
                 setSessionExpired(true);
-                setToastMessage('Live session expired — your scores are safe on this device');
+                setToastMessage('Live session expired. Your scores are safe on this device.');
             }
             pollFailuresRef.current = 0; // success — reset backoff
         } catch (err) {
@@ -880,7 +880,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
         if (initialSyncAttemptsRef.current >= MAX_INITIAL_SYNC_RETRIES) return;
         const attempt = initialSyncAttemptsRef.current++;
         const delay = Math.min(POLL_INTERVAL * Math.pow(2, attempt), MAX_POLL_INTERVAL);
-        console.warn(`🔄 Live sync failed — retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_INITIAL_SYNC_RETRIES})`);
+        console.warn(`🔄 Live sync failed, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_INITIAL_SYNC_RETRIES})`);
         initialSyncTimerRef.current = setTimeout(async () => {
             initialSyncTimerRef.current = null;
             const runner = initialSyncRunnerRef.current;
@@ -1106,7 +1106,7 @@ export const useCollaborativeScoring = (config: CollabConfig) => {
                 } else if (scheduleSignature(localSchedule) !== scheduleSignature(data.schedule)) {
                     // Compared by SIGNATURE: raw JSON always differs (generated
                     // ids), which would re-push on every single resume.
-                    console.log('📤 Owner resume: local matchups differ — re-pushing host schedule');
+                    console.log('📤 Owner resume: local matchups differ, re-pushing host schedule');
                     serverScheduleHashRef.current = JSON.stringify(localSchedule);
                     schedulePushRef.current?.(localSchedule);
                 } else {
