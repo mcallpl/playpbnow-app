@@ -189,3 +189,20 @@ describe('buildLocalSchedule', () => {
     });
   });
 });
+
+// 2026-10-31: 4 men + 4 women with 6 Mixed rounds run out of new man+woman
+// pairs after 4 rounds. SHUFFLE used to fall back to anyone-with-anyone and
+// put men-only and women-only teams in a MIXED round. A repeat partner (shown
+// orange) is the right trade. Mirrors generate_schedule.php.
+describe('equal groups stay strictly mixed when partners must repeat', () => {
+  test.each([[4, 4], [6, 6], [3, 3], [8, 8]])('%iM/%iF, 6 mixed rounds, 10 shuffles', (m, f) => {
+    const players = makePlayers(m + f, m);
+    for (let rep = 0; rep < 10; rep++) {
+      const schedule = buildLocalSchedule(players, rounds(6, 'mixed'));
+      expect(schedule).toHaveLength(6);
+      for (const r of schedule) for (const g of r.games) for (const t of [g.team1, g.team2]) {
+        expect(t.filter(p => (p.gender || '').startsWith('f')).length).toBe(1);
+      }
+    }
+  });
+});

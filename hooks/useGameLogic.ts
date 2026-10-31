@@ -239,6 +239,10 @@ export const buildLocalSchedule = (
             // and put each of those teams against a man+woman team. Two men vs
             // a man and a woman is fine; two men vs two women never is.
             let unevenDone = false;
+            // 2026-10-31: when no arrangement avoids a repeat partner, keep the
+            // one with the FEWEST repeats rather than giving up on the mixed
+            // structure (repeats show orange and can be swapped).
+            let unevenBest: { games: GameData[]; repeats: number } | null = null;
             if (men.length !== women.length && roundPlayers.length % 4 === 0) {
                 for (let attempt = 0; attempt < 300 && !unevenDone; attempt++) {
                     const mCopy = [...men].sort(() => Math.random() - 0.5);
@@ -248,7 +252,7 @@ export const buildLocalSchedule = (
                     const rest = [...mCopy, ...wCopy];
                     const same: Player[][] = [];
                     while (rest.length >= 2) same.push([rest.pop()!, rest.pop()!]);
-                    if ([...mf, ...same].some(t => getPairCount(t[0], t[1]) >= 1)) continue;
+                    const repeats = [...mf, ...same].reduce((n, t) => n + getPairCount(t[0], t[1]), 0);
                     const games: GameData[] = [];
                     const sameQ = [...same]; const mfQ = [...mf];
                     while (sameQ.length && mfQ.length) {
@@ -262,10 +266,14 @@ export const buildLocalSchedule = (
                         if (isGenderIllegal(x, y)) { ok = false; break; }
                         games.push({ id: Math.random().toString(36).substr(2, 9), team1: x, team2: y, score_team1: 0, score_team2: 0 });
                     }
-                    if (ok) { bestGames = games; bestByes = []; unevenDone = true; }
+                    if (!ok) continue;
+                    if (repeats === 0) { bestGames = games; bestByes = []; unevenDone = true; }
+                    else if (!unevenBest || repeats < unevenBest.repeats) unevenBest = { games, repeats };
                 }
+                if (!unevenDone && unevenBest) { bestGames = unevenBest.games; bestByes = []; unevenDone = true; }
             }
 
+            let evenFound = false;
             for (let attempt = 0; attempt < 200 && !unevenDone; attempt++) {
                 const mCopy = [...men].sort(() => Math.random() - 0.5);
                 const wCopy = [...women].sort(() => Math.random() - 0.5);
@@ -291,6 +299,7 @@ export const buildLocalSchedule = (
                         bestGames = games;
                         bestByes = leftovers;
                     }
+                    evenFound = true;
                     break;
                 }
 
@@ -299,6 +308,40 @@ export const buildLocalSchedule = (
                     bestGames = games;
                     const usedIds = new Set(games.flatMap(g => [...g.team1, ...g.team2].map(p => p.id)));
                     bestByes = roundPlayers.filter(p => !usedIds.has(p.id));
+                }
+            }
+
+            // 2026-10-31: no man+woman arrangement without a repeat partner
+            // (4 men + 4 women run out of new pairs after 4 rounds). Keep every
+            // team a man and a woman and allow the FEWEST repeats, instead of
+            // the partial best attempt that left players to the anyone-with-
+            // anyone fallback and made men-only and women-only teams in a
+            // MIXED round. Mirrors generate_schedule.php.
+            if (!unevenDone && !evenFound && men.length >= 2 && women.length >= 2) {
+                let best: { games: GameData[]; byes: Player[]; repeats: number } | null = null;
+                for (let attempt = 0; attempt < 200; attempt++) {
+                    const mCopy = [...men].sort(() => Math.random() - 0.5);
+                    const wCopy = [...women].sort(() => Math.random() - 0.5);
+                    const games: GameData[] = [];
+                    let repeats = 0;
+                    while (mCopy.length >= 2 && wCopy.length >= 2) {
+                        const m1 = mCopy.pop()!; const f1 = wCopy.pop()!;
+                        const m2 = mCopy.pop()!; const f2 = wCopy.pop()!;
+                        repeats += getPairCount(m1, f1) + getPairCount(m2, f2);
+                        games.push({ id: Math.random().toString(36).substr(2, 9), team1: [m1, f1], team2: [m2, f2], score_team1: 0, score_team2: 0 });
+                    }
+                    const leftovers = [...mCopy, ...wCopy];
+                    if (!best || repeats < best.repeats) best = { games, byes: leftovers, repeats };
+                    if (repeats === 0) break;
+                }
+                if (best) {
+                    bestGames = best.games;
+                    bestByes = best.byes;
+                    if (bestByes.length >= 4) {
+                        const extra = processPool(bestByes);
+                        bestGames = [...bestGames, ...extra.games];
+                        bestByes = extra.leftovers;
+                    }
                 }
             }
 
