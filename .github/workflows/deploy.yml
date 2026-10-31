@@ -164,7 +164,15 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ env.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          # The droplet's host key is PINNED here (2026-10-31) instead of fetched
+          # with ssh-keyscan. keyscan opens ~5 quick connections and hangs up;
+          # the droplet's fail2ban (aggressive mode, 5 strikes) counted those
+          # as an attack and banned the runner a second before the real
+          # deploy connection, which then timed out ("Connection timed out",
+          # runs 41224099314 and 41225392620). A public host key is not a
+          # secret, and pinning it also refuses an impostor server.
+          # If the droplet is ever rebuilt: ssh root@64.227.108.128 cat /etc/ssh/ssh_host_ed25519_key.pub
+          echo "${{ env.DEPLOY_HOST }} ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAufrZ2O+FR24L4FICUTg9hw5Anl3ioCYe2DiDAtIT9V" >> ~/.ssh/known_hosts
           cat >> ~/.ssh/config << EOF
           Host deploy
             HostName ${{ env.DEPLOY_HOST }}
