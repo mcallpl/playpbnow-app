@@ -27,6 +27,7 @@ import {
 import { BrandedIcon } from './BrandedIcon';
 import {
   HELP_VIDEOS,
+  visibleHelpVideos,
   HelpVideo,
   formatDuration,
   posterUrl,
@@ -63,7 +64,7 @@ export const HelpVideoStrip: React.FC = () => {
           </View>
           <Text style={styles.heading}>HOW-TO VIDEOS</Text>
         </View>
-        <Text style={styles.count}>{HELP_VIDEOS.length}</Text>
+        <Text style={styles.count}>{visibleHelpVideos().length}</Text>
       </View>
       <Text style={styles.subheading}>
         Short walkthroughs. Tap any one to watch.
@@ -74,7 +75,7 @@ export const HelpVideoStrip: React.FC = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.strip}
       >
-        {HELP_VIDEOS.map((v) => (
+        {visibleHelpVideos().map((v) => (
           <TouchableOpacity
             key={v.slug}
             style={styles.card}

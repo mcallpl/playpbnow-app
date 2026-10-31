@@ -16,6 +16,12 @@ export interface HelpVideo {
   title: string;
   blurb: string;
   seconds: number;
+  /**
+   * Filmed against an older app and not yet replaced (2026-10-31). Kept in
+   * the list on purpose, but NOT shown: an outdated video teaches tabs and
+   * features that no longer exist. Remove the flag when the new cut lands.
+   */
+  retired?: boolean;
 }
 
 const BASE = 'https://playpbnow.com/videos';
@@ -28,6 +34,9 @@ export const formatDuration = (seconds: number) => {
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
 };
+
+/** The videos the Help tab shows: everything not retired. */
+export const visibleHelpVideos = (): HelpVideo[] => HELP_VIDEOS.filter(v => !v.retired);
 
 export const HELP_VIDEOS: HelpVideo[] = [
   {
@@ -44,30 +53,35 @@ export const HELP_VIDEOS: HelpVideo[] = [
   },
   {
     slug: 'm2-groups',
+    retired: true,
     title: 'Groups',
     blurb: 'Create a group and build your roster',
     seconds: 44,
   },
   {
     slug: 'm3-setting-up-a-match',
+    retired: true,
     title: 'Setting Up a Match',
     blurb: 'Rounds, courts and rotating partners',
     seconds: 45,
   },
   {
     slug: 'm4-scoring',
+    retired: true,
     title: 'Scoring',
     blurb: 'Score a match round by round',
     seconds: 43,
   },
   {
     slug: 'm7-switching-matchups',
+    retired: true,
     title: 'Switching Matchups',
     blurb: 'Swap players and fix a matchup mid-session',
     seconds: 57,
   },
   {
     slug: 'm8-synchronization',
+    retired: true,
     title: 'Live Sync',
     blurb: 'Everyone scores from their own phone',
     seconds: 78,
@@ -80,6 +94,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   },
   {
     slug: 'm10-beacon',
+    retired: true,
     title: 'Beacons',
     blurb: 'Play Now: post a beacon and fill your court',
     seconds: 112,
@@ -92,6 +107,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   },
   {
     slug: 'm11-share-and-text',
+    retired: true,
     title: 'Share & Report',
     blurb: 'TEXT MATCH: send the schedule and an HD match report',
     seconds: 95,
